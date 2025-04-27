@@ -18,7 +18,20 @@ class RecordsManagementController extends Controller
 
         // Add filtering logic here if needed
         if ($request->has('search')) {
-            // Implement search logic
+            $query->where(function($q) use ($request) {
+                $q->whereHas('patient', function($q) use ($request) {
+                    $q->where('name', 'like', '%' . $request->search . '%')
+                      ->orWhere('email', 'like', '%' . $request->search . '%');
+                });
+            });
+        }
+
+        if ($request->has('record_type') && $request->record_type !== 'all') {
+            $query->where('record_type', $request->record_type);
+        }
+
+        if ($request->has('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
         }
 
         $records = $query->paginate(10);
@@ -43,6 +56,32 @@ class RecordsManagementController extends Controller
             'statusOptions' => $statusOptions,
             'patients' => $patients,
             'doctors' => $doctors,
+            'filters' => $request->only(['search', 'record_type', 'status']),
+        ]);
+    }
+
+    public function create()
+    {
+        // Get all record types
+        $recordTypes = ['medical_checkup', 'laboratory', 'prescription', 'consultation'];
+
+        // Get all status options
+        $statusOptions = ['pending', 'completed', 'cancelled'];
+
+        // Get all patients
+        $patients = User::where('user_role', User::ROLE_PATIENT)
+            ->get(['id', 'name', 'email']);
+
+        // Get all doctors
+        $doctors = User::where('user_role', User::ROLE_DOCTOR)
+            ->get(['id', 'name', 'email']);
+
+        return Inertia::render('Admin/RecordsManagement', [
+            'creating' => true,
+            'recordTypes' => $recordTypes,
+            'statusOptions' => $statusOptions,
+            'patients' => $patients,
+            'doctors' => $doctors,
         ]);
     }
 
@@ -60,7 +99,7 @@ class RecordsManagementController extends Controller
 
         PatientRecord::create($request->all());
 
-        return redirect()->route('admin.records.index');
+        return redirect()->route('admin.records.index')->with('success', 'Record created successfully');
     }
 
     public function update(Request $request, $id)
@@ -78,7 +117,7 @@ class RecordsManagementController extends Controller
         $record = PatientRecord::findOrFail($id);
         $record->update($request->all());
 
-        return redirect()->route('admin.records.index');
+        return redirect()->route('admin.records.index')->with('success', 'Record updated successfully');
     }
 
     public function destroy($id)
@@ -86,6 +125,6 @@ class RecordsManagementController extends Controller
         $record = PatientRecord::findOrFail($id);
         $record->delete();
 
-        return redirect()->route('admin.records.index');
+        return redirect()->route('admin.records.index')->with('success', 'Record deleted successfully');
     }
 }

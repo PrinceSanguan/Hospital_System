@@ -13,16 +13,8 @@ class RegisterController extends Controller
     // Show the registration form
     public function index()
     {
-        // Pass available roles for registration (excluding admin)
-        $availableRoles = [
-            User::ROLE_PATIENT => 'Patient',
-            User::ROLE_CLINICAL_STAFF => 'Clinical Staff',
-            User::ROLE_DOCTOR => 'Doctor/Manager',
-        ];
-
-        return Inertia::render('Auth/Register', [
-            'availableRoles' => $availableRoles
-        ]);
+        // Users will automatically be registered as patients
+        return Inertia::render('Auth/Register');
     }
 
     // Store registration data
@@ -33,15 +25,14 @@ class RegisterController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:6|confirmed',
-            'user_role' => 'required|in:patient,clinical_staff,doctor',
         ]);
 
-        // Create a new user
+        // Create a new user with patient role
         User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'user_role' => $request->user_role,
+            'user_role' => User::ROLE_PATIENT, // Automatically set as patient
         ]);
 
         // Redirect to login or dashboard

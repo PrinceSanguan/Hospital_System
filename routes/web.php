@@ -92,6 +92,7 @@ Route::get('/dashboard', function() {
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\Admin\RecordsManagementController;
 use App\Http\Middleware\AdminMiddleware;
 
 Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
@@ -110,6 +111,14 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
   Route::get('/users/{user}/edit', [UserManagementController::class, 'edit'])->name('users.edit');
   Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('users.update');
   Route::delete('/users/{user}', [UserManagementController::class, 'destroy'])->name('users.destroy');
+
+  // Records Management
+  Route::get('/records', [RecordsManagementController::class, 'index'])->name('records.index');
+  Route::get('/records/create', [RecordsManagementController::class, 'create'])->name('records.create');
+  Route::post('/records', [RecordsManagementController::class, 'store'])->name('records.store');
+  Route::get('/records/{record}/edit', [RecordsManagementController::class, 'edit'])->name('records.edit');
+  Route::put('/records/{id}', [RecordsManagementController::class, 'update'])->name('records.update');
+  Route::delete('/records/{id}', [RecordsManagementController::class, 'destroy'])->name('records.destroy');
 });
 
 /*

@@ -2,26 +2,13 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
 
-interface RegisterProps {
-  availableRoles: Record<string, string>;
-}
-
-export default function Register({ availableRoles = {} }: RegisterProps) {
+export default function Register() {
   const { data, setData, post, processing, errors } = useForm({
     name: '',
     email: '',
     password: '',
     password_confirmation: '',
-    user_role: 'patient',
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -35,7 +22,7 @@ export default function Register({ availableRoles = {} }: RegisterProps) {
       <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
         <div className="w-full max-w-md space-y-6 rounded-lg bg-white p-8 shadow-lg">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-800">Create an Account</h1>
+            <h1 className="text-2xl font-bold text-gray-800">Create a Patient Account</h1>
             <p className="mt-2 text-sm text-gray-600">
               Join FarmCare Clinic and Laboratory
             </p>
@@ -66,29 +53,6 @@ export default function Register({ availableRoles = {} }: RegisterProps) {
                 className={errors.email ? 'border-red-500' : ''}
               />
               {errors.email && <p className="mt-1 text-xs text-red-500">{String(errors.email)}</p>}
-            </div>
-
-            {/* User Role Field */}
-            <div>
-              <Label htmlFor="user_role">Register as</Label>
-              <Select
-                value={data.user_role}
-                onValueChange={(value) => setData('user_role', value)}
-              >
-                <SelectTrigger className={errors.user_role ? 'border-red-500' : ''}>
-                  <SelectValue placeholder="Select your role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {Object.entries(availableRoles).map(([key, value]) => (
-                      <SelectItem key={key} value={key}>
-                        {value}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-              {errors.user_role && <p className="mt-1 text-xs text-red-500">{String(errors.user_role)}</p>}
             </div>
 
             {/* Password Field */}
