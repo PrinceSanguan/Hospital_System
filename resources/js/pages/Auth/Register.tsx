@@ -16,11 +16,11 @@ export default function Register() {
     post(route('auth.register.store'));
   };
 
-  return (
+    return (
     <>
       <Head title="Register" />
-      <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
-        <div className="w-full max-w-md space-y-6 rounded-lg bg-white p-8 shadow-lg">
+        <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
+            <div className="w-full max-w-md space-y-6 rounded-lg bg-white p-8 shadow-lg">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-800">Create a Patient Account</h1>
             <p className="mt-2 text-sm text-gray-600">
@@ -29,9 +29,9 @@ export default function Register() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name Field */}
-            <div>
-              <Label htmlFor="name">Name</Label>
+                    {/* Name Field */}
+                    <div>
+                        <Label htmlFor="name">Name</Label>
               <Input
                 type="text"
                 id="name"
@@ -40,11 +40,11 @@ export default function Register() {
                 className={errors.name ? 'border-red-500' : ''}
               />
               {errors.name && <p className="mt-1 text-xs text-red-500">{String(errors.name)}</p>}
-            </div>
+                    </div>
 
-            {/* Email Field */}
-            <div>
-              <Label htmlFor="email">Email</Label>
+                    {/* Email Field */}
+                    <div>
+                        <Label htmlFor="email">Email</Label>
               <Input
                 type="email"
                 id="email"
@@ -53,11 +53,11 @@ export default function Register() {
                 className={errors.email ? 'border-red-500' : ''}
               />
               {errors.email && <p className="mt-1 text-xs text-red-500">{String(errors.email)}</p>}
-            </div>
+                    </div>
 
-            {/* Password Field */}
-            <div>
-              <Label htmlFor="password">Password</Label>
+                    {/* Password Field */}
+                    <div>
+                        <Label htmlFor="password">Password</Label>
               <Input
                 type="password"
                 id="password"
@@ -66,23 +66,23 @@ export default function Register() {
                 className={errors.password ? 'border-red-500' : ''}
               />
               {errors.password && <p className="mt-1 text-xs text-red-500">{String(errors.password)}</p>}
-            </div>
+                    </div>
 
-            {/* Confirm Password Field */}
-            <div>
-              <Label htmlFor="password_confirmation">Confirm Password</Label>
+                    {/* Confirm Password Field */}
+                    <div>
+                        <Label htmlFor="password_confirmation">Confirm Password</Label>
               <Input
                 type="password"
                 id="password_confirmation"
                 value={data.password_confirmation}
                 onChange={e => setData('password_confirmation', e.target.value)}
               />
-            </div>
+                    </div>
 
-            {/* Submit Button */}
+                    {/* Submit Button */}
             <Button type="submit" className="w-full" disabled={processing}>
               {processing ? 'Registering...' : 'Register'}
-            </Button>
+                    </Button>
 
             <div className="mt-4 text-center text-sm">
               Already have an account?{' '}
@@ -94,5 +94,5 @@ export default function Register() {
         </div>
       </div>
     </>
-  );
+    );
 }

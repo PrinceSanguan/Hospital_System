@@ -118,24 +118,24 @@ export function Sidebar({ user }: SidebarProps) {
                     {navigationItems.map((item) => (
                         routeExists(item.route) ? (
                             <Link href={route(item.route)} key={item.name} className="w-full">
-                                <Button
+                        <Button
                                     variant={isActive(`/admin/${item.route.split('.').pop()}`) ? 'secondary' : 'ghost'}
                                     className="flex w-full items-center justify-start gap-3 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-                                >
+                        >
                                     {item.icon}
                                     {item.name}
-                                </Button>
-                            </Link>
+                        </Button>
+                    </Link>
                         ) : (
-                            <Button
+                    <Button
                                 key={item.name}
-                                variant="ghost"
+                        variant="ghost"
                                 className="flex w-full items-center justify-start gap-3 rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
                                 disabled
-                            >
+                    >
                                 {item.icon}
                                 {item.name}
-                            </Button>
+                    </Button>
                         )
                     ))}
                 </nav>
@@ -162,12 +162,12 @@ export function Sidebar({ user }: SidebarProps) {
                             <DropdownMenuLabel>My Account</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             {routeExists('admin.settings') && (
-                                <Link href={route('admin.settings')} className="w-full">
-                                    <DropdownMenuItem className="flex w-full cursor-pointer items-center gap-2">
-                                        <Settings size={16} />
-                                        Settings
-                                    </DropdownMenuItem>
-                                </Link>
+                            <Link href={route('admin.settings')} className="w-full">
+                                <DropdownMenuItem className="flex w-full cursor-pointer items-center gap-2">
+                                    <Settings size={16} />
+                                    Settings
+                                </DropdownMenuItem>
+                            </Link>
                             )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem asChild>
