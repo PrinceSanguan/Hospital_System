@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,18 +28,19 @@ class UserMiddleware
             return redirect()->route('auth.login')->with('error', 'Please login to access this page');
         }
 
-        // Check if authenticated user has user role or admin role
-        if (Auth::user()->user_role !== 'user' && Auth::user()->user_role !== 'admin') {
+        // Check if authenticated user has patient role
+        $user = Auth::user();
+        if ($user->user_role !== User::ROLE_PATIENT) {
             if ($request->wantsJson() || $request->is('api/*')) {
                 return response()->json([
-                    'message' => 'Access denied. User privileges required',
+                    'message' => 'Access denied. Patient privileges required',
                 ], 403);
             }
 
-            return redirect()->route('home')->with('error', 'Access denied. User privileges required');
+            return redirect()->route('home')->with('error', 'Access denied. Patient privileges required');
         }
 
-        // User is authenticated and has user role, proceed
+        // User is authenticated and has patient role, proceed
         return $next($request);
     }
 }

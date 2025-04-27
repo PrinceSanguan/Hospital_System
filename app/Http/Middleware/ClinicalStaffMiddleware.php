@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
 
-class AdminMiddleware
+class ClinicalStaffMiddleware
 {
     /**
      * Handle an incoming request.
@@ -32,18 +32,18 @@ class AdminMiddleware
                 ->with('error', 'Please login to access this page');
         }
 
-        // Check if authenticated user has admin role
+        // Check if authenticated user has clinical staff role
         $user = Auth::user();
-        if ($user->user_role !== User::ROLE_ADMIN) {
+        if ($user->user_role !== User::ROLE_CLINICAL_STAFF && $user->user_role !== User::ROLE_ADMIN) {
             if ($request->wantsJson() || $request->is('api/*')) {
                 return response()->json([
-                    'message' => 'Access denied. Admin privileges required',
+                    'message' => 'Access denied. Clinical Staff privileges required',
                 ], 403);
             }
 
             // Redirect to home with error message
             return redirect()->route('home')
-                ->with('error', 'Access denied. Admin privileges required');
+                ->with('error', 'Access denied. Clinical Staff privileges required');
         }
 
         return $next($request);

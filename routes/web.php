@@ -12,8 +12,11 @@ use App\Http\Middleware\GuestMiddleware;
 */
 
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\LandingController;
 
-Route::get('/', [HomeController::class, 'index'])->name('home');
+// Replacing the home route with our new landing page
+Route::get('/', [LandingController::class, 'index'])->name('home');
+Route::get('/service/{service}', [LandingController::class, 'viewService'])->name('service.view');
 
 /*
 |--------------------------------------------------------------------------
@@ -46,8 +49,39 @@ Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleC
 
 use App\Http\Controllers\Auth\RegisterController;
 
-
 Route::get('register', [RegisterController::class, 'index'])->middleware(GuestMiddleware::class)->name('auth.register');
+Route::post('register', [RegisterController::class, 'store'])->name('auth.register.store');
+
+/*
+|--------------------------------------------------------------------------
+| This controller handles Authentication Redirection
+|--------------------------------------------------------------------------
+*/
+
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
+
+// Route to redirect users to their appropriate dashboard after login
+Route::get('/dashboard', function() {
+    $user = Auth::user();
+
+    if (!$user) {
+        return redirect()->route('auth.login');
+    }
+
+    switch ($user->user_role) {
+        case User::ROLE_ADMIN:
+            return redirect()->route('admin.dashboard');
+        case User::ROLE_DOCTOR:
+            return redirect()->route('doctor.dashboard');
+        case User::ROLE_CLINICAL_STAFF:
+            return redirect()->route('staff.dashboard');
+        case User::ROLE_PATIENT:
+            return redirect()->route('patient.dashboard');
+        default:
+            return redirect()->route('home');
+    }
+})->name('dashboard');
 
 /*
 |--------------------------------------------------------------------------
@@ -57,36 +91,71 @@ Route::get('register', [RegisterController::class, 'index'])->middleware(GuestMi
 
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Middleware\AdminMiddleware;
 
-Route::middleware([AdminMiddleware::class])->group(function () {
-
+Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
   // Dashboard
-  Route::get('admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
+  Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
   // Settings
-  Route::get('admin/settings', [SettingsController::class, 'index'])->name('admin.settings');
-  Route::put('admin/settings/profile', [SettingsController::class, 'updateProfile'])->name('admin.settings.updateProfile');
-  Route::put('admin/settings/password', [SettingsController::class, 'updatePassword'])->name('admin.settings.updatePassword');
+  Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+  Route::put('/settings/profile', [SettingsController::class, 'updateProfile'])->name('settings.updateProfile');
+  Route::put('/settings/password', [SettingsController::class, 'updatePassword'])->name('settings.updatePassword');
+
+  // User Management
+  Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
+  Route::get('/users/create', [UserManagementController::class, 'create'])->name('users.create');
+  Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
+  Route::get('/users/{user}/edit', [UserManagementController::class, 'edit'])->name('users.edit');
+  Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('users.update');
+  Route::delete('/users/{user}', [UserManagementController::class, 'destroy'])->name('users.destroy');
 });
 
 /*
 |--------------------------------------------------------------------------
-| This controller handles All User Logic
+| This controller handles All Doctor Logic
 |--------------------------------------------------------------------------
 */
 
-use App\Http\Controllers\User\UserDashboardController;
-use App\Http\Controllers\User\UserSettingsController;
-use App\Http\Middleware\UserMiddleware;
+use App\Http\Controllers\Doctor\DoctorDashboardController;
+use App\Http\Middleware\DoctorMiddleware;
 
-Route::middleware([UserMiddleware::class])->group(function () {
-
+Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')->group(function () {
   // Dashboard
-  Route::get('dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');
+  Route::get('/dashboard', [DoctorDashboardController::class, 'index'])->name('dashboard');
 
-  // Settings
-  Route::get('user/settings', [UserSettingsController::class, 'index'])->name('user.settings');
-  Route::put('user/settings/profile', [UserSettingsController::class, 'updateProfile'])->name('user.settings.updateProfile');
-  Route::put('user/settings/password', [UserSettingsController::class, 'updatePassword'])->name('user.settings.updatePassword');
+  // Additional doctor routes will go here
+});
+
+/*
+|--------------------------------------------------------------------------
+| This controller handles All Clinical Staff Logic
+|--------------------------------------------------------------------------
+*/
+
+use App\Http\Controllers\ClinicalStaff\StaffDashboardController;
+use App\Http\Middleware\ClinicalStaffMiddleware;
+
+Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staff.')->group(function () {
+  // Dashboard
+  Route::get('/dashboard', [StaffDashboardController::class, 'index'])->name('dashboard');
+
+  // Additional clinical staff routes will go here
+});
+
+/*
+|--------------------------------------------------------------------------
+| This controller handles All Patient Logic
+|--------------------------------------------------------------------------
+*/
+
+use App\Http\Controllers\Patient\PatientDashboardController;
+use App\Http\Middleware\PatientMiddleware;
+
+Route::middleware([PatientMiddleware::class])->prefix('patient')->name('patient.')->group(function () {
+  // Dashboard
+  Route::get('/dashboard', [PatientDashboardController::class, 'index'])->name('dashboard');
+
+  // Additional patient routes will go here
 });

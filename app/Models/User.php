@@ -12,6 +12,12 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
+    // User role constants
+    const ROLE_PATIENT = 'patient';
+    const ROLE_CLINICAL_STAFF = 'clinical_staff';
+    const ROLE_DOCTOR = 'doctor';
+    const ROLE_ADMIN = 'admin';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -47,5 +53,45 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Check if the user is an admin
+     *
+     * @return bool
+     */
+    public function isAdmin(): bool
+    {
+        return $this->user_role === self::ROLE_ADMIN;
+    }
+
+    /**
+     * Check if the user is a doctor
+     *
+     * @return bool
+     */
+    public function isDoctor(): bool
+    {
+        return $this->user_role === self::ROLE_DOCTOR;
+    }
+
+    /**
+     * Check if the user is a clinical staff
+     *
+     * @return bool
+     */
+    public function isClinicalStaff(): bool
+    {
+        return $this->user_role === self::ROLE_CLINICAL_STAFF;
+    }
+
+    /**
+     * Check if the user is a patient
+     *
+     * @return bool
+     */
+    public function isPatient(): bool
+    {
+        return $this->user_role === self::ROLE_PATIENT;
     }
 }
