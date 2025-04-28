@@ -103,8 +103,14 @@ class SocialAuthController extends Controller
             // Redirect based on user role
             if ($user->user_role === 'admin') {
                 return redirect()->route('admin.dashboard');
+            } else if ($user->user_role === 'doctor') {
+                return redirect()->route('doctor.dashboard');
+            } else if ($user->user_role === 'clinical_staff') {
+                return redirect()->route('staff.dashboard');
+            } else if ($user->user_role === 'patient') {
+                return redirect()->route('patient.dashboard');
             } else {
-                return redirect()->route('user.dashboard')->with('email_status', session('email_sent') ? 'sent' : 'failed');
+                return redirect()->route('dashboard')->with('email_status', session('email_sent') ? 'sent' : 'failed');
             }
         } catch (Exception $e) {
             // Log the error with details

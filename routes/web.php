@@ -134,7 +134,17 @@ Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')-
   // Dashboard
   Route::get('/dashboard', [DoctorDashboardController::class, 'index'])->name('dashboard');
 
-  // Additional doctor routes will go here
+  // Doctor Profile
+  Route::get('/profile', function() {
+    return Inertia::render('Doctor/Profile', [
+      'user' => Auth::user()
+    ]);
+  })->name('profile');
+
+  // Additional doctor routes can be added here
+  // For example:
+  // Route::get('/patients', [DoctorPatientController::class, 'index'])->name('patients.index');
+  // Route::get('/appointments', [DoctorAppointmentController::class, 'index'])->name('appointments.index');
 });
 
 /*
@@ -150,7 +160,110 @@ Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staf
   // Dashboard
   Route::get('/dashboard', [StaffDashboardController::class, 'index'])->name('dashboard');
 
-  // Additional clinical staff routes will go here
+  // Profile
+  Route::get('/profile', function() {
+    return Inertia::render('ClinicalStaff/Profile', [
+      'user' => Auth::user()
+    ]);
+  })->name('profile');
+
+  // Appointments Management
+  Route::get('/appointments', function() {
+    return Inertia::render('ClinicalStaff/Appointments', [
+      'user' => Auth::user()
+    ]);
+  })->name('appointments');
+
+  // Appointment Actions
+  Route::get('/appointments/add', function() {
+    return Inertia::render('ClinicalStaff/AppointmentAdd', [
+      'user' => Auth::user()
+    ]);
+  })->name('appointments.add');
+
+  Route::get('/appointments/delete', function() {
+    return Inertia::render('ClinicalStaff/AppointmentDelete', [
+      'user' => Auth::user()
+    ]);
+  })->name('appointments.delete');
+
+  Route::get('/appointments/view', function() {
+    return Inertia::render('ClinicalStaff/AppointmentView', [
+      'user' => Auth::user()
+    ]);
+  })->name('appointments.view');
+
+  Route::get('/appointments/edit', function() {
+    return Inertia::render('ClinicalStaff/AppointmentEdit', [
+      'user' => Auth::user()
+    ]);
+  })->name('appointments.edit');
+
+  Route::get('/appointments/approve', function() {
+    return Inertia::render('ClinicalStaff/AppointmentApprove', [
+      'user' => Auth::user()
+    ]);
+  })->name('appointments.approve');
+
+  // Patient Records Management
+  Route::get('/patients', function() {
+    return Inertia::render('ClinicalStaff/Patients', [
+      'user' => Auth::user()
+    ]);
+  })->name('patients');
+
+  // Notifications
+  Route::get('/notifications', function() {
+    return Inertia::render('ClinicalStaff/Notifications', [
+      'user' => Auth::user()
+    ]);
+  })->name('notifications');
+
+  // Follow-ups
+  Route::get('/followups', function() {
+    return Inertia::render('ClinicalStaff/Followups', [
+      'user' => Auth::user()
+    ]);
+  })->name('followups');
+
+  // Clinical Information
+  Route::get('/clinical-info', function() {
+    return Inertia::render('ClinicalStaff/ClinicalInfo', [
+      'user' => Auth::user()
+    ]);
+  })->name('clinical.info');
+
+  // Lab Records
+  Route::get('/lab-records', function() {
+    return Inertia::render('ClinicalStaff/LabRecords', [
+      'user' => Auth::user()
+    ]);
+  })->name('lab.records');
+
+  // Lab Records Actions
+  Route::get('/lab-records/add', function() {
+    return Inertia::render('ClinicalStaff/LabRecordsAdd', [
+      'user' => Auth::user()
+    ]);
+  })->name('lab.records.add');
+
+  Route::get('/lab-records/delete', function() {
+    return Inertia::render('ClinicalStaff/LabRecordsDelete', [
+      'user' => Auth::user()
+    ]);
+  })->name('lab.records.delete');
+
+  Route::get('/lab-records/view', function() {
+    return Inertia::render('ClinicalStaff/LabRecordsView', [
+      'user' => Auth::user()
+    ]);
+  })->name('lab.records.view');
+
+  Route::get('/lab-records/edit', function() {
+    return Inertia::render('ClinicalStaff/LabRecordsEdit', [
+      'user' => Auth::user()
+    ]);
+  })->name('lab.records.edit');
 });
 
 /*

@@ -41,7 +41,7 @@ class StaffDashboardController extends Controller
                 'role' => $user->user_role,
             ],
             'stats' => [
-                'patients' => $patientsCount,
+                'totalPatients' => $patientsCount,
                 'todayAppointments' => $todayAppointmentsCount,
                 'pendingLabResults' => $pendingLabResultsCount,
             ],

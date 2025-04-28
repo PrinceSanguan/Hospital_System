@@ -37,10 +37,19 @@ class LoginController extends Controller
             $request->session()->regenerate();
 
             // Check user role and redirect accordingly
-            if (Auth::user()->user_role === 'admin') {
-                return redirect()->route('admin.dashboard');
-            } else {
-                return redirect()->route('user.dashboard');
+            $user = Auth::user();
+
+            switch ($user->user_role) {
+                case 'admin':
+                    return redirect()->route('admin.dashboard');
+                case 'doctor':
+                    return redirect()->route('doctor.dashboard');
+                case 'clinical_staff':
+                    return redirect()->route('staff.dashboard');
+                case 'patient':
+                    return redirect()->route('patient.dashboard');
+                default:
+                    return redirect()->route('dashboard');
             }
         }
 
