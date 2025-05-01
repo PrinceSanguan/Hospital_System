@@ -11,7 +11,8 @@ import {
   Download,
   X,
   CalendarDays,
-  Plus
+  Plus,
+  Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +40,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import AdminLayout from '@/layouts/AdminLayout';
 import { Tabs, TabsList, TabsContent, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Patient {
   id: number;
@@ -52,6 +54,15 @@ interface Doctor {
   specialty?: string;
 }
 
+interface LabTestResult {
+  value: string;
+  range: string;
+  status: string;
+  is_checked: boolean;
+  result: string;
+  remarks: string;
+}
+
 interface Record {
   id: number;
   patient: Patient;
@@ -60,7 +71,7 @@ interface Record {
   status: string;
   appointment_date: string;
   details: string | null;
-  lab_results: Record<string, any> | null;
+  lab_results: Record<string, LabTestResult> | null;
   vital_signs: Record<string, any> | null;
   prescriptions: Array<{
     medication: string;
@@ -123,6 +134,21 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
   };
 
   const handleEdit = (record: Record) => {
+    // Transform lab_results to ensure they have the new fields if they don't exist
+    const labResults = record.lab_results || {};
+    const updatedLabResults: Record<string, LabTestResult> = {};
+
+    Object.entries(labResults).forEach(([key, value]: [string, any]) => {
+      updatedLabResults[key] = {
+        value: value.value || '',
+        range: value.range || '',
+        status: value.status || 'normal',
+        is_checked: value.is_checked !== undefined ? value.is_checked : false,
+        result: value.result !== undefined ? value.result : '',
+        remarks: value.remarks !== undefined ? value.remarks : ''
+      };
+    });
+
     setData({
       id: record.id.toString(),
       patient_id: record.patient.id.toString(),
@@ -131,7 +157,7 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
       status: record.status,
       appointment_date: record.appointment_date,
       details: record.details || "",
-      lab_results: record.lab_results || {},
+      lab_results: updatedLabResults,
       vital_signs: record.vital_signs || {},
       prescriptions: record.prescriptions || []
     });
@@ -175,6 +201,8 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
         return <FileText className="h-5 w-5 text-blue-600" />;
       case 'laboratory':
         return <FileText className="h-5 w-5 text-purple-600" />;
+      case 'medical_record':
+        return <FileText className="h-5 w-5 text-green-600" />;
       default:
         return <FileText className="h-5 w-5 text-gray-600" />;
     }
@@ -233,7 +261,8 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
               <SelectItem value="all">All Types</SelectItem>
               {recordTypes.map(type => (
                 <SelectItem key={type} value={type}>
-                  {type === 'medical_checkup' ? 'Medical Checkup' : 'Laboratory Test'}
+                  {type === 'medical_checkup' ? 'Medical Checkup' :
+                   type === 'medical_record' ? 'Medical Record' : 'Laboratory Test'}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -321,7 +350,8 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
                     <div className="flex items-center">
                       <RecordTypeIcon type={record.record_type} />
                       <span className="ml-2 text-sm text-gray-900">
-                        {record.record_type === 'medical_checkup' ? 'Medical Checkup' : 'Laboratory Test'}
+                        {record.record_type === 'medical_checkup' ? 'Medical Checkup' :
+                         record.record_type === 'medical_record' ? 'Medical Record' : 'Laboratory Test'}
                       </span>
                     </div>
                   </td>
@@ -483,7 +513,8 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
                       <SelectContent>
                         {recordTypes.map(type => (
                           <SelectItem key={type} value={type}>
-                            {type === 'medical_checkup' ? 'Medical Checkup' : 'Laboratory Test'}
+                            {type === 'medical_checkup' ? 'Medical Checkup' :
+                             type === 'medical_record' ? 'Medical Record' : 'Laboratory Test'}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -554,6 +585,16 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
                 <div className="mb-4">
                   <h3 className="text-sm font-medium mb-2">Laboratory Results</h3>
                   <p className="text-sm text-gray-500 mb-4">Add laboratory test results for this patient</p>
+
+                  {data.record_type === 'medical_record' && (
+                    <div className="mb-6 flex justify-center">
+                      <img
+                        src="/images/lab-results.jpg"
+                        alt="Lab Results"
+                        className="max-w-full h-auto max-h-48 rounded-lg shadow-md"
+                      />
+                    </div>
+                  )}
 
                   <div className="space-y-4">
                     {Object.entries(data.lab_results).map(([test, result], index) => (
@@ -628,6 +669,67 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
                             </Select>
                           </div>
                         </div>
+
+                        <div className="mt-4 mb-2">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`test-${index}-checked`}
+                              checked={(result as any).is_checked || false}
+                              onCheckedChange={(checked) => {
+                                const newLabResults = {...data.lab_results};
+                                newLabResults[test] = {
+                                  ...(newLabResults[test] as any),
+                                  is_checked: checked
+                                };
+                                setData('lab_results', newLabResults);
+                              }}
+                            />
+                            <label
+                              htmlFor={`test-${index}-checked`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              Show detailed results
+                            </label>
+                          </div>
+                        </div>
+
+                        {(result as any).is_checked && (
+                          <div className="mt-4 space-y-4 border-t pt-4">
+                            <div>
+                              <label className="text-sm font-medium">Result</label>
+                              <textarea
+                                value={(result as any).result || ''}
+                                onChange={(e) => {
+                                  const newLabResults = {...data.lab_results};
+                                  newLabResults[test] = {
+                                    ...(newLabResults[test] as any),
+                                    result: e.target.value
+                                  };
+                                  setData('lab_results', newLabResults);
+                                }}
+                                className="w-full mt-1 rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                                rows={3}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium">Remarks</label>
+                              <textarea
+                                value={(result as any).remarks || ''}
+                                onChange={(e) => {
+                                  const newLabResults = {...data.lab_results};
+                                  newLabResults[test] = {
+                                    ...(newLabResults[test] as any),
+                                    remarks: e.target.value
+                                  };
+                                  setData('lab_results', newLabResults);
+                                }}
+                                className="w-full mt-1 rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                                rows={3}
+                              />
+                            </div>
+                          </div>
+                        )}
+
                         <Button
                           type="button"
                           variant="destructive"
@@ -653,7 +755,10 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
                       newLabResults[`Test ${testNumber}`] = {
                         value: '',
                         range: '',
-                        status: 'normal'
+                        status: 'normal',
+                        is_checked: false,
+                        result: '',
+                        remarks: ''
                       };
                       setData('lab_results', newLabResults);
                     }}

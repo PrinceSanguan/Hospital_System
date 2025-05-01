@@ -12,6 +12,20 @@ class PatientRecord extends Model
     use HasFactory, SoftDeletes;
 
     /**
+     * Record type constants
+     */
+    const TYPE_MEDICAL_CHECKUP = 'medical_checkup';
+    const TYPE_LABORATORY = 'laboratory';
+    const TYPE_MEDICAL_RECORD = 'medical_record';
+
+    /**
+     * Status constants
+     */
+    const STATUS_PENDING = 'pending';
+    const STATUS_COMPLETED = 'completed';
+    const STATUS_CANCELLED = 'cancelled';
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var array<int, string>
@@ -24,6 +38,8 @@ class PatientRecord extends Model
         'appointment_date',
         'details',
         'lab_results',
+        'vital_signs',
+        'prescriptions',
     ];
 
     /**
@@ -34,6 +50,8 @@ class PatientRecord extends Model
     protected $casts = [
         'appointment_date' => 'datetime',
         'lab_results' => 'array',
+        'vital_signs' => 'array',
+        'prescriptions' => 'array',
     ];
 
     /**

@@ -120,6 +120,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
   Route::get('/records/{record}/edit', [RecordsManagementController::class, 'edit'])->name('records.edit');
   Route::put('/records/{id}', [RecordsManagementController::class, 'update'])->name('records.update');
   Route::delete('/records/{id}', [RecordsManagementController::class, 'destroy'])->name('records.destroy');
+  Route::get('/records/{id}', [RecordsManagementController::class, 'show'])->name('records.show');
 
   // Reports
   Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
