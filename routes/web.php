@@ -93,6 +93,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\RecordsManagementController;
+use App\Http\Controllers\Admin\ReportsController;
 use App\Http\Middleware\AdminMiddleware;
 
 Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
@@ -119,6 +120,10 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
   Route::get('/records/{record}/edit', [RecordsManagementController::class, 'edit'])->name('records.edit');
   Route::put('/records/{id}', [RecordsManagementController::class, 'update'])->name('records.update');
   Route::delete('/records/{id}', [RecordsManagementController::class, 'destroy'])->name('records.destroy');
+
+  // Reports
+  Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
+  Route::get('/reports/download', [ReportsController::class, 'downloadReport'])->name('reports.download');
 });
 
 /*

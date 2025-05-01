@@ -37,6 +37,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import AdminLayout from '@/layouts/AdminLayout';
 
 interface UserProps {
   id: number;
@@ -50,6 +51,11 @@ interface UserProps {
 }
 
 interface UserManagementProps {
+  user: {
+    name: string;
+    email: string;
+    role: string;
+  };
   users: {
     data: UserProps[];
     current_page: number;
@@ -60,7 +66,7 @@ interface UserManagementProps {
   roles: string[];
 }
 
-export default function UserManagement({ users, roles }: UserManagementProps) {
+export default function UserManagement({ user, users, roles }: UserManagementProps) {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProps | null>(null);
@@ -192,121 +198,117 @@ export default function UserManagement({ users, roles }: UserManagementProps) {
   };
 
   return (
-    <>
-      <Head title="User Management" />
-      <div className="py-12">
-        <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-          <div className="mb-6 flex items-center justify-between">
-            <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
-            <Button onClick={() => {
-              reset();
-              setSelectedUser(null);
-              setIsUserModalOpen(true);
-            }}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Create User
-            </Button>
-          </div>
+    <AdminLayout user={user}>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
+          <Button onClick={() => {
+            reset();
+            setSelectedUser(null);
+            setIsUserModalOpen(true);
+          }}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Create User
+          </Button>
+        </div>
 
-          {/* Tabs and Filters */}
-          <div className="mb-6">
-            <Tabs
-              defaultValue="all"
-              className="w-full"
-              value={activeTab}
-              onValueChange={setActiveTab}
-            >
-              <div className="flex justify-between">
-                <TabsList>
-                  <TabsTrigger value="all">All Users</TabsTrigger>
-                  {roles.map(role => (
-                    <TabsTrigger key={role} value={role}>
-                      {role.charAt(0).toUpperCase() + role.slice(1)}s
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
+        {/* Tabs and Filters */}
+        <div className="mb-6">
+          <Tabs
+            defaultValue="all"
+            className="w-full"
+            value={activeTab}
+            onValueChange={setActiveTab}
+          >
+            <div className="flex justify-between">
+              <TabsList>
+                <TabsTrigger value="all">All Users</TabsTrigger>
+                {roles.map(role => (
+                  <TabsTrigger key={role} value={role}>
+                    {role.charAt(0).toUpperCase() + role.slice(1)}s
+                  </TabsTrigger>
+                ))}
+              </TabsList>
 
-                <div className="flex items-center space-x-2">
-                  <div className="relative">
-                    <Input
-                      type="text"
-                      placeholder="Search users..."
-                      className="pl-10 w-64"
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                    />
-                    <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                  </div>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="icon">
-                        <Filter className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        Verified Users
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        Recently Added
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        Alphabetical
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+              <div className="flex items-center space-x-2">
+                <div className="relative">
+                  <Input
+                    type="text"
+                    placeholder="Search users..."
+                    className="pl-10 w-64"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                  />
+                  <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                 </div>
-              </div>
 
-              <TabsContent value="all" className="mt-6">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon">
+                      <Filter className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem>
+                      Verified Users
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      Recently Added
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      Alphabetical
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+
+            <TabsContent value="all" className="mt-6">
+              <UserTable
+                users={filteredUsers}
+                onEdit={handleEdit}
+                onDelete={confirmDelete}
+              />
+            </TabsContent>
+
+            {roles.map(role => (
+              <TabsContent key={role} value={role} className="mt-6">
                 <UserTable
                   users={filteredUsers}
                   onEdit={handleEdit}
                   onDelete={confirmDelete}
                 />
               </TabsContent>
+            ))}
+          </Tabs>
+        </div>
 
-              {roles.map(role => (
-                <TabsContent key={role} value={role} className="mt-6">
-                  <UserTable
-                    users={filteredUsers}
-                    onEdit={handleEdit}
-                    onDelete={confirmDelete}
-                  />
-                </TabsContent>
-              ))}
-            </Tabs>
+        {/* Pagination */}
+        <div className="mt-4 flex items-center justify-between">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{filteredUsers.length}</span> of{" "}
+            <span className="font-medium">{users.total}</span> users
           </div>
-
-          {/* Pagination */}
-          <div className="mt-4 flex items-center justify-between">
-            <div className="text-sm text-gray-700">
-              Showing <span className="font-medium">{filteredUsers.length}</span> of{" "}
-              <span className="font-medium">{users.total}</span> users
-            </div>
-            <div className="flex space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={users.current_page === 1}
-                onClick={() => {
-                  // Handle pagination
-                }}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={users.current_page === users.last_page}
-                onClick={() => {
-                  // Handle pagination
-                }}
-              >
-                Next
-              </Button>
-            </div>
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={users.current_page === 1}
+              onClick={() => {
+                // Handle pagination
+              }}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={users.current_page === users.last_page}
+              onClick={() => {
+                // Handle pagination
+              }}
+            >
+              Next
+            </Button>
           </div>
         </div>
       </div>
@@ -487,7 +489,7 @@ export default function UserManagement({ users, roles }: UserManagementProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </AdminLayout>
   );
 }
 

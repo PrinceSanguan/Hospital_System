@@ -7,6 +7,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
 class AdminMiddleware
 {
@@ -45,6 +46,47 @@ class AdminMiddleware
             return redirect()->route('home')
                 ->with('error', 'Access denied. Admin privileges required');
         }
+
+        // Share navigation data with all admin views
+        Inertia::share([
+            'admin' => [
+                'user' => [
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->user_role
+                ],
+                'navigation' => [
+                    'current' => $request->route()->getName(),
+                    'items' => [
+                        [
+                            'name' => 'Dashboard',
+                            'route' => 'admin.dashboard',
+                            'icon' => 'dashboard'
+                        ],
+                        [
+                            'name' => 'Patient Records',
+                            'route' => 'admin.records.index',
+                            'icon' => 'records'
+                        ],
+                        [
+                            'name' => 'User Management',
+                            'route' => 'admin.users.index',
+                            'icon' => 'users'
+                        ],
+                        [
+                            'name' => 'Reports',
+                            'route' => 'admin.reports.index',
+                            'icon' => 'reports'
+                        ],
+                        [
+                            'name' => 'Settings',
+                            'route' => 'admin.settings',
+                            'icon' => 'settings'
+                        ]
+                    ]
+                ]
+            ]
+        ]);
 
         return $next($request);
     }

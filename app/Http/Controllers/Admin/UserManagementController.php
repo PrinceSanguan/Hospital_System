@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
 
 class UserManagementController extends Controller
 {
@@ -16,34 +17,40 @@ class UserManagementController extends Controller
      */
     public function index(Request $request)
     {
+        $user = Auth::user();
+
         $query = User::query();
 
-        // Filter by role if provided
-        if ($request->has('role') && $request->role !== 'all') {
-            $query->where('user_role', $request->role);
-        }
-
-        // Search by name or email
-        if ($request->has('search') && $request->search !== '') {
+        // Apply filters
+        if ($request->has('search')) {
             $query->where(function($q) use ($request) {
                 $q->where('name', 'like', '%' . $request->search . '%')
                   ->orWhere('email', 'like', '%' . $request->search . '%');
             });
         }
 
-        // Get paginated results
-        $users = $query->paginate(10)->withQueryString();
+        if ($request->has('role') && $request->role !== 'all') {
+            $query->where('user_role', $request->role);
+        }
+
+        $users = $query->orderBy('created_at', 'desc')->paginate(10);
+
+        $roles = [
+            User::ROLE_PATIENT,
+            User::ROLE_DOCTOR,
+            User::ROLE_CLINICAL_STAFF,
+            User::ROLE_ADMIN
+        ];
 
         return Inertia::render('Admin/UserManagement', [
-            'users' => $users,
-            'filters' => $request->only(['search', 'role']),
-            'roles' => [
-                'all' => 'All Roles',
-                User::ROLE_ADMIN => 'Admin',
-                User::ROLE_DOCTOR => 'Doctor',
-                User::ROLE_CLINICAL_STAFF => 'Clinical Staff',
-                User::ROLE_PATIENT => 'Patient',
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
             ],
+            'users' => $users,
+            'roles' => $roles,
+            'filters' => $request->only(['search', 'role']),
         ]);
     }
 
@@ -52,13 +59,22 @@ class UserManagementController extends Controller
      */
     public function create()
     {
+        $user = Auth::user();
+
+        $roles = [
+            User::ROLE_PATIENT,
+            User::ROLE_DOCTOR,
+            User::ROLE_CLINICAL_STAFF,
+            User::ROLE_ADMIN
+        ];
+
         return Inertia::render('Admin/UserForm', [
-            'roles' => [
-                User::ROLE_ADMIN => 'Admin',
-                User::ROLE_DOCTOR => 'Doctor',
-                User::ROLE_CLINICAL_STAFF => 'Clinical Staff',
-                User::ROLE_PATIENT => 'Patient',
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
             ],
+            'roles' => $roles,
         ]);
     }
 
@@ -92,14 +108,23 @@ class UserManagementController extends Controller
      */
     public function edit(User $user)
     {
+        $authUser = Auth::user();
+
+        $roles = [
+            User::ROLE_PATIENT,
+            User::ROLE_DOCTOR,
+            User::ROLE_CLINICAL_STAFF,
+            User::ROLE_ADMIN
+        ];
+
         return Inertia::render('Admin/UserForm', [
-            'user' => $user,
-            'roles' => [
-                User::ROLE_ADMIN => 'Admin',
-                User::ROLE_DOCTOR => 'Doctor',
-                User::ROLE_CLINICAL_STAFF => 'Clinical Staff',
-                User::ROLE_PATIENT => 'Patient',
+            'user' => [
+                'name' => $authUser->name,
+                'email' => $authUser->email,
+                'role' => $authUser->user_role,
             ],
+            'editUser' => $user,
+            'roles' => $roles,
         ]);
     }
 

@@ -10,11 +10,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 import { Link } from '@inertiajs/react';
-import { ChevronDown, LayoutDashboard, Settings } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, Settings, Bell } from 'lucide-react';
 
 interface User {
     name: string;
     email: string;
+    role?: string;
 }
 
 export function Header({ user }: { user: User }) {
@@ -24,13 +25,17 @@ export function Header({ user }: { user: User }) {
                 <LayoutDashboard size={20} />
             </Button>
             <div className="flex flex-1 items-center justify-between">
+                <div className="font-semibold md:hidden">FarmCare Admin</div>
                 <div className="ml-auto flex items-center gap-4">
+                    <Button variant="ghost" size="icon" className="text-gray-500">
+                        <Bell size={20} />
+                    </Button>
                     <Separator orientation="vertical" className="h-8" />
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="flex items-center gap-2">
                                 <Avatar className="h-8 w-8">
-                                    <AvatarImage src="/api/placeholder/32/32" alt={user.name} />
+                                    <AvatarImage src="/placeholder-avatar.jpg" alt={user.name} />
                                     <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                                 </Avatar>
                                 <span className="hidden text-sm font-medium md:inline-flex">{user.name}</span>
@@ -42,6 +47,11 @@ export function Header({ user }: { user: User }) {
                                 <div className="flex flex-col">
                                     <span>{user.name}</span>
                                     <span className="text-xs text-gray-500">{user.email}</span>
+                                    {user.role && (
+                                        <span className="mt-1 text-xs font-normal text-blue-600">
+                                            {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                                        </span>
+                                    )}
                                 </div>
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />

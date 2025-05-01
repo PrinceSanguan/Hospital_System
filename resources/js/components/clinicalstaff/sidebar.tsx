@@ -1,13 +1,4 @@
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Link, usePage } from '@inertiajs/react';
 import {
     LayoutDashboard,
@@ -16,7 +7,6 @@ import {
     Users,
     Clipboard,
     Settings,
-    ChevronDown,
     LogOut,
     Bell,
     Database,
@@ -132,47 +122,15 @@ export function Sidebar({ user }: SidebarProps = {}) {
                 </nav>
             </div>
 
-            {/* Profile Section */}
-            {user && (
-                <div className="border-t p-4 dark:border-gray-700">
-                    <div className="flex items-center gap-3">
-                        <Avatar>
-                            <AvatarImage src="/api/placeholder/32/32" alt={user.name} />
-                            <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col">
-                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.name}</span>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">Clinical Staff</span>
-                        </div>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="ml-auto h-8 w-8">
-                                    <ChevronDown size={16} />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                {routeExists('staff.profile') && (
-                                    <Link href={route('staff.profile')} className="w-full">
-                                        <DropdownMenuItem className="flex w-full cursor-pointer items-center gap-2">
-                                            <Settings size={16} />
-                                            Profile Settings
-                                        </DropdownMenuItem>
-                                    </Link>
-                                )}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem asChild>
-                                    <Link href={route('auth.logout')} className="flex w-full cursor-pointer items-center gap-2">
-                                        <LogOut size={16} />
-                                        Logout
-                                    </Link>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-                </div>
-            )}
+            {/* Logout Button */}
+            <div className="border-t p-4 dark:border-gray-700">
+                <Button asChild variant="outline" className="w-full">
+                    <Link href={route('auth.logout')} className="flex items-center justify-center">
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Logout
+                    </Link>
+                </Button>
+            </div>
         </div>
     );
 }

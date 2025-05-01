@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Head, Link, useForm } from "@inertiajs/react";
+import { useForm } from "@inertiajs/react";
+import { Link } from "@inertiajs/react";
 import {
   Search,
   PlusCircle,
@@ -9,7 +10,8 @@ import {
   Filter,
   Download,
   X,
-  CalendarDays
+  CalendarDays,
+  Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +37,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import AdminLayout from '@/layouts/AdminLayout';
 
 interface Patient {
   id: number;
@@ -45,7 +48,7 @@ interface Patient {
 interface Doctor {
   id: number;
   name: string;
-  specialty: string;
+  specialty?: string;
 }
 
 interface Record {
@@ -62,6 +65,7 @@ interface Record {
 }
 
 interface RecordsManagementProps {
+  user: any;
   records: {
     data: Record[];
     current_page: number;
@@ -73,9 +77,11 @@ interface RecordsManagementProps {
   statusOptions: string[];
   patients: Patient[];
   doctors: Doctor[];
+  filters: any;
+  pagination: any;
 }
 
-export default function RecordsManagement({ records, recordTypes, statusOptions, patients, doctors }: RecordsManagementProps) {
+export default function RecordsManagement({ user, records, recordTypes, statusOptions, patients, doctors, filters, pagination }: RecordsManagementProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null);
@@ -176,190 +182,194 @@ export default function RecordsManagement({ records, recordTypes, statusOptions,
   };
 
   return (
-    <>
-      <Head title="Records Management" />
-      <div className="py-12">
-        <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-          <div className="mb-6 flex items-center justify-between">
-            <h1 className="text-3xl font-bold text-gray-900">Records Management</h1>
-            <Button onClick={() => {
-              reset();
-              setIsCreateModalOpen(true);
-            }}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Create Record
-            </Button>
+    <AdminLayout user={user}>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold tracking-tight">Records Management</h1>
+          <Button onClick={() => setIsCreateModalOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" /> Create Record
+          </Button>
+        </div>
+
+        {/* Filters and Search */}
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+          <div className="relative">
+            <Input
+              type="text"
+              placeholder="Search records..."
+              className="pl-10"
+            />
+            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
           </div>
 
-          {/* Filters and Search */}
-          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
-            <div className="relative">
-              <Input
-                type="text"
-                placeholder="Search records..."
-                className="pl-10"
-              />
-              <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-            </div>
+          <Select defaultValue="all">
+            <SelectTrigger>
+              <SelectValue placeholder="Record Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              {recordTypes.map(type => (
+                <SelectItem key={type} value={type}>
+                  {type === 'medical_checkup' ? 'Medical Checkup' : 'Laboratory Test'}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            <Select defaultValue="all">
-              <SelectTrigger>
-                <SelectValue placeholder="Record Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                {recordTypes.map(type => (
-                  <SelectItem key={type} value={type}>
-                    {type === 'medical_checkup' ? 'Medical Checkup' : 'Laboratory Test'}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <Select defaultValue="all">
+            <SelectTrigger>
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              {statusOptions.map(status => (
+                <SelectItem key={status} value={status}>
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            <Select defaultValue="all">
-              <SelectTrigger>
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                {statusOptions.map(status => (
-                  <SelectItem key={status} value={status}>
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full">
+                <Filter className="mr-2 h-4 w-4" />
+                More Filters
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem>
+                <Download className="mr-2 h-4 w-4" />
+                Export Records
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <CalendarDays className="mr-2 h-4 w-4" />
+                Filter by Date
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-full">
-                  <Filter className="mr-2 h-4 w-4" />
-                  More Filters
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem>
-                  <Download className="mr-2 h-4 w-4" />
-                  Export Records
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <CalendarDays className="mr-2 h-4 w-4" />
-                  Filter by Date
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* Records Table */}
-          <div className="overflow-hidden rounded-lg border shadow">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Patient
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Doctor
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Type
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Date
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Status
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
-                {records.data.map((record) => (
-                  <tr key={record.id}>
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <div className="font-medium text-gray-900">{record.patient.name}</div>
-                      <div className="text-sm text-gray-500">{record.patient.email}</div>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4">
-                      {record.assigned_doctor ? (
-                        <div>
-                          <div className="font-medium text-gray-900">Dr. {record.assigned_doctor.name}</div>
+        {/* Records Table */}
+        <div className="overflow-hidden rounded-lg border shadow">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Patient
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Doctor
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Type
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Date
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Status
+                </th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white">
+              {records.data.map((record) => (
+                <tr key={record.id}>
+                  <td className="whitespace-nowrap px-6 py-4">
+                    <div className="font-medium text-gray-900">{record.patient.name}</div>
+                    <div className="text-sm text-gray-500">{record.patient.email}</div>
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4">
+                    {record.assigned_doctor ? (
+                      <div>
+                        <div className="font-medium text-gray-900">Dr. {record.assigned_doctor.name}</div>
+                        {record.assigned_doctor.specialty && (
                           <div className="text-sm text-gray-500">{record.assigned_doctor.specialty}</div>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-gray-500">Not assigned</span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <div className="flex items-center">
-                        <RecordTypeIcon type={record.record_type} />
-                        <span className="ml-2 text-sm text-gray-900">
-                          {record.record_type === 'medical_checkup' ? 'Medical Checkup' : 'Laboratory Test'}
-                        </span>
+                        )}
                       </div>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                      {new Date(record.appointment_date).toLocaleDateString()}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <StatusBadge status={record.status} />
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                      <div className="flex items-center justify-end space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(record)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                          onClick={() => confirmDelete(record)}
-                        >
-                          <Trash className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    ) : (
+                      <span className="text-sm text-gray-500">Not assigned</span>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4">
+                    <div className="flex items-center">
+                      <RecordTypeIcon type={record.record_type} />
+                      <span className="ml-2 text-sm text-gray-900">
+                        {record.record_type === 'medical_checkup' ? 'Medical Checkup' : 'Laboratory Test'}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                    {new Date(record.appointment_date).toLocaleDateString()}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4">
+                    <StatusBadge status={record.status} />
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                    <div className="flex items-center justify-end space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                      >
+                        <Link href={route('admin.records.show', record.id)}>
+                          <FileText className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(record)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                        onClick={() => confirmDelete(record)}
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-          {/* Pagination */}
-          <div className="mt-4 flex items-center justify-between">
-            <div className="text-sm text-gray-700">
-              Showing <span className="font-medium">{records.current_page}</span> to{" "}
-              <span className="font-medium">{Math.min(records.current_page * records.per_page, records.total)}</span> of{" "}
-              <span className="font-medium">{records.total}</span> results
-            </div>
-            <div className="flex space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={records.current_page === 1}
-                onClick={() => {
-                  // Handle pagination
-                }}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={records.current_page === records.last_page}
-                onClick={() => {
-                  // Handle pagination
-                }}
-              >
-                Next
-              </Button>
-            </div>
+        {/* Pagination */}
+        <div className="mt-4 flex items-center justify-between">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{records.current_page}</span> to{" "}
+            <span className="font-medium">{Math.min(records.current_page * records.per_page, records.total)}</span> of{" "}
+            <span className="font-medium">{records.total}</span> results
+          </div>
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={records.current_page === 1}
+              onClick={() => {
+                // Handle pagination
+              }}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={records.current_page === records.last_page}
+              onClick={() => {
+                // Handle pagination
+              }}
+            >
+              Next
+            </Button>
           </div>
         </div>
       </div>
@@ -549,6 +559,6 @@ export default function RecordsManagement({ records, recordTypes, statusOptions,
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </AdminLayout>
   );
 }

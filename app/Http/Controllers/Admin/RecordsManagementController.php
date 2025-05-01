@@ -11,75 +11,54 @@ use Illuminate\Support\Facades\Auth;
 
 class RecordsManagementController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
-        $query = PatientRecord::with(['patient', 'assignedDoctor'])
-            ->orderBy('created_at', 'desc');
+        $user = Auth::user();
 
-        // Add filtering logic here if needed
-        if ($request->has('search')) {
-            $query->where(function($q) use ($request) {
-                $q->whereHas('patient', function($q) use ($request) {
-                    $q->where('name', 'like', '%' . $request->search . '%')
-                      ->orWhere('email', 'like', '%' . $request->search . '%');
-                });
-            });
-        }
+        $records = PatientRecord::with(['patient', 'assignedDoctor'])
+            ->orderBy('appointment_date', 'desc')
+            ->paginate(10);
 
-        if ($request->has('record_type') && $request->record_type !== 'all') {
-            $query->where('record_type', $request->record_type);
-        }
+        $recordTypes = PatientRecord::distinct('record_type')->pluck('record_type');
+        $statusOptions = PatientRecord::distinct('status')->pluck('status');
 
-        if ($request->has('status') && $request->status !== 'all') {
-            $query->where('status', $request->status);
-        }
-
-        $records = $query->paginate(10);
-
-        // Get all record types
-        $recordTypes = ['medical_checkup', 'laboratory', 'prescription', 'consultation'];
-
-        // Get all status options
-        $statusOptions = ['pending', 'completed', 'cancelled'];
-
-        // Get all patients
-        $patients = User::where('user_role', User::ROLE_PATIENT)
-            ->get(['id', 'name', 'email']);
-
-        // Get all doctors
-        $doctors = User::where('user_role', User::ROLE_DOCTOR)
-            ->get(['id', 'name', 'email']);
+        $patients = User::where('user_role', User::ROLE_PATIENT)->get(['id', 'name', 'email']);
+        $doctors = User::where('user_role', User::ROLE_DOCTOR)->get(['id', 'name', 'email']);
 
         return Inertia::render('Admin/RecordsManagement', [
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+            ],
             'records' => $records,
             'recordTypes' => $recordTypes,
             'statusOptions' => $statusOptions,
             'patients' => $patients,
             'doctors' => $doctors,
-            'filters' => $request->only(['search', 'record_type', 'status']),
+            'filters' => request()->only(['search', 'type', 'status']),
+            'pagination' => [
+                'current_page' => $records->currentPage(),
+                'per_page' => $records->perPage(),
+                'total' => $records->total(),
+                'last_page' => $records->lastPage(),
+            ],
         ]);
     }
 
     public function create()
     {
-        // Get all record types
-        $recordTypes = ['medical_checkup', 'laboratory', 'prescription', 'consultation'];
+        $user = Auth::user();
 
-        // Get all status options
-        $statusOptions = ['pending', 'completed', 'cancelled'];
+        $patients = User::where('user_role', User::ROLE_PATIENT)->get(['id', 'name', 'email']);
+        $doctors = User::where('user_role', User::ROLE_DOCTOR)->get(['id', 'name', 'email']);
 
-        // Get all patients
-        $patients = User::where('user_role', User::ROLE_PATIENT)
-            ->get(['id', 'name', 'email']);
-
-        // Get all doctors
-        $doctors = User::where('user_role', User::ROLE_DOCTOR)
-            ->get(['id', 'name', 'email']);
-
-        return Inertia::render('Admin/RecordsManagement', [
-            'creating' => true,
-            'recordTypes' => $recordTypes,
-            'statusOptions' => $statusOptions,
+        return Inertia::render('Admin/RecordForm', [
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+            ],
             'patients' => $patients,
             'doctors' => $doctors,
         ]);
@@ -126,5 +105,23 @@ class RecordsManagementController extends Controller
         $record->delete();
 
         return redirect()->route('admin.records.index')->with('success', 'Record deleted successfully');
+    }
+
+    /**
+     * Show a specific record
+     */
+    public function show($id)
+    {
+        $user = Auth::user();
+        $record = PatientRecord::with(['patient', 'assignedDoctor'])->findOrFail($id);
+
+        return Inertia::render('Admin/PatientRecordDetails', [
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+            ],
+            'record' => $record,
+        ]);
     }
 }

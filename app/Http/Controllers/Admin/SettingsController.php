@@ -7,8 +7,10 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
+use App\Models\User;
 
 class SettingsController extends Controller
 {
@@ -25,6 +27,7 @@ class SettingsController extends Controller
             'user' => [
                 'name' => $user->name,
                 'email' => $user->email,
+                'role' => $user->user_role,
             ],
             'success' => session('success'),
         ]);
@@ -42,13 +45,11 @@ class SettingsController extends Controller
             'name' => ['required', 'string', 'max:255'],
         ]);
 
-        $user = Auth::user();
+        DB::table('users')
+            ->where('id', Auth::id())
+            ->update(['name' => $request->name]);
 
-        $user->update([
-            'name' => $request->name,
-        ]);
-
-        return redirect()->route('admin.settings')->with('success', 'Profile updated successfully.');
+        return back()->with('success', 'Profile updated successfully.');
     }
 
     /**
@@ -60,23 +61,14 @@ class SettingsController extends Controller
     public function updatePassword(Request $request)
     {
         $request->validate([
-            'current_password' => ['required', 'string'],
-            'password' => ['required', 'string', Password::defaults(), 'confirmed'],
+            'current_password' => ['required', 'current_password'],
+            'password' => ['required', Password::defaults(), 'confirmed'],
         ]);
 
-        $user = Auth::user();
+        DB::table('users')
+            ->where('id', Auth::id())
+            ->update(['password' => Hash::make($request->password)]);
 
-        // Verify the current password
-        if (!Hash::check($request->current_password, $user->password)) {
-            throw ValidationException::withMessages([
-                'current_password' => ['The provided password does not match your current password.'],
-            ]);
-        }
-
-        $user->update([
-            'password' => Hash::make($request->password),
-        ]);
-
-        return redirect()->route('admin.settings')->with('success', 'Password updated successfully.');
+        return back()->with('success', 'Password updated successfully.');
     }
 }

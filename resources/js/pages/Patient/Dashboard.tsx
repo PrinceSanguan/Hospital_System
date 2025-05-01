@@ -178,17 +178,6 @@ export default function PatientDashboard({
         </div>
 
         <div className="flex flex-col gap-2 p-4">
-          <div className="flex items-center mb-4">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src="https://ui.shadcn.com/avatars/01.png" alt={user.name} />
-              <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="ml-3">
-              <p className="text-sm font-medium">{user.name}</p>
-              <p className="text-xs text-gray-500">{user.email}</p>
-            </div>
-          </div>
-
           <div className="space-y-1">
             {sidebarItems.map((item) => (
               <Link
