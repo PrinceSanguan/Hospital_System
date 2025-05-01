@@ -85,13 +85,13 @@ export default function AdminDashboard({ user, stats, chartData, upcomingAppoint
 
     return (
         <AdminLayout user={user}>
-            <div className="flex flex-col gap-6">
-                <div className="flex flex-col gap-2">
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard Overview</h1>
-                    <p className="text-gray-500 dark:text-gray-400">
-                        Welcome back, {user.name}! Here's what's happening with your clinic today.
-                    </p>
-                </div>
+                    <div className="flex flex-col gap-6">
+                        <div className="flex flex-col gap-2">
+                            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard Overview</h1>
+                            <p className="text-gray-500 dark:text-gray-400">
+                                Welcome back, {user.name}! Here's what's happening with your clinic today.
+                            </p>
+                        </div>
 
                 {/* Users Statistics */}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -153,75 +153,75 @@ export default function AdminDashboard({ user, stats, chartData, upcomingAppoint
                 </div>
 
                 {/* Appointment Statistics */}
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <Card>
-                        <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                                <div>
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                            <Card>
+                                <CardContent className="p-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
                                     <p className="text-sm font-medium text-gray-500">Total Appointments</p>
                                     <p className="text-3xl font-bold">{stats.appointments.total}</p>
-                                </div>
-                                <div className="rounded-full bg-blue-100 p-3 text-blue-600">
-                                    <FileText size={20} />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                                        </div>
+                                        <div className="rounded-full bg-blue-100 p-3 text-blue-600">
+                                            <FileText size={20} />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
-                    <Card>
-                        <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                                <div>
+                            <Card>
+                                <CardContent className="p-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
                                     <p className="text-sm font-medium text-gray-500">Pending Appointments</p>
                                     <p className="text-3xl font-bold">{stats.appointments.pending}</p>
-                                </div>
+                                        </div>
                                 <div className="rounded-full bg-yellow-100 p-3 text-yellow-600">
                                     <FileText size={20} />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
-                    <Card>
-                        <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                                <div>
+                            <Card>
+                                <CardContent className="p-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
                                     <p className="text-sm font-medium text-gray-500">Completed Appointments</p>
                                     <p className="text-3xl font-bold">{stats.appointments.completed}</p>
-                                </div>
+                                        </div>
                                 <div className="rounded-full bg-green-100 p-3 text-green-600">
-                                    <FileText size={20} />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                                            <FileText size={20} />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
-                    <Card>
-                        <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-500">Today's Appointments</p>
+                            <Card>
+                                <CardContent className="p-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-500">Today's Appointments</p>
                                     <p className="text-3xl font-bold">{stats.appointments.todayTotal}</p>
-                                </div>
+                                        </div>
                                 <div className="rounded-full bg-red-100 p-3 text-red-600">
-                                    <FileText size={20} />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                                            <FileText size={20} />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
 
                 {/* Real-time Analytics Graphs */}
-                <div className="grid gap-6 md:grid-cols-2">
+                        <div className="grid gap-6 md:grid-cols-2">
                     {/* Appointment Trends Chart */}
                     <Card className="col-span-2 md:col-span-1">
-                        <CardHeader>
+                                <CardHeader>
                             <CardTitle className="text-xl">Appointment Trends</CardTitle>
-                            <CardDescription>
+                                    <CardDescription>
                                 Monthly appointment statistics
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
                             <div className="h-80">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <ReLineChart
@@ -323,19 +323,19 @@ export default function AdminDashboard({ user, stats, chartData, upcomingAppoint
                                         <Area type="monotone" dataKey="returning" stackId="1" stroke="#82ca9d" fill="#82ca9d" name="Returning Patients" />
                                     </ReAreaChart>
                                 </ResponsiveContainer>
-                            </div>
-                        </CardContent>
-                    </Card>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
                     {/* Appointment Types Chart */}
                     <Card className="col-span-2 md:col-span-1">
-                        <CardHeader>
+                                <CardHeader>
                             <CardTitle className="text-xl">Appointment Types</CardTitle>
-                            <CardDescription>
+                                    <CardDescription>
                                 Distribution of appointment categories
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
                             <div className="h-80">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <ReBarChart
@@ -359,20 +359,20 @@ export default function AdminDashboard({ user, stats, chartData, upcomingAppoint
                                         </Bar>
                                     </ReBarChart>
                                 </ResponsiveContainer>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
 
                 {/* Upcoming Appointments */}
-                <Card>
-                    <CardHeader>
+                        <Card>
+                            <CardHeader>
                         <CardTitle className="text-xl">Upcoming Appointments</CardTitle>
-                        <CardDescription>
+                                <CardDescription>
                             Next scheduled appointments
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
@@ -420,10 +420,10 @@ export default function AdminDashboard({ user, stats, chartData, upcomingAppoint
                                     )}
                                 </tbody>
                             </table>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
         </AdminLayout>
     );
 }

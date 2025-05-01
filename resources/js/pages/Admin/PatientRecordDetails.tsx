@@ -35,6 +35,8 @@ interface Record {
     appointment_date: string;
     details: string;
     lab_results: any;
+    vital_signs: any;
+    prescriptions: any;
     created_at: string;
     updated_at: string;
 }
@@ -202,9 +204,11 @@ export default function PatientRecordDetails({ user, record }: PatientRecordDeta
 
                 {/* Tabs for Details and Lab Results */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="mb-8 grid w-full grid-cols-2">
+                    <TabsList className="mb-8 grid w-full grid-cols-4">
                         <TabsTrigger value="details">Details</TabsTrigger>
                         <TabsTrigger value="lab_results">Lab Results</TabsTrigger>
+                        <TabsTrigger value="vital_signs">Vital Signs</TabsTrigger>
+                        <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="details">
@@ -286,6 +290,138 @@ export default function PatientRecordDetails({ user, record }: PatientRecordDeta
                                 ) : (
                                     <div className="rounded-md border bg-gray-50 p-4 text-center text-gray-500">
                                         No laboratory results available for this record.
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="vital_signs">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Vital Signs</CardTitle>
+                                <CardDescription>
+                                    Patient's vital signs recorded during this visit
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {record.vital_signs && Object.keys(record.vital_signs).length > 0 ? (
+                                    <div className="rounded-md border">
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-50">
+                                                <tr>
+                                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                                                        Measurement
+                                                    </th>
+                                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                                                        Value
+                                                    </th>
+                                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                                                        Normal Range
+                                                    </th>
+                                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                                                        Status
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200 bg-white">
+                                                {Object.entries(record.vital_signs).map(([name, data]: [string, any]) => (
+                                                    <tr key={name}>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                                                            {name}
+                                                        </td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                                                            {data.value} {data.unit || ''}
+                                                        </td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                                                            {data.range || 'N/A'}
+                                                        </td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-sm">
+                                                            {data.status === 'normal' ? (
+                                                                <span className="inline-flex rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">
+                                                                    Normal
+                                                                </span>
+                                                            ) : data.status === 'abnormal' ? (
+                                                                <span className="inline-flex rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-800">
+                                                                    Abnormal
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-800">
+                                                                    {data.status || 'N/A'}
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="rounded-md border bg-gray-50 p-4 text-center text-gray-500">
+                                        No vital signs recorded for this visit.
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="prescriptions">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Prescriptions</CardTitle>
+                                <CardDescription>
+                                    Medications prescribed to the patient
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {record.prescriptions && record.prescriptions.length > 0 ? (
+                                    <div className="rounded-md border">
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-50">
+                                                <tr>
+                                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                                                        Medication
+                                                    </th>
+                                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                                                        Dosage
+                                                    </th>
+                                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                                                        Frequency
+                                                    </th>
+                                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                                                        Duration
+                                                    </th>
+                                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                                                        Instructions
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200 bg-white">
+                                                {record.prescriptions.map((prescription: any, index: number) => (
+                                                    <tr key={index}>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                                                            {prescription.medication}
+                                                        </td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                                                            {prescription.dosage}
+                                                        </td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                                                            {prescription.frequency}
+                                                        </td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                                                            {prescription.duration}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-sm text-gray-500">
+                                                            {prescription.instructions}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="rounded-md border bg-gray-50 p-4 text-center text-gray-500">
+                                        No prescriptions for this visit.
                                     </div>
                                 )}
                             </CardContent>

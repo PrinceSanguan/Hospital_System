@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class UserManagementController extends Controller
 {
@@ -83,24 +84,31 @@ class UserManagementController extends Controller
      */
     public function store(Request $request)
     {
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
-            'user_role' => ['required', Rule::in([
-                User::ROLE_ADMIN,
-                User::ROLE_DOCTOR,
-                User::ROLE_CLINICAL_STAFF,
-                User::ROLE_PATIENT,
-            ])],
-        ]);
+        try {
+            $validatedData = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:users',
+                'password' => 'required|string|min:8|confirmed',
+                'user_role' => ['required', Rule::in([
+                    User::ROLE_ADMIN,
+                    User::ROLE_DOCTOR,
+                    User::ROLE_CLINICAL_STAFF,
+                    User::ROLE_PATIENT,
+                ])],
+            ]);
 
-        $validatedData['password'] = Hash::make($validatedData['password']);
+            $validatedData['password'] = Hash::make($validatedData['password']);
 
-        User::create($validatedData);
+            User::create($validatedData);
 
-        return redirect()->route('admin.users.index')
-            ->with('success', 'User created successfully');
+            return redirect()->route('admin.users.index')
+                ->with('success', 'User created successfully');
+        } catch (\Exception $e) {
+            Log::error('Error creating user: ' . $e->getMessage());
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['error' => 'Failed to create user: ' . $e->getMessage()]);
+        }
     }
 
     /**
@@ -133,29 +141,36 @@ class UserManagementController extends Controller
      */
     public function update(Request $request, User $user)
     {
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'user_role' => ['required', Rule::in([
-                User::ROLE_ADMIN,
-                User::ROLE_DOCTOR,
-                User::ROLE_CLINICAL_STAFF,
-                User::ROLE_PATIENT,
-            ])],
-        ]);
-
-        // Only update password if provided
-        if ($request->filled('password')) {
-            $request->validate([
-                'password' => 'required|string|min:8',
+        try {
+            $validatedData = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+                'user_role' => ['required', Rule::in([
+                    User::ROLE_ADMIN,
+                    User::ROLE_DOCTOR,
+                    User::ROLE_CLINICAL_STAFF,
+                    User::ROLE_PATIENT,
+                ])],
             ]);
-            $validatedData['password'] = Hash::make($request->password);
+
+            // Only update password if provided
+            if ($request->filled('password')) {
+                $request->validate([
+                    'password' => 'required|string|min:8|confirmed',
+                ]);
+                $validatedData['password'] = Hash::make($request->password);
+            }
+
+            $user->update($validatedData);
+
+            return redirect()->route('admin.users.index')
+                ->with('success', 'User updated successfully');
+        } catch (\Exception $e) {
+            Log::error('Error updating user: ' . $e->getMessage());
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['error' => 'Failed to update user: ' . $e->getMessage()]);
         }
-
-        $user->update($validatedData);
-
-        return redirect()->route('admin.users.index')
-            ->with('success', 'User updated successfully');
     }
 
     /**
