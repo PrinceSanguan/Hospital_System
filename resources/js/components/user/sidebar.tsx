@@ -92,9 +92,9 @@ export function Sidebar({ user }: SidebarProps) {
             {/* Profile Section */}
             <div className="border-t p-4 dark:border-gray-700">
                 <div className="flex items-center gap-3">
-                    <Avatar>
-                        <AvatarImage src="/api/placeholder/32/32" alt={user.name} />
-                        <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                    <Avatar className="h-9 w-9">
+                        <AvatarImage src="/placeholder-avatar.jpg" alt={user.name} />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
                         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.name}</span>

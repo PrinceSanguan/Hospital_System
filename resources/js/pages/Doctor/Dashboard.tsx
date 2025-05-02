@@ -1,329 +1,337 @@
-import { Header } from '@/components/doctor/header';
-import { Sidebar } from '@/components/doctor/sidebar';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState } from 'react';
+import { Head } from '@inertiajs/react';
+import DoctorLayout from '@/layouts/DoctorLayout';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, FileText, Calendar, ClipboardCheck, Users, User, Clock, Search } from "lucide-react";
-import { Link, usePage } from '@inertiajs/react';
+import { UserData } from '@/types';
+import dayjs from 'dayjs';
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-interface Patient {
+interface Schedule {
     id: number;
-    name: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  is_available: boolean;
 }
 
 interface Appointment {
     id: number;
-    patient: Patient;
-    appointment_date: string;
-    appointment_time?: string;
-    reason: string;
-    status: string;
-}
-
-interface User {
+  patient: {
+    id: number;
     name: string;
-    email: string;
-    role?: string;
+  };
+  appointment_date: string;
+  status: string;
+  notes?: string;
 }
 
 interface DashboardProps {
-    user: User;
+  user: UserData;
+  upcomingAppointments: Appointment[];
+  schedule: Schedule[];
     stats: {
-        patients: number;
-        appointments: number;
-    };
-    upcomingAppointments: Appointment[];
+    total_patients: number;
+    upcoming_appointments: number;
+    completed_appointments: number;
+  };
 }
 
-interface ZiggyRoutes {
-    [key: string]: unknown;
-}
+export default function Dashboard({
+  user,
+  upcomingAppointments = [],
+  schedule = [],
+  stats = { total_patients: 0, upcoming_appointments: 0, completed_appointments: 0 }
+}: DashboardProps) {
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [showAppointmentDialog, setShowAppointmentDialog] = useState(false);
+  const [selectedDateAppointments, setSelectedDateAppointments] = useState<Appointment[]>([]);
 
-interface PageProps {
-    ziggy: {
-        routes: ZiggyRoutes;
-    };
-}
+  // Helper function to get days in month
+  const getDaysInMonth = (year: number, month: number) => {
+    return new Date(year, month + 1, 0).getDate();
+  };
 
-export default function DoctorDashboard({ user, stats, upcomingAppointments = [] }: DashboardProps) {
-    // Access Ziggy routes from the page props
-    const { props } = usePage();
-    const routes = (props as any)?.ziggy?.routes || {};
+  // Helper function to get day of week for first day of month
+  const getFirstDayOfMonth = (year: number, month: number) => {
+    return new Date(year, month, 1).getDay();
+  };
 
-    // Helper function to check if a route exists
-    const routeExists = (name: string) => {
-        return Object.keys(routes).includes(name);
-    };
+  // Generate calendar days
+  const generateCalendarDays = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const daysInMonth = getDaysInMonth(year, month);
+    const firstDayOfMonth = getFirstDayOfMonth(year, month);
 
-    // Format date for display
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            weekday: 'short',
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
+    const days = [];
+
+    // Add empty cells for days before the first day of month
+    for (let i = 0; i < firstDayOfMonth; i++) {
+      days.push(null);
+    }
+
+    // Add days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(new Date(year, month, day));
+    }
+
+    return days;
+  };
+
+  // Get month name
+  const getMonthName = (date: Date) => {
+    return date.toLocaleString('default', { month: 'long' });
+  };
+
+  // Navigate to previous month
+  const goToPreviousMonth = () => {
+    const newMonth = new Date(currentMonth);
+    newMonth.setMonth(newMonth.getMonth() - 1);
+    setCurrentMonth(newMonth);
+  };
+
+  // Navigate to next month
+  const goToNextMonth = () => {
+    const newMonth = new Date(currentMonth);
+    newMonth.setMonth(newMonth.getMonth() + 1);
+    setCurrentMonth(newMonth);
+  };
+
+  // Check if date has schedule
+  const hasSchedule = (date: Date) => {
+    const dayOfWeek = date.getDay();
+    return schedule.some(scheduleItem =>
+      scheduleItem.day_of_week === dayOfWeek && scheduleItem.is_available
+    );
+  };
+
+  // Check if date has appointments
+  const hasAppointments = (date: Date) => {
+    const dateString = dayjs(date).format('YYYY-MM-DD');
+    return upcomingAppointments.some(appointment =>
+      appointment.appointment_date === dateString
+    );
+  };
+
+  // Get appointments for a specific date
+  const getAppointmentsForDate = (date: Date) => {
+    const dateString = dayjs(date).format('YYYY-MM-DD');
+    return upcomingAppointments.filter(appointment =>
+      appointment.appointment_date === dateString
+    );
+  };
+
+  // Handle date click
+  const handleDateClick = (date: Date) => {
+    setSelectedDate(date);
+    const dateAppointments = getAppointmentsForDate(date);
+    setSelectedDateAppointments(dateAppointments);
+    setShowAppointmentDialog(true);
+  };
+
+  // Get status badge color
+  const getStatusBadgeColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'confirmed':
+        return 'default';
+      case 'pending':
+        return 'outline';
+      case 'cancelled':
+        return 'destructive';
+      default:
+        return 'secondary';
+    }
     };
 
     return (
-        <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
-            {/* Sidebar */}
-            <Sidebar user={user} />
+    <DoctorLayout user={user}>
+      <Head title="Dashboard" />
+      <div className="py-12">
+        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+          <h1 className="text-2xl font-semibold text-gray-900 mb-6">Dashboard</h1>
 
-            {/* Main Content */}
-            <div className="flex flex-1 flex-col overflow-hidden">
-                {/* Header */}
-                <Header user={user} />
-
-                {/* Dashboard Content */}
-                <main className="flex-1 overflow-y-auto bg-gray-100 p-4 md:p-6 dark:bg-gray-900">
-                    <div className="flex flex-col gap-6">
-                        <div className="flex flex-col gap-2">
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Doctor Dashboard</h1>
-                            <p className="text-gray-500 dark:text-gray-400">
-                                Welcome back, Dr. {user.name}! Here's your overview for today.
-                            </p>
-                        </div>
-
-                        {/* Stats Overview */}
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                             <Card>
-                                <CardContent className="p-6">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-500">Total Patients</p>
-                                            <p className="text-3xl font-bold">{stats.patients}</p>
-                                        </div>
-                                        <div className="rounded-full bg-blue-100 p-3 text-blue-600">
-                                            <Users size={20} />
-                                        </div>
-                                    </div>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.total_patients}</div>
                                 </CardContent>
                             </Card>
 
                             <Card>
-                                <CardContent className="p-6">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-500">Upcoming Appointments</p>
-                                            <p className="text-3xl font-bold">{stats.appointments}</p>
-                                        </div>
-                                        <div className="rounded-full bg-purple-100 p-3 text-purple-600">
-                                            <Calendar size={20} />
-                                        </div>
-                                    </div>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Upcoming Appointments</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.upcoming_appointments}</div>
                                 </CardContent>
                             </Card>
 
                             <Card>
-                                <CardContent className="p-6">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-500">Today's Schedule</p>
-                                            <p className="text-3xl font-bold">
-                                                {upcomingAppointments.filter(app =>
-                                                    new Date(app.appointment_date).toDateString() === new Date().toDateString()
-                                                ).length}
-                                            </p>
-                                        </div>
-                                        <div className="rounded-full bg-yellow-100 p-3 text-yellow-600">
-                                            <Clock size={20} />
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            <Card>
-                                <CardContent className="p-6">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-500">Pending Records</p>
-                                            <p className="text-3xl font-bold">7</p>
-                                        </div>
-                                        <div className="rounded-full bg-green-100 p-3 text-green-600">
-                                            <ClipboardCheck size={20} />
-                                        </div>
-                                    </div>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Completed Appointments</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.completed_appointments}</div>
                                 </CardContent>
                             </Card>
                         </div>
 
-                        {/* Main Management Sections */}
-                        <div className="grid gap-6 md:grid-cols-2">
-                            {/* Patient Management */}
+          {/* Calendar */}
                             <Card>
-                                <CardHeader>
-                                    <CardTitle className="text-xl">Patient Management</CardTitle>
-                                    <CardDescription>
-                                        Access and manage your patients
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="grid gap-3">
-                                        <Button asChild variant="outline" className="justify-start">
-                                            <Link href={routeExists('doctor.patients.index') ? route('doctor.patients.index') : '#'} className="flex items-center">
-                                                <Users className="mr-2 h-4 w-4" />
-                                                View All Patients
-                                            </Link>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle>Calendar</CardTitle>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={goToPreviousMonth}
+                  >
+                    Previous
                                         </Button>
-
-                                        <Button asChild variant="outline" className="justify-start">
-                                            <Link href={routeExists('doctor.patients.search') ? route('doctor.patients.search') : '#'} className="flex items-center">
-                                                <Search className="mr-2 h-4 w-4" />
-                                                Search Patients
-                                            </Link>
-                                        </Button>
-
-                                        <Button asChild variant="outline" className="justify-start">
-                                            <Link href={routeExists('doctor.records.create') ? route('doctor.records.create') : '#'} className="flex items-center">
-                                                <PlusCircle className="mr-2 h-4 w-4" />
-                                                Create Medical Record
-                                            </Link>
-                                        </Button>
-
-                                        <Button asChild variant="outline" className="justify-start">
-                                            <Link href={routeExists('doctor.records.index') ? route('doctor.records.index') : '#'} className="flex items-center">
-                                                <FileText className="mr-2 h-4 w-4" />
-                                                View Medical Records
-                                            </Link>
+                  <div className="font-medium">
+                    {getMonthName(currentMonth)} {currentMonth.getFullYear()}
+                                    </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={goToNextMonth}
+                  >
+                    Next
                                         </Button>
                                     </div>
-                                </CardContent>
-                            </Card>
-
-                            {/* Appointment Management */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="text-xl">Appointment Management</CardTitle>
-                                    <CardDescription>
-                                        Manage your schedule and appointments
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="grid gap-3">
-                                        <Button asChild variant="outline" className="justify-start">
-                                            <Link href={routeExists('doctor.appointments.calendar') ? route('doctor.appointments.calendar') : '#'} className="flex items-center">
-                                                <Calendar className="mr-2 h-4 w-4" />
-                                                View Calendar
-                                            </Link>
-                                        </Button>
-
-                                        <Button asChild variant="outline" className="justify-start">
-                                            <Link href={routeExists('doctor.appointments.index') ? route('doctor.appointments.index') : '#'} className="flex items-center">
-                                                <Clock className="mr-2 h-4 w-4" />
-                                                View All Appointments
-                                            </Link>
-                                        </Button>
-
-                                        <Button asChild variant="outline" className="justify-start">
-                                            <Link href={routeExists('doctor.appointments.create') ? route('doctor.appointments.create') : '#'} className="flex items-center">
-                                                <PlusCircle className="mr-2 h-4 w-4" />
-                                                Schedule New Appointment
-                                            </Link>
-                                        </Button>
-
-                                        <Button asChild variant="outline" className="justify-start">
-                                            <Link href={routeExists('doctor.availability') ? route('doctor.availability') : '#'} className="flex items-center">
-                                                <User className="mr-2 h-4 w-4" />
-                                                Manage Availability
-                                            </Link>
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
                         </div>
-
-                        {/* Upcoming Appointments */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-xl">Upcoming Appointments</CardTitle>
-                                <CardDescription>
-                                    Your schedule for the coming days
-                                </CardDescription>
+              <p className="text-sm text-gray-500">Your upcoming appointments and schedule</p>
                             </CardHeader>
                             <CardContent>
-                                {upcomingAppointments.length > 0 ? (
-                                    <div className="space-y-4">
-                                        {upcomingAppointments.map((appointment) => (
-                                            <div key={appointment.id} className="flex items-center justify-between rounded-lg border p-4">
-                                                <div>
-                                                    <p className="font-medium">{appointment.patient.name}</p>
-                                                    <p className="text-sm text-gray-500">
-                                                        {formatDate(appointment.appointment_date)}
-                                                        {appointment.appointment_time && ` at ${appointment.appointment_time}`}
-                                                    </p>
-                                                    <p className="text-sm text-gray-500">{appointment.reason}</p>
+              <div className="grid grid-cols-7 gap-1">
+                {/* Day headers */}
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
+                  <div
+                    key={i}
+                    className="text-center font-medium p-2 text-sm text-gray-500"
+                  >
+                    {day}
                                                 </div>
-                                                <div>
-                                                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                                        appointment.status === 'confirmed'
-                                                            ? 'bg-green-100 text-green-800'
-                                                            : 'bg-yellow-100 text-yellow-800'
-                                                    }`}>
-                                                        {appointment.status}
+                ))}
+
+                {/* Calendar days */}
+                {generateCalendarDays().map((date, i) => (
+                  <div
+                    key={i}
+                    className={`
+                      min-h-[80px] p-1 border rounded-md
+                      ${!date ? 'bg-gray-50' : 'bg-white cursor-pointer hover:bg-gray-50'}
+                      ${date && dayjs(date).format('YYYY-MM-DD') === dayjs().format('YYYY-MM-DD') ? 'border-blue-500' : 'border-gray-200'}
+                    `}
+                    onClick={() => date && handleDateClick(date)}
+                  >
+                    {date && (
+                      <>
+                        <div className="flex justify-between items-start">
+                          <span className={`
+                            text-sm font-medium rounded-full w-6 h-6 flex items-center justify-center
+                            ${dayjs(date).format('YYYY-MM-DD') === dayjs().format('YYYY-MM-DD') ? 'bg-blue-500 text-white' : ''}
+                          `}>
+                            {date.getDate()}
                                                     </span>
+                          <div className="flex flex-wrap gap-1">
+                            {hasSchedule(date) && (
+                              <Badge
+                                variant="outline"
+                                className="bg-green-100 text-green-800 border-green-200 text-[10px]"
+                              >
+                                Available
+                              </Badge>
+                            )}
+                            {hasAppointments(date) && (
+                              <Badge
+                                className="bg-blue-100 text-blue-800 border-blue-200 text-[10px]"
+                              >
+                                {getAppointmentsForDate(date).length} Appt
+                              </Badge>
+                            )}
                                                 </div>
+                        </div>
+                      </>
+                    )}
                                             </div>
                                         ))}
                                     </div>
-                                ) : (
-                                    <div className="flex items-center justify-center rounded-lg border border-dashed p-8">
-                                        <div className="text-center">
-                                            <Calendar className="mx-auto h-12 w-12 text-gray-400" />
-                                            <h3 className="mt-2 text-lg font-medium">No upcoming appointments</h3>
-                                            <p className="mt-1 text-sm text-gray-500">You don't have any appointments scheduled.</p>
-                                            <Button asChild className="mt-6" variant="outline">
-                                                <Link href={routeExists('doctor.appointments.create') ? route('doctor.appointments.create') : '#'}>
-                                                    Schedule Appointment
-                                                </Link>
-                                            </Button>
-                                        </div>
-                                    </div>
-                                )}
                             </CardContent>
                         </Card>
 
-                        {/* Quick Actions */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-xl">Quick Actions</CardTitle>
-                                <CardDescription>
-                                    Frequently used functions
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex flex-wrap gap-2">
-                                    <Button asChild>
-                                        <Link href={routeExists('doctor.records.create') ? route('doctor.records.create') : '#'}>
-                                            Create Medical Record
-                                        </Link>
-                                    </Button>
+          {/* Appointment Dialog */}
+          <Dialog open={showAppointmentDialog} onOpenChange={setShowAppointmentDialog}>
+            <DialogContent className="max-w-3xl">
+              <DialogHeader>
+                <DialogTitle>
+                  Appointments for {selectedDate ? dayjs(selectedDate).format('MMMM D, YYYY') : ''}
+                </DialogTitle>
+                <DialogDescription>
+                  {selectedDateAppointments.length
+                    ? `You have ${selectedDateAppointments.length} appointment(s) scheduled for this day.`
+                    : 'You have no appointments scheduled for this day.'}
+                </DialogDescription>
+              </DialogHeader>
 
-                                    <Button asChild variant="outline">
-                                        <Link href={routeExists('doctor.appointments.create') ? route('doctor.appointments.create') : '#'}>
-                                            Schedule Appointment
-                                        </Link>
-                                    </Button>
-
-                                    <Button asChild variant="outline">
-                                        <Link href={routeExists('doctor.patients.search') ? route('doctor.patients.search') : '#'}>
-                                            <Search className="mr-2 h-4 w-4" />
-                                            Find Patient
-                                        </Link>
-                                    </Button>
-
-                                    <Button asChild variant="secondary">
-                                        <Link href={routeExists('doctor.appointments.calendar') ? route('doctor.appointments.calendar') : '#'}>
-                                            <Calendar className="mr-2 h-4 w-4" />
-                                            View Calendar
-                                        </Link>
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
-                </main>
-            </div>
+              {selectedDateAppointments.length > 0 && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Patient</TableHead>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Notes</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedDateAppointments.map((appointment) => (
+                      <TableRow key={appointment.id}>
+                        <TableCell className="font-medium">
+                          {appointment.patient?.name}
+                        </TableCell>
+                        <TableCell>
+                          {dayjs(appointment.appointment_date).format('h:mm A')}
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate">
+                          {appointment.notes || '-'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getStatusBadgeColor(appointment.status)}>
+                            {appointment.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
+      </div>
+    </DoctorLayout>
     );
 }

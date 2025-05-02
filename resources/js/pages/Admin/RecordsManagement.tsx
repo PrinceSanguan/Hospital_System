@@ -3,16 +3,13 @@ import { useForm } from "@inertiajs/react";
 import { Link } from "@inertiajs/react";
 import {
   Search,
-  PlusCircle,
   Edit,
   Trash,
   FileText,
   Filter,
   Download,
-  X,
   CalendarDays,
-  Plus,
-  Check
+  Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +27,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -63,7 +59,22 @@ interface LabTestResult {
   remarks: string;
 }
 
-interface Record {
+interface VitalSign {
+  value: string;
+  unit: string;
+  range: string;
+  status: string;
+}
+
+interface Prescription {
+  medication: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions: string;
+}
+
+interface MedicalRecord {
   id: number;
   patient: Patient;
   assigned_doctor: Doctor | null;
@@ -71,15 +82,9 @@ interface Record {
   status: string;
   appointment_date: string;
   details: string | null;
-  lab_results: Record<string, LabTestResult> | null;
-  vital_signs: Record<string, any> | null;
-  prescriptions: Array<{
-    medication: string;
-    dosage: string;
-    frequency: string;
-    duration: string;
-    instructions: string;
-  }> | null;
+  lab_results: { [key: string]: LabTestResult } | null;
+  vital_signs: { [key: string]: VitalSign } | null;
+  prescriptions: Prescription[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -87,7 +92,7 @@ interface Record {
 interface RecordsManagementProps {
   user: any;
   records: {
-    data: Record[];
+    data: MedicalRecord[];
     current_page: number;
     per_page: number;
     last_page: number;
@@ -97,16 +102,27 @@ interface RecordsManagementProps {
   statusOptions: string[];
   patients: Patient[];
   doctors: Doctor[];
-  filters: any;
-  pagination: any;
 }
 
-export default function RecordsManagement({ user, records, recordTypes, statusOptions, patients, doctors, filters, pagination }: RecordsManagementProps) {
+interface FormData {
+  id: string;
+  patient_id: string;
+  assigned_doctor_id: string;
+  record_type: string;
+  status: string;
+  appointment_date: string;
+  details: string;
+  lab_results: { [key: string]: LabTestResult };
+  vital_signs: { [key: string]: VitalSign };
+  prescriptions: Prescription[];
+}
+
+export default function RecordsManagement({ user, records, recordTypes, statusOptions, patients, doctors }: RecordsManagementProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedRecord, setSelectedRecord] = useState<Record | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null);
 
-  const { data, setData, post, put, errors, processing, reset } = useForm({
+  const { data, setData, post, put, errors, processing, reset } = useForm<FormData>({
     id: "",
     patient_id: "",
     assigned_doctor_id: "none",
@@ -133,7 +149,7 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
     });
   };
 
-  const handleEdit = (record: Record) => {
+  const handleEdit = (record: MedicalRecord) => {
     // Transform lab_results to ensure they have the new fields if they don't exist
     const labResults = record.lab_results || {};
     const updatedLabResults: Record<string, LabTestResult> = {};
@@ -178,7 +194,7 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
     });
   };
 
-  const confirmDelete = (record: Record) => {
+  const confirmDelete = (record: MedicalRecord) => {
     setSelectedRecord(record);
     setIsDeleteModalOpen(true);
   };
@@ -771,15 +787,15 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
             </TabsContent>
 
             <TabsContent value="vital_signs">
-              <div className="grid gap-4 py-4">
+              <div className="py-4">
                 <div className="mb-4">
                   <h3 className="text-sm font-medium mb-2">Vital Signs</h3>
                   <p className="text-sm text-gray-500 mb-4">Record patient's vital signs</p>
 
-                  <div className="space-y-4">
+                  <div className="max-h-[400px] overflow-y-auto pr-2">
                     {Object.entries(data.vital_signs).map(([name, vitals], index) => (
-                      <div key={index} className="p-4 border rounded-md">
-                        <div className="grid grid-cols-2 gap-4 mb-2">
+                      <div key={index} className="p-4 border rounded-md mb-4 bg-white shadow-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                           <div>
                             <label className="text-sm font-medium">Measurement</label>
                             <Input
@@ -810,7 +826,7 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
                             />
                           </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-4 mb-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                           <div>
                             <label className="text-sm font-medium">Unit</label>
                             <Input
@@ -873,7 +889,7 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
                             delete newVitalSigns[name];
                             setData('vital_signs', newVitalSigns);
                           }}
-                          className="mt-2"
+                          className="w-auto"
                         >
                           Remove
                         </Button>
@@ -881,34 +897,113 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
                     ))}
                   </div>
 
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      // Add common vital signs if none exist yet
-                      if (Object.keys(data.vital_signs).length === 0) {
-                        setData('vital_signs', {
-                          'Blood Pressure': { value: '', unit: 'mmHg', range: '90-120/60-80', status: 'normal' },
-                          'Heart Rate': { value: '', unit: 'bpm', range: '60-100', status: 'normal' },
-                          'Temperature': { value: '', unit: '°C', range: '36.5-37.5', status: 'normal' },
-                          'Respiratory Rate': { value: '', unit: 'breaths/min', range: '12-20', status: 'normal' }
-                        });
-                      } else {
-                        // Add a custom vital sign
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button type="button" className="w-full mt-4 flex items-center justify-center">
+                        <Plus className="mr-2 h-4 w-4" /> Add Vital Sign
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56 max-h-[300px] overflow-y-auto">
+                      <DropdownMenuItem onClick={() => {
                         const newVitalSigns = {...data.vital_signs};
-                        const vitalNumber = Object.keys(newVitalSigns).length + 1;
-                        newVitalSigns[`Vital Sign ${vitalNumber}`] = {
+                        newVitalSigns['Blood Pressure'] = {
+                          value: '',
+                          unit: 'mmHg',
+                          range: '90-120/60-80',
+                          status: 'normal'
+                        };
+                        setData('vital_signs', newVitalSigns);
+                      }}>
+                        Blood Pressure
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        const newVitalSigns = {...data.vital_signs};
+                        newVitalSigns['Heart Rate'] = {
+                          value: '',
+                          unit: 'bpm',
+                          range: '60-100',
+                          status: 'normal'
+                        };
+                        setData('vital_signs', newVitalSigns);
+                      }}>
+                        Heart Rate
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        const newVitalSigns = {...data.vital_signs};
+                        newVitalSigns['Temperature'] = {
+                          value: '',
+                          unit: '°C',
+                          range: '36.5-37.5',
+                          status: 'normal'
+                        };
+                        setData('vital_signs', newVitalSigns);
+                      }}>
+                        Temperature
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        const newVitalSigns = {...data.vital_signs};
+                        newVitalSigns['Respiratory Rate'] = {
+                          value: '',
+                          unit: 'breaths/min',
+                          range: '12-20',
+                          status: 'normal'
+                        };
+                        setData('vital_signs', newVitalSigns);
+                      }}>
+                        Respiratory Rate
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        const newVitalSigns = {...data.vital_signs};
+                        newVitalSigns['Oxygen Saturation'] = {
+                          value: '',
+                          unit: '%',
+                          range: '95-100',
+                          status: 'normal'
+                        };
+                        setData('vital_signs', newVitalSigns);
+                      }}>
+                        Oxygen Saturation
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        const newVitalSigns = {...data.vital_signs};
+                        newVitalSigns['Weight'] = {
+                          value: '',
+                          unit: 'kg',
+                          range: '',
+                          status: 'normal'
+                        };
+                        setData('vital_signs', newVitalSigns);
+                      }}>
+                        Weight
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        const newVitalSigns = {...data.vital_signs};
+                        newVitalSigns['Height'] = {
+                          value: '',
+                          unit: 'cm',
+                          range: '',
+                          status: 'normal'
+                        };
+                        setData('vital_signs', newVitalSigns);
+                      }}>
+                        Height
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        const newVitalSigns = {...data.vital_signs};
+                        newVitalSigns[`Custom Vital Sign`] = {
                           value: '',
                           unit: '',
                           range: '',
                           status: 'normal'
                         };
                         setData('vital_signs', newVitalSigns);
-                      }
-                    }}
-                    className="mt-4"
-                  >
-                    <Plus className="mr-2 h-4 w-4" /> {Object.keys(data.vital_signs).length === 0 ? 'Add Standard Vital Signs' : 'Add Vital Sign'}
-                  </Button>
+                      }}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Custom Vital Sign
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
                 </div>
               </div>
             </TabsContent>

@@ -9,7 +9,6 @@ import {
     LogOut,
     Stethoscope,
     Clock,
-    ClipboardCheck,
     Search
 } from 'lucide-react';
 
@@ -21,13 +20,10 @@ interface User {
 
 interface SidebarProps {
     user: User;
+    unreadNotifications?: number;
 }
 
-interface ZiggyRoutes {
-    [key: string]: unknown;
-}
-
-export function Sidebar({ user }: SidebarProps) {
+export function Sidebar({ user, unreadNotifications = 0 }: SidebarProps) {
     const { url } = usePage(); // Get the current route
 
     // Function to check if the route matches
@@ -35,7 +31,7 @@ export function Sidebar({ user }: SidebarProps) {
 
     // Helper function to check if routes exist
     const { props } = usePage();
-    const routes = (props as any)?.ziggy?.routes || {};
+    const routes = (props as { ziggy?: { routes: Record<string, unknown> } })?.ziggy?.routes || {};
 
     const routeExists = (name: string) => {
         return Object.keys(routes).includes(name);
@@ -62,22 +58,16 @@ export function Sidebar({ user }: SidebarProps) {
             path: '/doctor/appointments'
         },
         {
-            name: 'Calendar',
-            route: 'doctor.appointments.calendar',
+            name: 'Schedule',
+            route: 'doctor.schedule.index',
             icon: <Clock size={18} />,
-            path: '/doctor/appointments/calendar'
+            path: '/doctor/schedule'
         },
         {
             name: 'Medical Records',
             route: 'doctor.records.index',
             icon: <FileText size={18} />,
             path: '/doctor/records'
-        },
-        {
-            name: 'Create Record',
-            route: 'doctor.records.create',
-            icon: <ClipboardCheck size={18} />,
-            path: '/doctor/records/create'
         },
         {
             name: 'Patient Search',
@@ -103,24 +93,35 @@ export function Sidebar({ user }: SidebarProps) {
                 </Link>
             </div>
 
+            {/* User Info */}
+            <div className="px-4 py-3 border-b dark:border-gray-700">
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Dr. {user.name}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
+            </div>
+
             {/* Navigation Menu */}
             <div className="flex-1 overflow-auto py-6">
                 <nav className="grid items-start gap-2 px-3 text-sm font-medium">
                     {navigationItems.map((item) => (
-                        <Link
-                            href={routeExists(item.route) ? route(item.route) : '#'}
+                        <Button
                             key={item.name}
-                            className="w-full"
-                        >
-                            <Button
+                            asChild
                                 variant={isActive(item.path) ? 'secondary' : 'ghost'}
                                 className="flex w-full items-center justify-start gap-3 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
                                 disabled={!routeExists(item.route)}
+                        >
+                            <Link
+                                href={routeExists(item.route) ? route(item.route) : '#'}
                             >
                                 {item.icon}
-                                {item.name}
+                                <span>{item.name}</span>
+                                {item.name === 'Appointments' && unreadNotifications > 0 && (
+                                    <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                                        {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                                    </span>
+                                )}
+                            </Link>
                             </Button>
-                        </Link>
                     ))}
                 </nav>
             </div>

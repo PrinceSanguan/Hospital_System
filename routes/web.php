@@ -134,6 +134,12 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
 */
 
 use App\Http\Controllers\Doctor\DoctorDashboardController;
+use App\Http\Controllers\Doctor\AppointmentController;
+use App\Http\Controllers\Doctor\NotificationController;
+use App\Http\Controllers\Doctor\PatientController;
+use App\Http\Controllers\Doctor\RecordsController;
+use App\Http\Controllers\Doctor\DoctorScheduleController;
+use App\Http\Controllers\Doctor\ServiceController;
 use App\Http\Middleware\DoctorMiddleware;
 
 Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')->group(function () {
@@ -147,10 +153,51 @@ Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')-
     ]);
   })->name('profile');
 
-  // Additional doctor routes can be added here
-  // For example:
-  // Route::get('/patients', [DoctorPatientController::class, 'index'])->name('patients.index');
-  // Route::get('/appointments', [DoctorAppointmentController::class, 'index'])->name('appointments.index');
+  // Schedule Management
+  Route::get('/schedule', [DoctorScheduleController::class, 'index'])->name('schedule.index');
+  Route::post('/schedule', [DoctorScheduleController::class, 'store'])->name('schedule.store');
+  Route::post('/schedule/multiple', [DoctorScheduleController::class, 'storeMultiple'])->name('schedule.store.multiple');
+  Route::put('/schedule/{id}', [DoctorScheduleController::class, 'update'])->name('schedule.update');
+  Route::delete('/schedule/{id}', [DoctorScheduleController::class, 'destroy'])->name('schedule.destroy');
+
+  // Services Management
+  Route::get('/services', [ServiceController::class, 'index'])->name('services.index');
+  Route::post('/services', [ServiceController::class, 'store'])->name('services.store');
+  Route::put('/services/{id}', [ServiceController::class, 'update'])->name('services.update');
+  Route::delete('/services/{id}', [ServiceController::class, 'destroy'])->name('services.destroy');
+
+  // Patients Management
+  Route::get('/patients', [PatientController::class, 'index'])->name('patients.index');
+  Route::get('/patients/search', [PatientController::class, 'search'])->name('patients.search');
+  Route::get('/patients/{id}', [PatientController::class, 'show'])->name('patients.show');
+  Route::post('/patients', [PatientController::class, 'store'])->name('patients.store');
+  Route::put('/patients/{id}', [PatientController::class, 'update'])->name('patients.update');
+  Route::delete('/patients/{id}', [PatientController::class, 'destroy'])->name('patients.destroy');
+
+  // Appointments Management
+  Route::get('/appointments', [AppointmentController::class, 'index'])->name('appointments.index');
+  Route::get('/appointments/create', [AppointmentController::class, 'create'])->name('appointments.create');
+  Route::get('/appointments/calendar', [AppointmentController::class, 'calendar'])->name('appointments.calendar');
+  Route::get('/appointments/{id}', [AppointmentController::class, 'show'])->name('appointments.show');
+  Route::post('/appointments', [AppointmentController::class, 'store'])->name('appointments.store');
+  Route::put('/appointments/{id}/status', [AppointmentController::class, 'updateStatus'])->name('appointments.update.status');
+  Route::get('/appointments/pending/count', [AppointmentController::class, 'getPendingAppointments'])->name('appointments.pending');
+
+  // Records Management
+  Route::get('/records', [RecordsController::class, 'index'])->name('records.index');
+  Route::get('/records/create', [RecordsController::class, 'create'])->name('records.create');
+  Route::get('/records/{id}', [RecordsController::class, 'show'])->name('records.show');
+  Route::post('/records', [RecordsController::class, 'store'])->name('records.store');
+  Route::put('/records/{id}', [RecordsController::class, 'update'])->name('records.update');
+  Route::delete('/records/{id}', [RecordsController::class, 'destroy'])->name('records.destroy');
+  Route::get('/patients/{patientId}/records', [RecordsController::class, 'getPatientRecords'])->name('patients.records');
+
+  // Notifications Management
+  Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+  Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.mark.read');
+  Route::put('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark.all.read');
+  Route::get('/notifications/unread/count', [NotificationController::class, 'getUnreadCount'])->name('notifications.unread.count');
+  Route::get('/notifications/recent', [NotificationController::class, 'getRecent'])->name('notifications.recent');
 });
 
 /*

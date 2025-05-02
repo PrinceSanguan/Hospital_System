@@ -18,10 +18,16 @@ interface User {
     role?: string;
 }
 
-export function Header({ user }: { user: User }) {
+interface HeaderProps {
+    user: User;
+    unreadNotifications?: number;
+    onMenuClick?: () => void;
+}
+
+export function Header({ user, unreadNotifications = 0, onMenuClick }: HeaderProps) {
     // Helper function to check if routes exist
     const { props } = usePage();
-    const routes = (props as any)?.ziggy?.routes || {};
+    const routes = (props as { ziggy?: { routes: Record<string, unknown> } })?.ziggy?.routes || {};
 
     const routeExists = (name: string) => {
         return Object.keys(routes).includes(name);
@@ -29,23 +35,34 @@ export function Header({ user }: { user: User }) {
 
     return (
         <header className="flex h-16 items-center border-b bg-white px-4 md:px-6 dark:border-gray-700 dark:bg-gray-800">
-            <Button variant="outline" size="icon" className="mr-2 md:hidden">
+            <Button
+                variant="outline"
+                size="icon"
+                className="mr-2 md:hidden"
+                onClick={onMenuClick}
+            >
                 <LayoutDashboard size={20} />
             </Button>
             <div className="flex flex-1 items-center justify-between">
                 <div className="ml-auto flex items-center gap-4">
                     {/* Notifications */}
+                    <Link href={route('doctor.notifications.index')} className="relative">
                     <Button variant="ghost" size="icon" className="relative">
                         <Bell size={20} />
-                        <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">3</span>
+                            {unreadNotifications > 0 && (
+                                <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                                    {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                                </span>
+                            )}
                     </Button>
+                    </Link>
                     <Separator orientation="vertical" className="h-8" />
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="flex items-center gap-2">
                                 <Avatar className="h-8 w-8">
-                                    <AvatarImage src="/api/placeholder/32/32" alt={user.name} />
-                                    <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                                    <AvatarImage src="/placeholder-avatar.jpg" alt={user.name} />
+                                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 <span className="hidden text-sm font-medium md:inline-flex">Dr. {user.name}</span>
                                 <ChevronDown size={16} />

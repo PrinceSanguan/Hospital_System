@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable
 {
@@ -93,5 +94,21 @@ class User extends Authenticatable
     public function isPatient(): bool
     {
         return $this->user_role === self::ROLE_PATIENT;
+    }
+
+    /**
+     * Get the patient records associated with this user.
+     */
+    public function patientRecords(): HasMany
+    {
+        return $this->hasMany(PatientRecord::class, 'patient_id');
+    }
+
+    /**
+     * Get records where this user is the assigned doctor.
+     */
+    public function assignedPatientRecords(): HasMany
+    {
+        return $this->hasMany(PatientRecord::class, 'assigned_doctor_id');
     }
 }

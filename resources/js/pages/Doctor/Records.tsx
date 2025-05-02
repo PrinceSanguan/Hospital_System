@@ -1,26 +1,24 @@
-import { Header } from '@/components/doctor/header';
-import { Sidebar } from '@/components/doctor/sidebar';
+import React from 'react';
+import { Head, Link } from '@inertiajs/react';
+import DoctorLayout from '@/layouts/DoctorLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
     PlusCircle,
-    FileText,
     Search,
     Filter,
-    ArrowUpDown,
-    Download
+    ArrowUpDown
 } from "lucide-react";
-import { Link } from '@inertiajs/react';
 import {
     Select,
     SelectContent,
     SelectItem,
-    SelectTrigger,
-    SelectValue,
+    SelectTrigger
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { UserData } from '@/types';
 
 interface Patient {
     id: number;
@@ -40,18 +38,12 @@ interface MedicalRecord {
     status: string;
 }
 
-interface User {
-    name: string;
-    email: string;
-    role?: string;
-}
-
 interface RecordsProps {
-    user: User;
+    user: UserData;
     medicalRecords: MedicalRecord[];
 }
 
-export default function DoctorRecords({ user, medicalRecords = [] }: RecordsProps) {
+export default function Records({ user, medicalRecords = [] }: RecordsProps) {
     // Format date for display
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
@@ -156,19 +148,11 @@ export default function DoctorRecords({ user, medicalRecords = [] }: RecordsProp
     };
 
     return (
-        <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
-            {/* Sidebar */}
-            <Sidebar user={user} />
-
-            {/* Main Content */}
-            <div className="flex flex-1 flex-col overflow-hidden">
-                {/* Header */}
-                <Header user={user} />
-
-                {/* Dashboard Content */}
-                <main className="flex-1 overflow-y-auto bg-gray-100 p-4 md:p-6 dark:bg-gray-900">
-                    <div className="flex flex-col gap-6">
-                        <div className="flex items-center justify-between">
+        <DoctorLayout user={user}>
+            <Head title="Medical Records" />
+            <div className="py-12">
+                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                    <div className="flex items-center justify-between mb-6">
                             <div className="flex flex-col gap-2">
                                 <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Medical Records</h1>
                                 <p className="text-gray-500 dark:text-gray-400">
@@ -177,7 +161,7 @@ export default function DoctorRecords({ user, medicalRecords = [] }: RecordsProp
                             </div>
                             <div className="flex gap-2">
                                 <Button asChild>
-                                    <Link href={route('doctor.records.create')}>
+                                <Link href={route('doctor.records.index')}>
                                         <PlusCircle className="mr-2 h-4 w-4" />
                                         New Record
                                     </Link>
@@ -198,30 +182,21 @@ export default function DoctorRecords({ user, medicalRecords = [] }: RecordsProp
                                 {/* Filter and Search */}
                                 <Card className="mb-6">
                                     <CardContent className="p-4">
-                                        <div className="grid gap-4 md:grid-cols-4 items-end">
-                                            <div className="space-y-1">
-                                                <label className="text-sm font-medium leading-none">Date Range</label>
-                                                <Select defaultValue="last3Months">
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select period" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="thisMonth">This Month</SelectItem>
-                                                        <SelectItem value="last3Months">Last 3 Months</SelectItem>
-                                                        <SelectItem value="last6Months">Last 6 Months</SelectItem>
-                                                        <SelectItem value="lastYear">Last Year</SelectItem>
-                                                        <SelectItem value="custom">Custom Range</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="relative">
+                                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                            <Input
+                                                type="search"
+                                                placeholder="Search records..."
+                                                className="w-full bg-white pl-8 dark:bg-gray-950"
+                                            />
                                             </div>
-
-                                            <div className="space-y-1">
-                                                <label className="text-sm font-medium leading-none">Record Type</label>
                                                 <Select defaultValue="all">
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Filter by type" />
+                                            <SelectTrigger id="record-type">
+                                                <Filter className="mr-2 h-4 w-4" />
+                                                <span>Record Type</span>
                                                     </SelectTrigger>
-                                                    <SelectContent>
+                                            <SelectContent position="popper">
                                                         <SelectItem value="all">All Types</SelectItem>
                                                         <SelectItem value="medical_checkup">Medical Checkup</SelectItem>
                                                         <SelectItem value="laboratory">Laboratory Test</SelectItem>
@@ -229,241 +204,88 @@ export default function DoctorRecords({ user, medicalRecords = [] }: RecordsProp
                                                         <SelectItem value="surgery">Surgery</SelectItem>
                                                     </SelectContent>
                                                 </Select>
-                                            </div>
-
-                                            <div className="space-y-1">
-                                                <label className="text-sm font-medium leading-none">Search</label>
-                                                <div className="relative">
-                                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                                                    <Input
-                                                        type="search"
-                                                        placeholder="Search by patient name or diagnosis..."
-                                                        className="w-full bg-white pl-8"
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            <Button variant="outline" className="flex items-center gap-1">
-                                                <Filter className="h-4 w-4" />
-                                                Apply Filters
-                                            </Button>
+                                        <Select defaultValue="newest">
+                                            <SelectTrigger id="sort-order">
+                                                <ArrowUpDown className="mr-2 h-4 w-4" />
+                                                <span>Sort By</span>
+                                            </SelectTrigger>
+                                            <SelectContent position="popper">
+                                                <SelectItem value="newest">Newest First</SelectItem>
+                                                <SelectItem value="oldest">Oldest First</SelectItem>
+                                                <SelectItem value="patient_asc">Patient Name (A-Z)</SelectItem>
+                                                <SelectItem value="patient_desc">Patient Name (Z-A)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                         </div>
                                     </CardContent>
                                 </Card>
+                        </TabsContent>
+                    </Tabs>
 
-                                {/* Records List */}
-                                <div className="space-y-4">
-                                    {displayRecords.map(record => (
-                                        <Card key={record.id}>
-                                            <CardContent className="p-4">
-                                                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <FileText className="h-5 w-5 text-blue-600" />
-                                                            <h3 className="text-lg font-medium">
-                                                                {record.patient.name} - {getRecordTypeLabel(record.record_type)}
-                                                            </h3>
+                    {/* Records Table */}
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle>Records</CardTitle>
+                            <CardDescription>
+                                {displayRecords.length} record(s) found
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="border-b text-sm">
+                                            <th className="py-3 px-2 text-left font-medium">Patient</th>
+                                            <th className="py-3 px-2 text-left font-medium">Record Type</th>
+                                            <th className="py-3 px-2 text-left font-medium">Date</th>
+                                            <th className="py-3 px-2 text-left font-medium">Diagnosis</th>
+                                            <th className="py-3 px-2 text-left font-medium">Status</th>
+                                            <th className="py-3 px-2 text-right font-medium">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {displayRecords.map((record) => (
+                                            <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                                <td className="py-3 px-2">
+                                                    <div className="font-medium">{record.patient.name}</div>
+                                                    <div className="text-xs text-gray-500">{record.patient.email}</div>
+                                                </td>
+                                                <td className="py-3 px-2">
+                                                    {getRecordTypeLabel(record.record_type)}
+                                                </td>
+                                                <td className="py-3 px-2">
+                                                    {formatDate(record.record_date)}
+                                                </td>
+                                                <td className="py-3 px-2 max-w-[200px] truncate" title={record.diagnosis}>
+                                                    {record.diagnosis}
+                                                </td>
+                                                <td className="py-3 px-2">
                                                             <Badge
-                                                                className={`ml-2 ${
-                                                                    record.status === 'completed'
-                                                                        ? 'bg-green-100 text-green-800 hover:bg-green-100'
-                                                                        : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
-                                                                }`}
-                                                            >
-                                                                {record.status === 'completed' ? 'Completed' : 'Pending Review'}
+                                                        variant={
+                                                            record.status === 'completed' ? 'default' :
+                                                            record.status === 'pending_review' ? 'outline' :
+                                                            'default'
+                                                        }
+                                                    >
+                                                        {record.status.replace('_', ' ')}
                                                             </Badge>
-                                                        </div>
-                                                        <p className="mt-1 text-sm text-gray-500">Created on {formatDate(record.record_date)}</p>
-                                                        <div className="mt-3">
-                                                            <p className="text-sm"><span className="font-medium">Diagnosis:</span> {record.diagnosis}</p>
-                                                            {record.prescription && (
-                                                                <p className="text-sm mt-1"><span className="font-medium">Prescription:</span> {record.prescription}</p>
-                                                            )}
-                                                            {record.lab_results && (
-                                                                <p className="text-sm mt-1"><span className="font-medium">Lab Results:</span> {record.lab_results}</p>
-                                                            )}
-                                                            {record.notes && (
-                                                                <p className="text-sm mt-1"><span className="font-medium">Notes:</span> {record.notes}</p>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex shrink-0 gap-2">
-                                                        <Button variant="outline" size="sm">
-                                                            <Download className="mr-2 h-4 w-4" />
-                                                            Export
-                                                        </Button>
-                                                        <Button variant="outline" size="sm">
+                                                </td>
+                                                <td className="py-3 px-2 text-right">
+                                                    <Button asChild variant="outline" size="sm">
+                                                        <Link href={route('doctor.records.index')}>
                                                             View
+                                                        </Link>
                                                         </Button>
-                                                        <Button variant="outline" size="sm">
-                                                            Edit
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
-                                </div>
-                            </TabsContent>
-
-                            <TabsContent value="checkups">
-                                <div className="space-y-4">
-                                    {displayRecords
-                                        .filter(record => record.record_type === 'medical_checkup')
-                                        .map(record => (
-                                            <Card key={record.id}>
-                                                <CardContent className="p-4">
-                                                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                                                        <div className="flex-1">
-                                                            <div className="flex items-center gap-2">
-                                                                <FileText className="h-5 w-5 text-blue-600" />
-                                                                <h3 className="text-lg font-medium">
-                                                                    {record.patient.name} - Medical Checkup
-                                                                </h3>
-                                                                <Badge
-                                                                    className={`ml-2 ${
-                                                                        record.status === 'completed'
-                                                                            ? 'bg-green-100 text-green-800 hover:bg-green-100'
-                                                                            : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
-                                                                    }`}
-                                                                >
-                                                                    {record.status === 'completed' ? 'Completed' : 'Pending Review'}
-                                                                </Badge>
-                                                            </div>
-                                                            <p className="mt-1 text-sm text-gray-500">Created on {formatDate(record.record_date)}</p>
-                                                            <div className="mt-3">
-                                                                <p className="text-sm"><span className="font-medium">Diagnosis:</span> {record.diagnosis}</p>
-                                                                {record.prescription && (
-                                                                    <p className="text-sm mt-1"><span className="font-medium">Prescription:</span> {record.prescription}</p>
-                                                                )}
-                                                                {record.notes && (
-                                                                    <p className="text-sm mt-1"><span className="font-medium">Notes:</span> {record.notes}</p>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex shrink-0 gap-2">
-                                                            <Button variant="outline" size="sm">
-                                                                <Download className="mr-2 h-4 w-4" />
-                                                                Export
-                                                            </Button>
-                                                            <Button variant="outline" size="sm">
-                                                                View
-                                                            </Button>
-                                                            <Button variant="outline" size="sm">
-                                                                Edit
-                                                            </Button>
-                                                        </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                                                     </div>
                                                 </CardContent>
                                             </Card>
-                                        ))}
-                                </div>
-                            </TabsContent>
-
-                            <TabsContent value="labs">
-                                <div className="space-y-4">
-                                    {displayRecords
-                                        .filter(record => record.record_type === 'laboratory')
-                                        .map(record => (
-                                            <Card key={record.id}>
-                                                <CardContent className="p-4">
-                                                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                                                        <div className="flex-1">
-                                                            <div className="flex items-center gap-2">
-                                                                <FileText className="h-5 w-5 text-blue-600" />
-                                                                <h3 className="text-lg font-medium">
-                                                                    {record.patient.name} - Laboratory Test
-                                                                </h3>
-                                                                <Badge
-                                                                    className={`ml-2 ${
-                                                                        record.status === 'completed'
-                                                                            ? 'bg-green-100 text-green-800 hover:bg-green-100'
-                                                                            : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
-                                                                    }`}
-                                                                >
-                                                                    {record.status === 'completed' ? 'Completed' : 'Pending Review'}
-                                                                </Badge>
-                                                            </div>
-                                                            <p className="mt-1 text-sm text-gray-500">Created on {formatDate(record.record_date)}</p>
-                                                            <div className="mt-3">
-                                                                <p className="text-sm"><span className="font-medium">Diagnosis:</span> {record.diagnosis}</p>
-                                                                {record.lab_results && (
-                                                                    <p className="text-sm mt-1"><span className="font-medium">Lab Results:</span> {record.lab_results}</p>
-                                                                )}
-                                                                {record.prescription && (
-                                                                    <p className="text-sm mt-1"><span className="font-medium">Prescription:</span> {record.prescription}</p>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex shrink-0 gap-2">
-                                                            <Button variant="outline" size="sm">
-                                                                <Download className="mr-2 h-4 w-4" />
-                                                                Export
-                                                            </Button>
-                                                            <Button variant="outline" size="sm">
-                                                                View
-                                                            </Button>
-                                                            <Button variant="outline" size="sm">
-                                                                Edit
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        ))}
-                                </div>
-                            </TabsContent>
-
-                            <TabsContent value="pending">
-                                <div className="space-y-4">
-                                    {displayRecords
-                                        .filter(record => record.status === 'pending_review')
-                                        .map(record => (
-                                            <Card key={record.id}>
-                                                <CardContent className="p-4">
-                                                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                                                        <div className="flex-1">
-                                                            <div className="flex items-center gap-2">
-                                                                <FileText className="h-5 w-5 text-blue-600" />
-                                                                <h3 className="text-lg font-medium">
-                                                                    {record.patient.name} - {getRecordTypeLabel(record.record_type)}
-                                                                </h3>
-                                                                <Badge className="ml-2 bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-                                                                    Pending Review
-                                                                </Badge>
-                                                            </div>
-                                                            <p className="mt-1 text-sm text-gray-500">Created on {formatDate(record.record_date)}</p>
-                                                            <div className="mt-3">
-                                                                <p className="text-sm"><span className="font-medium">Diagnosis:</span> {record.diagnosis}</p>
-                                                                {record.prescription && (
-                                                                    <p className="text-sm mt-1"><span className="font-medium">Prescription:</span> {record.prescription}</p>
-                                                                )}
-                                                                {record.lab_results && (
-                                                                    <p className="text-sm mt-1"><span className="font-medium">Lab Results:</span> {record.lab_results}</p>
-                                                                )}
-                                                                {record.notes && (
-                                                                    <p className="text-sm mt-1"><span className="font-medium">Notes:</span> {record.notes}</p>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex shrink-0 gap-2">
-                                                            <Button variant="outline" size="sm">
-                                                                Review
-                                                            </Button>
-                                                            <Button variant="outline" size="sm">
-                                                                Edit
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        ))}
-                                </div>
-                            </TabsContent>
-                        </Tabs>
                     </div>
-                </main>
             </div>
-        </div>
+        </DoctorLayout>
     );
 }
