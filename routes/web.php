@@ -335,6 +335,28 @@ Route::middleware([PatientMiddleware::class])->prefix('patient')->name('patient.
 
   // Appointments
   Route::post('/appointments', [PatientDashboardController::class, 'storeAppointment'])->name('appointments.store');
+  Route::get('/appointments', [PatientDashboardController::class, 'listAppointments'])->name('appointments.index');
+  Route::get('/appointments/book', [PatientDashboardController::class, 'bookAppointment'])->name('appointments.book');
+  Route::get('/appointments/{id}', [PatientDashboardController::class, 'viewAppointment'])->name('appointments.show');
 
-  // Additional patient routes will go here
+  // Medical Records
+  Route::get('/records', [PatientDashboardController::class, 'listRecords'])->name('records.index');
+  Route::get('/records/lab-results', [PatientDashboardController::class, 'listLabResults'])->name('records.lab-results');
+  Route::get('/records/{id}', [PatientDashboardController::class, 'viewRecord'])->name('records.show');
+
+  // Doctors
+  Route::get('/doctors', [PatientDashboardController::class, 'listDoctors'])->name('doctors.index');
+
+  // Profile
+  Route::get('/profile', [PatientDashboardController::class, 'viewProfile'])->name('profile.edit');
+  Route::put('/profile', [PatientDashboardController::class, 'updateProfile'])->name('profile.update');
+});
+
+// Patient notification routes
+Route::middleware(['auth', 'role:patient'])->prefix('patient')->name('patient.')->group(function () {
+    Route::get('/notifications', [App\Http\Controllers\Patient\NotificationController::class, 'index'])->name('notifications.index');
+    Route::put('/notifications/{id}/read', [App\Http\Controllers\Patient\NotificationController::class, 'markAsRead'])->name('notifications.mark.read');
+    Route::put('/notifications/mark-all-read', [App\Http\Controllers\Patient\NotificationController::class, 'markAllAsRead'])->name('notifications.mark.all.read');
+    Route::get('/notifications/unread-count', [App\Http\Controllers\Patient\NotificationController::class, 'getUnreadCount'])->name('notifications.unread.count');
+    Route::get('/notifications/recent', [App\Http\Controllers\Patient\NotificationController::class, 'getRecent'])->name('notifications.recent');
 });

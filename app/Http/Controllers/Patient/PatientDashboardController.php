@@ -11,6 +11,7 @@ use App\Models\Notification;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class PatientDashboardController extends Controller
 {
@@ -18,66 +19,69 @@ class PatientDashboardController extends Controller
     {
         $user = Auth::user();
 
-        // Get upcoming appointments
-        $upcomingAppointments = PatientRecord::with('assignedDoctor')
-            ->where('patient_id', $user->id)
-            ->where('appointment_date', '>=', now())
-            ->where('status', 'pending')
+        // Get upcoming appointments - make sure we're getting the latest status
+        $upcomingAppointments = PatientRecord::where('patient_id', $user->id)
+            ->where(function($query) {
+                $query->where('status', '!=', 'cancelled')
+                      ->where('status', '!=', 'completed');
+            })
+            ->where('appointment_date', '>=', now()->startOfDay())
+            ->with('assignedDoctor')
             ->orderBy('appointment_date', 'asc')
-            ->take(5)
             ->get();
+
+        // Force fresh data by avoiding any potential caching
+        $upcomingAppointments->load(['assignedDoctor']);
 
         // Get lab results
         $labResults = PatientRecord::where('patient_id', $user->id)
-            ->where('record_type', 'laboratory')
+            ->where('record_type', 'laboratory_test')
             ->whereNotNull('lab_results')
             ->orderBy('updated_at', 'desc')
-            ->take(5)
             ->get();
 
         // Get medical records
-        $medicalRecords = PatientRecord::with('assignedDoctor')
-            ->where('patient_id', $user->id)
-            ->where('record_type', 'medical_checkup')
+        $medicalRecords = PatientRecord::where('patient_id', $user->id)
+            ->where(function($query) {
+                $query->where('record_type', 'medical_checkup')
+                      ->orWhere('record_type', 'prescription');
+            })
+            ->with('assignedDoctor')
             ->orderBy('updated_at', 'desc')
-            ->take(5)
             ->get();
 
-        // Get doctors with schedules and services
-        $doctors = User::where('user_role', User::ROLE_DOCTOR)
-            ->with(['schedules' => function($query) {
-                $query->where('is_available', true);
-            }])
-            ->with(['services' => function($query) {
-                $query->where('is_active', true);
-            }])
+        // Get unread notifications count
+        $notifications = Notification::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->take(5)
             ->get()
-            ->map(function($doctor) {
-                // Only include doctors who have set up their schedules
-                if ($doctor->schedules->isEmpty()) {
-                    return null;
-                }
+            ->map(function ($notification) {
+                return [
+                    'id' => $notification->id,
+                    'title' => $notification->title,
+                    'message' => $notification->message,
+                    'read' => !is_null($notification->read_at),
+                    'created_at' => $notification->created_at,
+                    'related_id' => $notification->related_id,
+                    'related_type' => $notification->related_type,
+                ];
+            });
 
-                // Format doctor data for frontend
+        // Get available doctors
+        $doctors = User::where('user_role', User::ROLE_DOCTOR)
+            ->with(['schedules', 'services'])
+            ->get()
+            ->map(function ($doctor) {
                 return [
                     'id' => $doctor->id,
                     'name' => $doctor->name,
-                    'specialty' => $doctor->profile_specialty ?? 'General Physician',
-                    'image' => $doctor->profile_image ?? 'https://ui.shadcn.com/avatars/01.png',
+                    'specialty' => $doctor->specialty ?? 'General Practitioner',
+                    'image' => $doctor->profile_photo ?? '/placeholder-avatar.jpg',
+                    'availability' => $doctor->availability ?? [],
                     'schedules' => $doctor->schedules,
-                    'services' => $doctor->services->map(function($service) {
-                        return [
-                            'id' => $service->id,
-                            'name' => $service->name,
-                            'description' => $service->description,
-                            'duration_minutes' => $service->duration_minutes,
-                            'price' => $service->price,
-                        ];
-                    }),
+                    'services' => $doctor->services,
                 ];
-            })
-            ->filter() // Remove null values (doctors without schedules)
-            ->values(); // Re-index array
+            });
 
         return Inertia::render('Patient/Dashboard', [
             'user' => [
@@ -88,6 +92,7 @@ class PatientDashboardController extends Controller
             'upcomingAppointments' => $upcomingAppointments,
             'labResults' => $labResults,
             'medicalRecords' => $medicalRecords,
+            'notifications' => $notifications,
             'doctors' => $doctors,
         ]);
     }
@@ -156,5 +161,203 @@ class PatientDashboardController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Appointment request has been submitted. You will be notified when the doctor confirms your appointment.');
+    }
+
+    // List all patient appointments
+    public function listAppointments()
+    {
+        $user = Auth::user();
+
+        $appointments = PatientRecord::where('patient_id', $user->id)
+            ->where(function($query) {
+                $query->where('record_type', 'medical_checkup')
+                      ->orWhere('record_type', 'laboratory_test');
+            })
+            ->with('assignedDoctor')
+            ->orderBy('appointment_date', 'desc')
+            ->get();
+
+        return Inertia::render('Patient/Appointments', [
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+            ],
+            'appointments' => $appointments
+        ]);
+    }
+
+    // View a specific appointment
+    public function viewAppointment($id)
+    {
+        $user = Auth::user();
+
+        $appointment = PatientRecord::where('id', $id)
+            ->where('patient_id', $user->id)
+            ->with('assignedDoctor')
+            ->firstOrFail();
+
+        return Inertia::render('Patient/AppointmentDetails', [
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+            ],
+            'appointment' => $appointment
+        ]);
+    }
+
+    // Show booking form
+    public function bookAppointment()
+    {
+        $user = Auth::user();
+
+        $doctors = User::where('user_role', User::ROLE_DOCTOR)
+            ->with(['schedules', 'services'])
+            ->get();
+
+        return Inertia::render('Patient/BookAppointment', [
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+            ],
+            'doctors' => $doctors
+        ]);
+    }
+
+    // List all patient medical records
+    public function listRecords()
+    {
+        $user = Auth::user();
+
+        $records = PatientRecord::where('patient_id', $user->id)
+            ->where(function($query) {
+                $query->where('record_type', 'medical_checkup')
+                      ->orWhere('record_type', 'prescription');
+            })
+            ->with('assignedDoctor')
+            ->orderBy('updated_at', 'desc')
+            ->get();
+
+        return Inertia::render('Patient/Records', [
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+            ],
+            'records' => $records
+        ]);
+    }
+
+    // List lab results
+    public function listLabResults()
+    {
+        $user = Auth::user();
+
+        $labResults = PatientRecord::where('patient_id', $user->id)
+            ->where('record_type', 'laboratory_test')
+            ->whereNotNull('lab_results')
+            ->orderBy('updated_at', 'desc')
+            ->get();
+
+        return Inertia::render('Patient/LabResults', [
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+            ],
+            'labResults' => $labResults
+        ]);
+    }
+
+    // View a specific record
+    public function viewRecord($id)
+    {
+        $user = Auth::user();
+
+        $record = PatientRecord::where('id', $id)
+            ->where('patient_id', $user->id)
+            ->with('assignedDoctor')
+            ->firstOrFail();
+
+        return Inertia::render('Patient/RecordDetails', [
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+            ],
+            'record' => $record
+        ]);
+    }
+
+    // List all doctors
+    public function listDoctors()
+    {
+        $user = Auth::user();
+
+        $doctors = User::where('user_role', User::ROLE_DOCTOR)
+            ->with(['schedules', 'services'])
+            ->get()
+            ->map(function ($doctor) {
+                return [
+                    'id' => $doctor->id,
+                    'name' => $doctor->name,
+                    'specialty' => $doctor->specialty ?? 'General Practitioner',
+                    'image' => $doctor->profile_photo ?? '/placeholder-avatar.jpg',
+                    'availability' => $doctor->availability ?? [],
+                    'schedules' => $doctor->schedules,
+                    'services' => $doctor->services,
+                ];
+            });
+
+        return Inertia::render('Patient/Doctors', [
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+            ],
+            'doctors' => $doctors
+        ]);
+    }
+
+    // View profile
+    public function viewProfile()
+    {
+        $user = Auth::user();
+
+        return Inertia::render('Patient/Profile', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+            ]
+        ]);
+    }
+
+    // Update profile
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                Rule::unique('users')->ignore($user->id),
+            ],
+        ]);
+
+        // Update user data in the database
+        User::where('id', $user->id)->update([
+            'name' => $request->name,
+            'email' => $request->email,
+        ]);
+
+        return back()->with('success', 'Profile updated successfully');
     }
 }

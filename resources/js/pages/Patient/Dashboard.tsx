@@ -90,9 +90,12 @@ interface PatientDashboardProps {
   }>;
   notifications: Array<{
     id: number;
+    title: string;
     message: string;
     read: boolean;
     created_at: string;
+    related_id?: number;
+    related_type?: string;
   }>;
   doctors: Array<{
     id: number;
@@ -139,9 +142,9 @@ export default function PatientDashboard({
   labResults = [],
   medicalRecords = [],
   notifications = [
-    { id: 1, message: "Your appointment has been confirmed for tomorrow at 10:00 AM", read: false, created_at: "2023-05-01T10:00:00.000Z" },
-    { id: 2, message: "Dr. Johnson has updated your prescription", read: false, created_at: "2023-05-01T08:30:00.000Z" },
-    { id: 3, message: "Your lab results are now available", read: true, created_at: "2023-04-30T15:20:00.000Z" }
+    { id: 1, title: "Appointment Confirmation", message: "Your appointment has been confirmed for tomorrow at 10:00 AM", read: false, created_at: "2023-05-01T10:00:00.000Z" },
+    { id: 2, title: "Prescription Update", message: "Dr. Johnson has updated your prescription", read: false, created_at: "2023-05-01T08:30:00.000Z" },
+    { id: 3, title: "Lab Results Available", message: "Your lab results are now available", read: true, created_at: "2023-04-30T15:20:00.000Z" }
   ],
   doctors = [
     {
@@ -445,12 +448,51 @@ export default function PatientDashboard({
                       {notifications.map((notification) => (
                         <div
                           key={notification.id}
-                          className={`p-4 ${notification.read ? "" : "bg-blue-50"}`}
+                          className={`p-4 ${notification.read ? "" : "bg-blue-50"} cursor-pointer`}
+                          onClick={() => {
+                            // Mark as read when clicked
+                            if (!notification.read) {
+                              router.put(route('patient.notifications.mark.read', notification.id), {}, {
+                                preserveScroll: true,
+                                only: ['notifications']
+                              });
+                            }
+
+                            // Navigate to related content if available
+                            if (notification.related_id) {
+                              if (notification.related_type === 'appointment') {
+                                router.visit(route('patient.appointments.show', notification.related_id));
+                              } else if (notification.related_type === 'record') {
+                                router.visit(route('patient.records.show', notification.related_id));
+                              }
+                            }
+                          }}
                         >
+                          <p className="text-sm font-medium">{notification.title}</p>
                           <p className="text-sm">{notification.message}</p>
                           <p className="mt-1 text-xs text-gray-500">
                             {new Date(notification.created_at).toLocaleString()}
                           </p>
+                          {notification.related_id && (
+                            <div className="mt-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs py-0 h-6 mt-1"
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent triggering parent onClick
+                                  if (notification.related_type === 'appointment') {
+                                    router.visit(route('patient.appointments.show', notification.related_id));
+                                  } else if (notification.related_type === 'record') {
+                                    router.visit(route('patient.records.show', notification.related_id));
+                                  }
+                                }}
+                              >
+                                {notification.related_type === 'appointment' ? 'View Appointment' :
+                                 notification.related_type === 'record' ? 'View Record' : 'View Details'}
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -572,8 +614,67 @@ export default function PatientDashboard({
                     selected={selectedDate}
                     onSelect={setSelectedDate}
                     className="mx-auto"
+                    modifiers={{
+                      booked: upcomingAppointments.map(apt => new Date(apt.appointment_date)),
+                      confirmed: upcomingAppointments.filter(apt => apt.status === 'confirmed').map(apt => new Date(apt.appointment_date)),
+                      pending: upcomingAppointments.filter(apt => apt.status === 'pending').map(apt => new Date(apt.appointment_date))
+                    }}
+                    modifiersStyles={{
+                      booked: {
+                        backgroundColor: '#e0edff',
+                        color: '#1a56db',
+                        fontWeight: 'bold'
+                      },
+                      confirmed: {
+                        backgroundColor: '#dcfce7',
+                        color: '#166534',
+                        fontWeight: 'bold'
+                      },
+                      pending: {
+                        backgroundColor: '#fef9c3',
+                        color: '#854d0e',
+                        fontWeight: 'bold'
+                      }
+                    }}
                   />
                 </div>
+                {selectedDate && (
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium mb-2">Appointments on {selectedDate.toLocaleDateString()}</h4>
+                    {upcomingAppointments
+                      .filter(apt => new Date(apt.appointment_date).toDateString() === selectedDate.toDateString())
+                      .map(apt => (
+                        <div key={apt.id} className="p-2 border rounded-md mb-2 flex justify-between items-center">
+                          <div>
+                            <p className="text-sm font-medium">
+                              {new Date(apt.appointment_date).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {apt.assignedDoctor ? `Dr. ${apt.assignedDoctor.name}` : 'Unassigned'}
+                            </p>
+                          </div>
+                          <Badge
+                            className={
+                              apt.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                              apt.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                              apt.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }
+                          >
+                            {apt.status.charAt(0).toUpperCase() + apt.status.slice(1)}
+                          </Badge>
+                        </div>
+                      ))}
+                    {!upcomingAppointments.some(apt =>
+                      new Date(apt.appointment_date).toDateString() === selectedDate.toDateString()
+                    ) && (
+                      <p className="text-sm text-gray-500">No appointments on this date</p>
+                    )}
+                  </div>
+                )}
               </CardContent>
               <CardFooter className="flex justify-between">
                 <p className="text-sm text-gray-500">
@@ -619,9 +720,10 @@ export default function PatientDashboard({
                             {new Date(appointment.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </div>
                           <Badge className={
-                            appointment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                            appointment.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                            appointment.status === 'completed' ? 'bg-blue-100 text-blue-800' :
                             appointment.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                            'bg-blue-100 text-blue-800'
+                            'bg-yellow-100 text-yellow-800'
                           }>
                             {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
                           </Badge>
