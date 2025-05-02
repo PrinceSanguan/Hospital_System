@@ -150,7 +150,10 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                 setShowConfirmComplete(false);
                 setShowConfirmCancel(false);
                 setData('notes', '');
-            }
+            },
+            preserveState: true,
+            preserveScroll: true,
+            only: ['appointment']
         });
     };
 

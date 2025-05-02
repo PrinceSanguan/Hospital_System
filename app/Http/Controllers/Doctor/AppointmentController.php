@@ -119,6 +119,32 @@ class AppointmentController extends Controller
             ]);
         }
 
+        // If it's an Inertia request, return to the same page with updated data
+        if ($request->inertia()) {
+            // Reload appointment with relations
+            $appointment = PatientRecord::where('id', $appointment->id)
+                ->with('patient')
+                ->first();
+
+            return Inertia::render('Doctor/AppointmentDetails', [
+                'user' => [
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->user_role,
+                ],
+                'appointment' => $appointment,
+                'success' => 'Appointment status updated successfully'
+            ]);
+        }
+
+        // For regular (non-Inertia) requests
+        if ($request->wantsJson()) {
+            return response()->json([
+                'appointment' => $appointment,
+                'success' => 'Appointment status updated successfully'
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Appointment status updated successfully');
     }
 
