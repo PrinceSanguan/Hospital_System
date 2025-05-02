@@ -36,6 +36,10 @@ return new class extends Migration
                         $startTime = $timeParts[0] . ':' . $timeParts[1];
                     }
                 }
+
+                if (strlen($startTime) > 5) {
+                    $startTime = substr($startTime, 11, 5); // Extract HH:MM from datetime
+                }
             } else {
                 $startTime = "09:00";
             }
@@ -55,6 +59,10 @@ return new class extends Migration
                         $timeParts = explode(':', $parts[1]);
                         $endTime = $timeParts[0] . ':' . $timeParts[1];
                     }
+                }
+
+                if (strlen($endTime) > 5) {
+                    $endTime = substr($endTime, 11, 5); // Extract HH:MM from datetime
                 }
             } else {
                 $endTime = "17:00";
@@ -76,57 +84,5 @@ return new class extends Migration
     public function down(): void
     {
         // No need to reverse this migration as it only fixes data
-    }
-};
-
-                ->update([
-                    'start_time' => $startTime,
-                    'end_time' => $endTime,
-                ]);
-        }
-    }
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        // No need to reverse this migration as it only fixes data
-    }
-};
-
-                if (strlen($startTime) > 5) {
-                    $startTime = substr($startTime, 11, 5); // Extract HH:MM from datetime
-                }
-            }
-
-            if (strpos($endTime, ':') !== false) {
-                // Extract just the HH:MM part if it's a full datetime
-                if (strlen($endTime) > 5) {
-                    $endTime = substr($endTime, 11, 5); // Extract HH:MM from datetime
-                }
-            }
-
-            // Update the record with the fixed time format
-            DB::table('doctor_schedules')
-                ->where('id', $schedule->id)
-                ->update([
-                    'start_time' => $startTime,
-                    'end_time' => $endTime,
-                ]);
-        });
-    }
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        // If needed, roll back to the previous format
-        Schema::table('doctor_schedules', function (Blueprint $table) {
-            // This assumes the previous format was datetime
-            $table->time('start_time')->change();
-            $table->time('end_time')->change();
-        });
     }
 };
