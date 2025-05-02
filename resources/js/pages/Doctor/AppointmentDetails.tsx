@@ -78,7 +78,44 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
     const renderDetails = () => {
         if (!appointment.details) return <p className="text-gray-500 italic">No details provided</p>;
 
+        // Try to parse if it's a JSON string
         if (typeof appointment.details === 'string') {
+            try {
+                // Check if it looks like a JSON string
+                if (appointment.details.trim().startsWith('{') && appointment.details.trim().endsWith('}')) {
+                    const detailsObj = JSON.parse(appointment.details);
+                    return (
+                        <div className="space-y-3">
+                            {detailsObj.appointment_time && (
+                                <div>
+                                    <h4 className="text-sm font-medium text-gray-700">Appointment Time:</h4>
+                                    <p className="text-gray-700">{detailsObj.appointment_time}</p>
+                                </div>
+                            )}
+                            {detailsObj.reason && (
+                                <div>
+                                    <h4 className="text-sm font-medium text-gray-700">Reason:</h4>
+                                    <p className="text-gray-700">{detailsObj.reason}</p>
+                                </div>
+                            )}
+                            {detailsObj.notes && (
+                                <div>
+                                    <h4 className="text-sm font-medium text-gray-700">Additional Notes:</h4>
+                                    <p className="text-gray-700">{detailsObj.notes}</p>
+                                </div>
+                            )}
+                            {detailsObj.service && (
+                                <div>
+                                    <h4 className="text-sm font-medium text-gray-700">Service:</h4>
+                                    <p className="text-gray-700">{detailsObj.service.name}</p>
+                                </div>
+                            )}
+                        </div>
+                    );
+                }
+            } catch {
+                // Not valid JSON, display as regular text
+            }
             return <p className="text-gray-700">{appointment.details}</p>;
         }
 
@@ -104,7 +141,11 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
     const handleSubmit = (status: string) => {
         setData('status', status);
 
-        post(route('doctor.appointments.update-status', appointment.id), {
+        post(route('doctor.appointments.updateStatus', {
+            appointment_id: appointment.id,
+            status: status === 'completed' ? 'confirmed' : 'cancelled',
+            notes: data.notes
+        }), {
             onSuccess: () => {
                 setShowConfirmComplete(false);
                 setShowConfirmCancel(false);

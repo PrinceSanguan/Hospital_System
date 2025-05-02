@@ -653,24 +653,24 @@ export default function PatientDashboard({
                   {doctors.map((doctor) => (
                     <div key={doctor.id} className="flex flex-col overflow-hidden rounded-lg border">
                       <div className="flex overflow-hidden">
-                        <div className="w-1/3">
-                          <img
-                            src={doctor.image}
-                            alt={doctor.name}
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                        <div className="w-2/3 p-4">
-                          <h3 className="font-medium">{doctor.name}</h3>
-                          <p className="text-sm text-blue-600">{doctor.specialty}</p>
-                          <div className="mt-2">
-                            <p className="text-xs text-gray-500">Available on:</p>
-                            <div className="mt-1 flex flex-wrap gap-1">
+                      <div className="w-1/3">
+                        <img
+                          src={doctor.image}
+                          alt={doctor.name}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <div className="w-2/3 p-4">
+                        <h3 className="font-medium">{doctor.name}</h3>
+                        <p className="text-sm text-blue-600">{doctor.specialty}</p>
+                        <div className="mt-2">
+                          <p className="text-xs text-gray-500">Available on:</p>
+                          <div className="mt-1 flex flex-wrap gap-1">
                               {doctor.schedules?.map(schedule => (
                                 <Badge key={schedule.id} variant="outline" className="text-xs">
                                   {getDayName(schedule.day_of_week)}: {formatTime(schedule.start_time)} - {formatTime(schedule.end_time)}
                                 </Badge>
-                              ))}
+                            ))}
                             </div>
                           </div>
                           {doctor.services && doctor.services.length > 0 && (

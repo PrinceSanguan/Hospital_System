@@ -46,16 +46,16 @@ export function Header({ user, unreadNotifications = 0, onMenuClick }: HeaderPro
             <div className="flex flex-1 items-center justify-between">
                 <div className="ml-auto flex items-center gap-4">
                     {/* Notifications */}
-                    <Link href={route('doctor.notifications.index')} className="relative">
-                    <Button variant="ghost" size="icon" className="relative">
-                        <Bell size={20} />
+                    <Button variant="ghost" size="icon" className="relative" asChild>
+                        <Link href={route('doctor.notifications.index')}>
+                            <Bell size={20} />
                             {unreadNotifications > 0 && (
                                 <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
                                     {unreadNotifications > 9 ? '9+' : unreadNotifications}
                                 </span>
                             )}
+                        </Link>
                     </Button>
-                    </Link>
                     <Separator orientation="vertical" className="h-8" />
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
