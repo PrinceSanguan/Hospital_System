@@ -108,6 +108,13 @@ interface PatientDashboardProps {
       is_available: boolean;
       max_appointments: number;
     }>;
+    services?: Array<{
+      id: number;
+      name: string;
+      description: string;
+      duration_minutes: number;
+      price: number;
+    }>;
   }>;
 }
 
@@ -171,6 +178,7 @@ export default function PatientDashboard({
   const [bookingTime, setBookingTime] = useState<string>('');
   const [bookingReason, setBookingReason] = useState<string>('');
   const [bookingNotes, setBookingNotes] = useState<string>('');
+  const [bookingService, setBookingService] = useState<string>('');
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
 
@@ -291,6 +299,7 @@ export default function PatientDashboard({
       appointment_time: bookingTime,
       reason: bookingReason,
       notes: bookingNotes,
+      service_id: bookingService,
     }, {
       onSuccess: () => {
         setIsBookingDialogOpen(false);
@@ -299,6 +308,7 @@ export default function PatientDashboard({
         setBookingTime('');
         setBookingReason('');
         setBookingNotes('');
+        setBookingService('');
       }
     });
   };
@@ -641,35 +651,54 @@ export default function PatientDashboard({
               <CardContent>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {doctors.map((doctor) => (
-                    <div key={doctor.id} className="flex overflow-hidden rounded-lg border">
-                      <div className="w-1/3">
-                        <img
-                          src={doctor.image}
-                          alt={doctor.name}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                      <div className="w-2/3 p-4">
-                        <h3 className="font-medium">{doctor.name}</h3>
-                        <p className="text-sm text-blue-600">{doctor.specialty}</p>
-                        <div className="mt-2">
-                          <p className="text-xs text-gray-500">Available on:</p>
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {doctor.schedules?.map(schedule => (
-                              <Badge key={schedule.id} variant="outline" className="text-xs">
-                                {getDayName(schedule.day_of_week)}: {formatTime(schedule.start_time)} - {formatTime(schedule.end_time)}
-                              </Badge>
-                            ))}
-                          </div>
+                    <div key={doctor.id} className="flex flex-col overflow-hidden rounded-lg border">
+                      <div className="flex overflow-hidden">
+                        <div className="w-1/3">
+                          <img
+                            src={doctor.image}
+                            alt={doctor.name}
+                            className="h-full w-full object-cover"
+                          />
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-3 w-full"
-                          onClick={() => handleDoctorSelect(doctor)}
-                        >
-                          Book Appointment
-                        </Button>
+                        <div className="w-2/3 p-4">
+                          <h3 className="font-medium">{doctor.name}</h3>
+                          <p className="text-sm text-blue-600">{doctor.specialty}</p>
+                          <div className="mt-2">
+                            <p className="text-xs text-gray-500">Available on:</p>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {doctor.schedules?.map(schedule => (
+                                <Badge key={schedule.id} variant="outline" className="text-xs">
+                                  {getDayName(schedule.day_of_week)}: {formatTime(schedule.start_time)} - {formatTime(schedule.end_time)}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                          {doctor.services && doctor.services.length > 0 && (
+                            <div className="mt-2">
+                              <p className="text-xs text-gray-500">Services:</p>
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                {doctor.services.map(service => (
+                                  <Badge key={service.id} className="text-xs bg-purple-100 text-purple-800 border-purple-200">
+                                    {service.name}
+                                  </Badge>
+                                ))}
+                              </div>
+                              <div className="mt-1">
+                                <p className="text-xs text-gray-500">
+                                  {doctor.services.length} services available
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-3 w-full"
+                            onClick={() => handleDoctorSelect(doctor)}
+                          >
+                            Book Appointment
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -765,8 +794,8 @@ export default function PatientDashboard({
 
       {/* Booking Dialog */}
       <Dialog open={isBookingDialogOpen} onOpenChange={setIsBookingDialogOpen}>
-        <DialogContent className="sm:max-w-[525px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-auto">
+          <DialogHeader className="sticky top-0 bg-white z-10 pb-2 border-b">
             <DialogTitle>Book an Appointment</DialogTitle>
             <DialogDescription>
               {bookingDoctor ? `Schedule an appointment with ${bookingDoctor.name}` : 'Select a doctor to schedule an appointment'}
@@ -774,25 +803,49 @@ export default function PatientDashboard({
           </DialogHeader>
 
           {bookingDoctor && (
-            <div className="space-y-4">
+            <div className="space-y-4 py-2">
               {/* Doctor Information */}
               <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-md">
-                <Avatar className="h-12 w-12">
+                <Avatar className="h-10 w-10 flex-shrink-0">
                   <AvatarImage src={bookingDoctor.image} alt={bookingDoctor.name} />
                   <AvatarFallback>
-                    <UserIcon className="h-6 w-6" />
+                    <UserIcon className="h-5 w-5" />
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="font-medium">{bookingDoctor.name}</h3>
-                  <p className="text-sm text-gray-500">{bookingDoctor.specialty}</p>
+                  <h3 className="font-medium text-sm">{bookingDoctor.name}</h3>
+                  <p className="text-xs text-gray-500">{bookingDoctor.specialty}</p>
                 </div>
               </div>
 
+              {/* Service Selection */}
+              {bookingDoctor.services && bookingDoctor.services.length > 0 && (
+                <div className="space-y-1">
+                  <label htmlFor="service" className="text-sm font-medium">Select Service</label>
+                  <Select value={bookingService} onValueChange={setBookingService}>
+                    <SelectTrigger id="service">
+                      <SelectValue placeholder="Select a service" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bookingDoctor.services.map(service => (
+                        <SelectItem key={service.id} value={service.id.toString()}>
+                          {service.name} ({service.duration_minutes} min) - ${service.price}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {bookingService && bookingDoctor.services.find(s => s.id.toString() === bookingService)?.description && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {bookingDoctor.services.find(s => s.id.toString() === bookingService)?.description}
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Date Selection */}
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <label className="text-sm font-medium">Select Date</label>
-                <div className="border rounded-md p-3">
+                <div className="border rounded-md p-2">
                   <DayPicker
                     mode="single"
                     selected={bookingDate || undefined}
@@ -802,13 +855,30 @@ export default function PatientDashboard({
                       ...getDisabledDates(bookingDoctor.schedules || [])
                     ]}
                     className="mx-auto"
+                    classNames={{
+                      months: "space-y-2 mx-auto",
+                      caption: "flex justify-center relative items-center",
+                      caption_label: "text-sm font-medium",
+                      nav: "space-x-1 flex items-center",
+                      nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
+                      table: "w-full border-collapse",
+                      head_row: "flex",
+                      head_cell: "text-muted-foreground rounded-md w-8 font-normal text-[0.8rem]",
+                      row: "flex w-full mt-2",
+                      cell: "text-center text-sm relative p-0 data-[isSelected=true]:bg-primary data-[isSelected=true]:text-primary-foreground data-[isSelected=true]:rounded-md focus-within:relative focus-within:z-20",
+                      day: "h-8 w-8 p-0 font-normal aria-selected:opacity-100",
+                      day_selected: "bg-primary text-primary-foreground rounded-md",
+                      day_disabled: "text-muted-foreground opacity-50",
+                      day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+                      day_hidden: "invisible",
+                    }}
                   />
                 </div>
               </div>
 
               {/* Time Selection */}
               {bookingDate && availableTimeSlots.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <label className="text-sm font-medium">Select Time</label>
                   <div className="grid grid-cols-3 gap-2">
                     {availableTimeSlots.map((time) => (
@@ -817,7 +887,7 @@ export default function PatientDashboard({
                         type="button"
                         variant={bookingTime === time ? "default" : "outline"}
                         size="sm"
-                        className="text-xs"
+                        className="text-xs py-1"
                         onClick={() => setBookingTime(time)}
                       >
                         {formatTime(time)}
@@ -828,7 +898,7 @@ export default function PatientDashboard({
               )}
 
               {/* Reason for Visit */}
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <label htmlFor="reason" className="text-sm font-medium">Reason for Visit</label>
                 <Select value={bookingReason} onValueChange={setBookingReason}>
                   <SelectTrigger id="reason">
@@ -845,26 +915,27 @@ export default function PatientDashboard({
               </div>
 
               {/* Additional Notes */}
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <label htmlFor="notes" className="text-sm font-medium">Additional Notes</label>
                 <Textarea
                   id="notes"
                   placeholder="Any specific concerns or information for the doctor"
                   value={bookingNotes}
                   onChange={(e) => setBookingNotes(e.target.value)}
+                  className="h-20 resize-none"
                 />
               </div>
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="sticky bottom-0 bg-white pt-2 border-t mt-4">
             <Button variant="outline" onClick={() => setIsBookingDialogOpen(false)}>
               Cancel
             </Button>
             <Button
               type="button"
               onClick={handleSubmitBooking}
-              disabled={!bookingDoctor || !bookingDate || !bookingTime || !bookingReason}
+              disabled={!bookingDoctor || !bookingDate || !bookingTime || !bookingReason || (bookingDoctor?.services && bookingDoctor.services.length > 0 && !bookingService)}
             >
               Request Appointment
             </Button>

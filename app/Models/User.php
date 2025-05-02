@@ -111,4 +111,20 @@ class User extends Authenticatable
     {
         return $this->hasMany(PatientRecord::class, 'assigned_doctor_id');
     }
+
+    /**
+     * Get the doctor schedules associated with this user.
+     */
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(DoctorSchedule::class, 'doctor_id');
+    }
+
+    /**
+     * Get the doctor services associated with this user.
+     */
+    public function services(): HasMany
+    {
+        return $this->hasMany(DoctorService::class, 'doctor_id');
+    }
 }

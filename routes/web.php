@@ -333,5 +333,8 @@ Route::middleware([PatientMiddleware::class])->prefix('patient')->name('patient.
   // Dashboard
   Route::get('/dashboard', [PatientDashboardController::class, 'index'])->name('dashboard');
 
+  // Appointments
+  Route::post('/appointments', [PatientDashboardController::class, 'storeAppointment'])->name('appointments.store');
+
   // Additional patient routes will go here
 });
