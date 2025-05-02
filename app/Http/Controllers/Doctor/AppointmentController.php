@@ -60,63 +60,66 @@ class AppointmentController extends Controller
     /**
      * Update appointment status (approve or decline)
      */
-    public function updateStatus(Request $request, $id)
+    public function updateStatus(Request $request)
     {
-        $user = Auth::user();
-        $appointment = PatientRecord::where('assigned_doctor_id', $user->id)
-            ->findOrFail($id);
-
-        $validator = Validator::make($request->all(), [
-            'status' => 'required|in:completed,cancelled',
-            'notes' => 'nullable|string|max:500',
+        $request->validate([
+            'appointment_id' => 'required|exists:patient_records,id',
+            'status' => 'required|in:confirmed,cancelled',
+            'notes' => 'nullable|string',
         ]);
 
-        if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
-        }
+        $user = Auth::user();
+        $appointment = PatientRecord::where('assigned_doctor_id', $user->id)
+            ->with('patient')
+            ->findOrFail($request->appointment_id);
 
-        $oldStatus = $appointment->status;
+        // Update appointment status
         $appointment->status = $request->status;
 
-        if ($request->filled('notes')) {
-            $details = $appointment->details ?? [];
-            $details = is_array($details) ? $details : [];
-            $details[] = [
-                'date' => now()->toDateTimeString(),
-                'note' => $request->notes,
-                'by' => $user->name,
-            ];
-            $appointment->details = $details;
+        // Add doctor notes if provided
+        if ($request->notes) {
+            $notes = $appointment->details ? $appointment->details . "\n\nDoctor's Note: " . $request->notes : "Doctor's Note: " . $request->notes;
+            $appointment->details = $notes;
         }
 
         $appointment->save();
 
         // Create notification for the patient
-        if ($oldStatus !== $request->status) {
-            $notificationType = $request->status === 'completed'
+        if ($appointment->patient) {
+            $notificationType = $request->status === 'confirmed'
                 ? Notification::TYPE_APPOINTMENT_CONFIRMED
                 : Notification::TYPE_APPOINTMENT_CANCELLED;
 
-            $notificationTitle = $request->status === 'completed'
+            $title = $request->status === 'confirmed'
                 ? 'Appointment Confirmed'
                 : 'Appointment Cancelled';
 
-            $notificationMessage = $request->status === 'completed'
-                ? "Your appointment on " . $appointment->appointment_date->format('M d, Y h:i A') . " has been confirmed."
-                : "Your appointment on " . $appointment->appointment_date->format('M d, Y h:i A') . " has been cancelled.";
+            $message = $request->status === 'confirmed'
+                ? "Your appointment with Dr. {$user->name} on " . date('F j, Y', strtotime($appointment->appointment_date)) . " has been confirmed."
+                : "Your appointment with Dr. {$user->name} on " . date('F j, Y', strtotime($appointment->appointment_date)) . " has been cancelled.";
+
+            if ($request->notes) {
+                $message .= " Note: " . $request->notes;
+            }
 
             Notification::create([
-                'user_id' => $appointment->patient_id,
+                'user_id' => $appointment->patient->id,
                 'type' => $notificationType,
-                'title' => $notificationTitle,
-                'message' => $notificationMessage,
+                'title' => $title,
+                'message' => $message,
                 'related_id' => $appointment->id,
                 'related_type' => 'appointment',
+                'data' => [
+                    'appointment_id' => $appointment->id,
+                    'doctor_id' => $user->id,
+                    'doctor_name' => $user->name,
+                    'appointment_date' => $appointment->appointment_date,
+                    'status' => $request->status,
+                ]
             ]);
         }
 
-        return redirect()->route('doctor.appointments.index')
-            ->with('success', 'Appointment status updated successfully');
+        return redirect()->back()->with('success', 'Appointment status updated successfully');
     }
 
     /**

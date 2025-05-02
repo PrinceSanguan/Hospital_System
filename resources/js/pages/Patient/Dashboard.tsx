@@ -10,7 +10,8 @@ import {
   Clock,
   LogOut,
   Search,
-  Menu
+  Menu,
+  UserIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -25,6 +26,14 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -32,10 +41,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Calendar component imports
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
+import { format, isToday, isBefore, addDays } from "date-fns";
 
 interface PatientDashboardProps {
   user: {
@@ -82,8 +100,31 @@ interface PatientDashboardProps {
     specialty: string;
     availability: string[];
     image: string;
+    schedules?: Array<{
+      id: number;
+      day_of_week: number;
+      start_time: string;
+      end_time: string;
+      is_available: boolean;
+      max_appointments: number;
+    }>;
   }>;
 }
+
+// Helper function to get day name
+const getDayName = (dayNumber: number): string => {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return days[dayNumber];
+};
+
+// Helper function to format time
+const formatTime = (time: string): string => {
+  const [hours, minutes] = time.split(':');
+  const hour = parseInt(hours, 10);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${minutes} ${ampm}`;
+};
 
 export default function PatientDashboard({
   user,
@@ -101,20 +142,37 @@ export default function PatientDashboard({
       name: "Dr. Sarah Johnson",
       specialty: "Cardiologist",
       image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80",
-      availability: ["Monday", "Wednesday", "Friday"]
+      availability: ["Monday", "Wednesday", "Friday"],
+      schedules: [
+        { id: 1, day_of_week: 1, start_time: "09:00", end_time: "17:00", is_available: true, max_appointments: 8 },
+        { id: 2, day_of_week: 3, start_time: "09:00", end_time: "17:00", is_available: true, max_appointments: 8 },
+        { id: 3, day_of_week: 5, start_time: "09:00", end_time: "14:00", is_available: true, max_appointments: 5 }
+      ]
     },
     {
       id: 2,
       name: "Dr. Michael Chen",
       specialty: "Neurologist",
       image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80",
-      availability: ["Tuesday", "Thursday", "Saturday"]
+      availability: ["Tuesday", "Thursday", "Saturday"],
+      schedules: [
+        { id: 4, day_of_week: 2, start_time: "10:00", end_time: "18:00", is_available: true, max_appointments: 8 },
+        { id: 5, day_of_week: 4, start_time: "10:00", end_time: "18:00", is_available: true, max_appointments: 8 },
+        { id: 6, day_of_week: 6, start_time: "10:00", end_time: "14:00", is_available: true, max_appointments: 4 }
+      ]
     }
   ]
 }: PatientDashboardProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [bookingDoctor, setBookingDoctor] = useState<typeof doctors[0] | null>(null);
+  const [bookingDate, setBookingDate] = useState<Date | null>(null);
+  const [bookingTime, setBookingTime] = useState<string>('');
+  const [bookingReason, setBookingReason] = useState<string>('');
+  const [bookingNotes, setBookingNotes] = useState<string>('');
+  const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
 
   // Calculate unread notifications
   const unreadNotificationsCount = notifications.filter(notification => !notification.read).length;
@@ -162,6 +220,114 @@ export default function PatientDashboard({
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault();
     router.get(route('auth.logout'));
+  };
+
+  // Handle doctor selection for booking
+  const handleDoctorSelect = (doctor: typeof doctors[0]) => {
+    setBookingDoctor(doctor);
+    setBookingDate(null);
+    setBookingTime('');
+    setIsBookingDialogOpen(true);
+  };
+
+  // Generate available time slots based on doctor's schedule
+  const generateTimeSlots = (date: Date, doctorSchedules: typeof doctors[0]['schedules']) => {
+    const dayOfWeek = date.getDay();
+    const schedule = doctorSchedules?.find(s => s.day_of_week === dayOfWeek && s.is_available);
+
+    if (!schedule) {
+      setAvailableTimeSlots([]);
+      return [];
+    }
+
+    const { start_time, end_time } = schedule;
+    const [startHour, startMinute] = start_time.split(':').map(Number);
+    const [endHour, endMinute] = end_time.split(':').map(Number);
+
+    const slots = [];
+    let currentHour = startHour;
+    let currentMinute = startMinute;
+
+    // Generate hourly slots
+    while (currentHour < endHour || (currentHour === endHour && currentMinute < endMinute)) {
+      const formattedHour = currentHour.toString().padStart(2, '0');
+      const formattedMinute = currentMinute.toString().padStart(2, '0');
+      slots.push(`${formattedHour}:${formattedMinute}`);
+
+      // Move to next hour
+      currentMinute += 60;
+      if (currentMinute >= 60) {
+        currentHour += Math.floor(currentMinute / 60);
+        currentMinute = currentMinute % 60;
+      }
+    }
+
+    setAvailableTimeSlots(slots);
+    return slots;
+  };
+
+  // Handle date selection for booking
+  const handleDateSelect = (date: Date) => {
+    setBookingDate(date);
+    if (bookingDoctor?.schedules) {
+      generateTimeSlots(date, bookingDoctor.schedules);
+    }
+  };
+
+  // Handle submit booking
+  const handleSubmitBooking = () => {
+    if (!bookingDoctor || !bookingDate || !bookingTime || !bookingReason) {
+      // Display validation error
+      return;
+    }
+
+    // Format the date for the API
+    const formattedDate = format(bookingDate, 'yyyy-MM-dd');
+
+    // Submit the booking
+    router.post(route('patient.appointments.store'), {
+      doctor_id: bookingDoctor.id,
+      appointment_date: formattedDate,
+      appointment_time: bookingTime,
+      reason: bookingReason,
+      notes: bookingNotes,
+    }, {
+      onSuccess: () => {
+        setIsBookingDialogOpen(false);
+        setBookingDoctor(null);
+        setBookingDate(null);
+        setBookingTime('');
+        setBookingReason('');
+        setBookingNotes('');
+      }
+    });
+  };
+
+  // Check if date is available based on doctor's schedule
+  const isDateAvailable = (date: Date, doctorSchedules: typeof doctors[0]['schedules']) => {
+    if (isBefore(date, new Date()) && !isToday(date)) {
+      return false;
+    }
+
+    const dayOfWeek = date.getDay();
+    return doctorSchedules?.some(s => s.day_of_week === dayOfWeek && s.is_available) || false;
+  };
+
+  // Generate disabled dates for the calendar
+  const getDisabledDates = (doctorSchedules: typeof doctors[0]['schedules']) => {
+    const disabledDates = [];
+    const startDate = new Date();
+    const endDate = addDays(startDate, 30); // Check next 30 days
+
+    let currentDate = startDate;
+    while (currentDate <= endDate) {
+      if (!isDateAvailable(currentDate, doctorSchedules)) {
+        disabledDates.push(new Date(currentDate));
+      }
+      currentDate = addDays(currentDate, 1);
+    }
+
+    return disabledDates;
   };
 
   return (
@@ -489,13 +655,21 @@ export default function PatientDashboard({
                         <div className="mt-2">
                           <p className="text-xs text-gray-500">Available on:</p>
                           <div className="mt-1 flex flex-wrap gap-1">
-                            {doctor.availability.map(day => (
-                              <span key={day} className="rounded-full bg-gray-100 px-2 py-0.5 text-xs">
-                                {day}
-                              </span>
+                            {doctor.schedules?.map(schedule => (
+                              <Badge key={schedule.id} variant="outline" className="text-xs">
+                                {getDayName(schedule.day_of_week)}: {formatTime(schedule.start_time)} - {formatTime(schedule.end_time)}
+                              </Badge>
                             ))}
                           </div>
                         </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-3 w-full"
+                          onClick={() => handleDoctorSelect(doctor)}
+                        >
+                          Book Appointment
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -588,6 +762,115 @@ export default function PatientDashboard({
           </div>
         </main>
       </div>
+
+      {/* Booking Dialog */}
+      <Dialog open={isBookingDialogOpen} onOpenChange={setIsBookingDialogOpen}>
+        <DialogContent className="sm:max-w-[525px]">
+          <DialogHeader>
+            <DialogTitle>Book an Appointment</DialogTitle>
+            <DialogDescription>
+              {bookingDoctor ? `Schedule an appointment with ${bookingDoctor.name}` : 'Select a doctor to schedule an appointment'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {bookingDoctor && (
+            <div className="space-y-4">
+              {/* Doctor Information */}
+              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-md">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={bookingDoctor.image} alt={bookingDoctor.name} />
+                  <AvatarFallback>
+                    <UserIcon className="h-6 w-6" />
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="font-medium">{bookingDoctor.name}</h3>
+                  <p className="text-sm text-gray-500">{bookingDoctor.specialty}</p>
+                </div>
+              </div>
+
+              {/* Date Selection */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Select Date</label>
+                <div className="border rounded-md p-3">
+                  <DayPicker
+                    mode="single"
+                    selected={bookingDate || undefined}
+                    onSelect={(date) => date && handleDateSelect(date)}
+                    disabled={[
+                      { before: new Date() },
+                      ...getDisabledDates(bookingDoctor.schedules || [])
+                    ]}
+                    className="mx-auto"
+                  />
+                </div>
+              </div>
+
+              {/* Time Selection */}
+              {bookingDate && availableTimeSlots.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Select Time</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {availableTimeSlots.map((time) => (
+                      <Button
+                        key={time}
+                        type="button"
+                        variant={bookingTime === time ? "default" : "outline"}
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => setBookingTime(time)}
+                      >
+                        {formatTime(time)}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Reason for Visit */}
+              <div className="space-y-2">
+                <label htmlFor="reason" className="text-sm font-medium">Reason for Visit</label>
+                <Select value={bookingReason} onValueChange={setBookingReason}>
+                  <SelectTrigger id="reason">
+                    <SelectValue placeholder="Select reason" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="check_up">General Check-up</SelectItem>
+                    <SelectItem value="follow_up">Follow-up Appointment</SelectItem>
+                    <SelectItem value="consultation">Consultation</SelectItem>
+                    <SelectItem value="emergency">Emergency</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Additional Notes */}
+              <div className="space-y-2">
+                <label htmlFor="notes" className="text-sm font-medium">Additional Notes</label>
+                <Textarea
+                  id="notes"
+                  placeholder="Any specific concerns or information for the doctor"
+                  value={bookingNotes}
+                  onChange={(e) => setBookingNotes(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsBookingDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSubmitBooking}
+              disabled={!bookingDoctor || !bookingDate || !bookingTime || !bookingReason}
+            >
+              Request Appointment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

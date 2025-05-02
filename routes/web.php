@@ -181,6 +181,7 @@ Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')-
   Route::get('/appointments/{id}', [AppointmentController::class, 'show'])->name('appointments.show');
   Route::post('/appointments', [AppointmentController::class, 'store'])->name('appointments.store');
   Route::put('/appointments/{id}/status', [AppointmentController::class, 'updateStatus'])->name('appointments.update.status');
+  Route::post('/appointments/update-status', [AppointmentController::class, 'updateStatus'])->name('appointments.updateStatus');
   Route::get('/appointments/pending/count', [AppointmentController::class, 'getPendingAppointments'])->name('appointments.pending');
 
   // Records Management

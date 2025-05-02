@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import DoctorLayout from '@/layouts/DoctorLayout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -21,6 +22,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Schedule {
     id: number;
@@ -37,31 +41,40 @@ interface Appointment {
     name: string;
   };
   appointment_date: string;
+  appointment_time?: string;
   status: string;
   notes?: string;
+  reason?: string;
 }
 
 interface DashboardProps {
   user: UserData;
   upcomingAppointments: Appointment[];
+  pendingAppointments: Appointment[];
   schedule: Schedule[];
     stats: {
     total_patients: number;
     upcoming_appointments: number;
     completed_appointments: number;
+    pending_appointments: number;
   };
 }
 
 export default function Dashboard({
   user,
   upcomingAppointments = [],
+  pendingAppointments = [],
   schedule = [],
-  stats = { total_patients: 0, upcoming_appointments: 0, completed_appointments: 0 }
+  stats = { total_patients: 0, upcoming_appointments: 0, completed_appointments: 0, pending_appointments: 0 }
 }: DashboardProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showAppointmentDialog, setShowAppointmentDialog] = useState(false);
+  const [showResponseDialog, setShowResponseDialog] = useState(false);
   const [selectedDateAppointments, setSelectedDateAppointments] = useState<Appointment[]>([]);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [responseNotes, setResponseNotes] = useState('');
+  const [responseAction, setResponseAction] = useState<'approve' | 'deny' | null>(null);
 
   // Helper function to get days in month
   const getDaysInMonth = (year: number, month: number) => {
@@ -160,7 +173,51 @@ export default function Dashboard({
     }
     };
 
-    return (
+  // Format date
+  const formatDate = (dateString: string) => {
+    return dayjs(dateString).format('MMM D, YYYY');
+  };
+
+  // Format time
+  const formatTime = (timeString?: string) => {
+    if (!timeString) return 'N/A';
+
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  };
+
+  // Handle appointment response
+  const handleAppointmentResponse = (appointment: Appointment, action: 'approve' | 'deny') => {
+    setSelectedAppointment(appointment);
+    setResponseAction(action);
+    setResponseNotes('');
+    setShowResponseDialog(true);
+  };
+
+  // Submit appointment response
+  const submitAppointmentResponse = () => {
+    if (!selectedAppointment || !responseAction) return;
+
+    const status = responseAction === 'approve' ? 'confirmed' : 'cancelled';
+
+    router.post(route('doctor.appointments.updateStatus'), {
+      appointment_id: selectedAppointment.id,
+      status: status,
+      notes: responseNotes
+    }, {
+      onSuccess: () => {
+        setShowResponseDialog(false);
+        setSelectedAppointment(null);
+        setResponseAction(null);
+        setResponseNotes('');
+      }
+    });
+  };
+
+  return (
     <DoctorLayout user={user}>
       <Head title="Dashboard" />
       <div className="py-12">
@@ -168,37 +225,102 @@ export default function Dashboard({
           <h1 className="text-2xl font-semibold text-gray-900 mb-6">Dashboard</h1>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                            <Card>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.total_patients}</div>
-                                </CardContent>
-                            </Card>
+              </CardContent>
+            </Card>
 
-                            <Card>
+            <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">Upcoming Appointments</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.upcoming_appointments}</div>
-                                </CardContent>
-                            </Card>
+              </CardContent>
+            </Card>
 
-                            <Card>
+            <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">Completed Appointments</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.completed_appointments}</div>
-                                </CardContent>
-                            </Card>
-                        </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.pending_appointments}</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Pending Appointment Requests */}
+          {pendingAppointments.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Pending Appointment Requests</h2>
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Patient</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Time</TableHead>
+                        <TableHead>Reason</TableHead>
+                        <TableHead>Notes</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingAppointments.map((appointment) => (
+                        <TableRow key={appointment.id}>
+                          <TableCell className="font-medium">{appointment.patient.name}</TableCell>
+                          <TableCell>{formatDate(appointment.appointment_date)}</TableCell>
+                          <TableCell>{formatTime(appointment.appointment_time)}</TableCell>
+                          <TableCell>{appointment.reason || 'N/A'}</TableCell>
+                          <TableCell>{appointment.notes || 'N/A'}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 gap-1 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                onClick={() => handleAppointmentResponse(appointment, 'approve')}
+                              >
+                                <CheckCircle size={16} />
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => handleAppointmentResponse(appointment, 'deny')}
+                              >
+                                <XCircle size={16} />
+                                Deny
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* Calendar */}
-                            <Card>
+          <Card>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle>Calendar</CardTitle>
@@ -209,22 +331,22 @@ export default function Dashboard({
                     onClick={goToPreviousMonth}
                   >
                     Previous
-                                        </Button>
+                  </Button>
                   <div className="font-medium">
                     {getMonthName(currentMonth)} {currentMonth.getFullYear()}
-                                    </div>
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={goToNextMonth}
                   >
                     Next
-                                        </Button>
-                                    </div>
-                        </div>
+                  </Button>
+                </div>
+              </div>
               <p className="text-sm text-gray-500">Your upcoming appointments and schedule</p>
-                            </CardHeader>
-                            <CardContent>
+            </CardHeader>
+            <CardContent>
               <div className="grid grid-cols-7 gap-1">
                 {/* Day headers */}
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
@@ -233,7 +355,7 @@ export default function Dashboard({
                     className="text-center font-medium p-2 text-sm text-gray-500"
                   >
                     {day}
-                                                </div>
+                  </div>
                 ))}
 
                 {/* Calendar days */}
@@ -255,7 +377,7 @@ export default function Dashboard({
                             ${dayjs(date).format('YYYY-MM-DD') === dayjs().format('YYYY-MM-DD') ? 'bg-blue-500 text-white' : ''}
                           `}>
                             {date.getDate()}
-                                                    </span>
+                          </span>
                           <div className="flex flex-wrap gap-1">
                             {hasSchedule(date) && (
                               <Badge
@@ -272,66 +394,126 @@ export default function Dashboard({
                                 {getAppointmentsForDate(date).length} Appt
                               </Badge>
                             )}
-                                                </div>
+                          </div>
                         </div>
                       </>
                     )}
-                                            </div>
-                                        ))}
-                                    </div>
-                            </CardContent>
-                        </Card>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Appointment Dialog */}
           <Dialog open={showAppointmentDialog} onOpenChange={setShowAppointmentDialog}>
-            <DialogContent className="max-w-3xl">
+            <DialogContent>
               <DialogHeader>
                 <DialogTitle>
-                  Appointments for {selectedDate ? dayjs(selectedDate).format('MMMM D, YYYY') : ''}
+                  Appointments for {selectedDate && dayjs(selectedDate).format('MMMM D, YYYY')}
                 </DialogTitle>
                 <DialogDescription>
                   {selectedDateAppointments.length
-                    ? `You have ${selectedDateAppointments.length} appointment(s) scheduled for this day.`
-                    : 'You have no appointments scheduled for this day.'}
+                    ? `You have ${selectedDateAppointments.length} appointment(s) on this day.`
+                    : 'You have no appointments on this day.'}
                 </DialogDescription>
               </DialogHeader>
 
               {selectedDateAppointments.length > 0 && (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Patient</TableHead>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Notes</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedDateAppointments.map((appointment) => (
-                      <TableRow key={appointment.id}>
-                        <TableCell className="font-medium">
-                          {appointment.patient?.name}
-                        </TableCell>
-                        <TableCell>
-                          {dayjs(appointment.appointment_date).format('h:mm A')}
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate">
-                          {appointment.notes || '-'}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getStatusBadgeColor(appointment.status)}>
-                            {appointment.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="space-y-4">
+                  {selectedDateAppointments.map((appointment) => (
+                    <div key={appointment.id} className="p-4 border rounded-md">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="font-medium">{appointment.patient.name}</h3>
+                          <p className="text-sm text-gray-500">
+                            {appointment.appointment_time ? formatTime(appointment.appointment_time) : 'No time specified'}
+                          </p>
+                        </div>
+                        <Badge variant={getStatusBadgeColor(appointment.status)}>
+                          {appointment.status}
+                        </Badge>
+                      </div>
+                      {appointment.notes && (
+                        <div className="mt-2">
+                          <h4 className="text-sm font-medium">Notes:</h4>
+                          <p className="text-sm text-gray-600">{appointment.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
+            </DialogContent>
+          </Dialog>
+
+          {/* Response Dialog */}
+          <Dialog open={showResponseDialog} onOpenChange={setShowResponseDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {responseAction === 'approve' ? 'Approve Appointment' : 'Deny Appointment'}
+                </DialogTitle>
+                <DialogDescription>
+                  {responseAction === 'approve'
+                    ? 'You are about to approve this appointment request.'
+                    : 'You are about to deny this appointment request.'}
+                </DialogDescription>
+              </DialogHeader>
+
+              {selectedAppointment && (
+                <div className="space-y-4">
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      {responseAction === 'approve'
+                        ? 'The patient will be notified that their appointment has been confirmed.'
+                        : 'The patient will be notified that their appointment has been denied.'}
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="space-y-2">
+                    <p><strong>Patient:</strong> {selectedAppointment.patient.name}</p>
+                    <p><strong>Date:</strong> {formatDate(selectedAppointment.appointment_date)}</p>
+                    <p><strong>Time:</strong> {formatTime(selectedAppointment.appointment_time)}</p>
+                    {selectedAppointment.reason && (
+                      <p><strong>Reason:</strong> {selectedAppointment.reason}</p>
+                    )}
+                    {selectedAppointment.notes && (
+                      <p><strong>Patient Notes:</strong> {selectedAppointment.notes}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="notes" className="text-sm font-medium">
+                      {responseAction === 'approve' ? 'Additional instructions (optional)' : 'Reason for denial (optional)'}
+                    </label>
+                    <Textarea
+                      id="notes"
+                      value={responseNotes}
+                      onChange={(e) => setResponseNotes(e.target.value)}
+                      placeholder={responseAction === 'approve'
+                        ? 'Add any special instructions for the patient...'
+                        : 'Explain why you are denying this appointment request...'}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowResponseDialog(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant={responseAction === 'approve' ? 'default' : 'destructive'}
+                  onClick={submitAppointmentResponse}
+                >
+                  {responseAction === 'approve' ? 'Approve Appointment' : 'Deny Appointment'}
+                </Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
       </div>
     </DoctorLayout>
-    );
+  );
 }
