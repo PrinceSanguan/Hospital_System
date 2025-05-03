@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Doctor;
 
 use App\Http\Controllers\Controller;
+use App\Models\DoctorSchedule;
 use App\Models\Notification;
 use App\Models\PatientRecord;
 use App\Models\User;
@@ -11,6 +12,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
 
 class AppointmentController extends Controller
 {
@@ -82,7 +84,7 @@ class AppointmentController extends Controller
     {
         $request->validate([
             'appointment_id' => 'required|exists:patient_records,id',
-            'status' => 'required|in:confirmed,cancelled',
+            'status' => 'required|in:confirmed,cancelled,completed',
             'notes' => 'nullable|string',
         ]);
 
@@ -91,9 +93,34 @@ class AppointmentController extends Controller
             ->with('patient')
             ->findOrFail($request->appointment_id);
 
-        // Update appointment status - explicitly set to 'confirmed' for confirmation
+        // Get the original status before updating
+        $originalStatus = $appointment->status;
+
+        // Update appointment status
         if ($request->status === 'confirmed') {
             $appointment->status = 'confirmed';
+
+            // Decrement max_appointments in the doctor's schedule
+            $this->updateDoctorScheduleSlot($appointment, -1);
+        } else if ($request->status === 'completed') {
+            // Explicitly set status to completed
+            $appointment->status = 'completed';
+
+            // If this was not already completed, add completion notes
+            if ($originalStatus !== 'completed') {
+                $details = is_string($appointment->details) ? json_decode($appointment->details, true) : [];
+                if (!is_array($details)) {
+                    $details = [];
+                }
+                $details['completed_at'] = now()->format('Y-m-d H:i:s');
+                $details['completed_by'] = $user->name;
+                $appointment->details = json_encode($details);
+            }
+        } else if ($request->status === 'cancelled' && $originalStatus === 'confirmed') {
+            $appointment->status = $request->status;
+
+            // If cancelling a previously confirmed appointment, increment max_appointments back
+            $this->updateDoctorScheduleSlot($appointment, 1);
         } else {
             $appointment->status = $request->status;
         }
@@ -111,14 +138,14 @@ class AppointmentController extends Controller
         // Log the update for debugging
         Log::info('Doctor updating appointment status:', [
             'appointment_id' => $appointment->id,
-            'old_status' => $appointment->getOriginal('status'),
+            'old_status' => $originalStatus,
             'new_status' => $appointment->status,
         ]);
 
         $appointment->save();
 
         // Create notification for the patient
-        if ($appointment->patient) {
+        if ($appointment->patient && ($request->status === 'confirmed' || $request->status === 'cancelled')) {
             $notificationType = $request->status === 'confirmed'
                 ? Notification::TYPE_APPOINTMENT_CONFIRMED
                 : Notification::TYPE_APPOINTMENT_CANCELLED;
@@ -179,6 +206,76 @@ class AppointmentController extends Controller
         }
 
         return redirect()->back()->with('success', 'Appointment status updated successfully');
+    }
+
+    /**
+     * Update the doctor schedule slot by incrementing or decrementing max_appointments
+     */
+    private function updateDoctorScheduleSlot(PatientRecord $appointment, int $change)
+    {
+        try {
+            $appointmentDateTime = Carbon::parse($appointment->appointment_date);
+            $dayOfWeek = $appointmentDateTime->dayOfWeek;
+            $dateString = $appointmentDateTime->format('Y-m-d');
+
+            // Extract time from appointment details if available
+            $appointmentTime = null;
+            if ($appointment->details) {
+                $details = json_decode($appointment->details, true);
+                if (isset($details['appointment_time'])) {
+                    $appointmentTime = $details['appointment_time'];
+                }
+            }
+
+            // Parse appointment time if available, otherwise use the date's time
+            $timeToMatch = $appointmentTime
+                ? Carbon::parse($appointmentTime)->format('H:i:s')
+                : $appointmentDateTime->format('H:i:s');
+
+            // Try to find a matching schedule
+            // First, look for a specific date schedule
+            $schedule = DoctorSchedule::where('doctor_id', $appointment->assigned_doctor_id)
+                ->where('specific_date', $dateString)
+                ->where(function($query) use ($timeToMatch) {
+                    $query->whereRaw("? BETWEEN start_time AND end_time", [$timeToMatch]);
+                })->first();
+
+            // If not found, look for a recurring schedule for this day of week
+            if (!$schedule) {
+                $schedule = DoctorSchedule::where('doctor_id', $appointment->assigned_doctor_id)
+                    ->where('day_of_week', $dayOfWeek)
+                    ->whereNull('specific_date')
+                    ->where(function($query) use ($timeToMatch) {
+                        $query->whereRaw("? BETWEEN start_time AND end_time", [$timeToMatch]);
+                    })->first();
+            }
+
+            if ($schedule) {
+                // Ensure max_appointments doesn't go below 0
+                $newValue = max(0, $schedule->max_appointments + $change);
+                $schedule->max_appointments = $newValue;
+                $schedule->save();
+
+                Log::info('Updated doctor schedule max_appointments', [
+                    'schedule_id' => $schedule->id,
+                    'previous_value' => $schedule->max_appointments - $change,
+                    'new_value' => $schedule->max_appointments,
+                    'appointment_id' => $appointment->id
+                ]);
+            } else {
+                Log::warning('Could not find matching schedule for appointment', [
+                    'appointment_id' => $appointment->id,
+                    'appointment_date' => $appointment->appointment_date,
+                    'day_of_week' => $dayOfWeek,
+                    'time' => $timeToMatch
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error updating doctor schedule slot', [
+                'appointment_id' => $appointment->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
     /**

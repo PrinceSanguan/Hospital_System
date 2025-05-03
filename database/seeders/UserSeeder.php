@@ -46,14 +46,14 @@ class UserSeeder extends Seeder
             'user_role' => User::ROLE_PATIENT,
         ]);
 
-        // Create additional patient users
-        User::factory()->count(5)->create([
-            'user_role' => User::ROLE_PATIENT,
-        ]);
+        // // Create additional patient users
+        // User::factory()->count(5)->create([
+        //     'user_role' => User::ROLE_PATIENT,
+        // ]);
 
-        // Create additional doctors
-        User::factory()->count(3)->create([
-            'user_role' => User::ROLE_DOCTOR,
-        ]);
+        // // Create additional doctors
+        // User::factory()->count(3)->create([
+        //     'user_role' => User::ROLE_DOCTOR,
+        // ]);
     }
 }

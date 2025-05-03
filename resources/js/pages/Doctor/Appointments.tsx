@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import DoctorLayout from '@/layouts/DoctorLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-    PlusCircle,
     Calendar,
     Search,
-    Filter
+    Filter,
+    CheckCircle
 } from "lucide-react";
 import {
     Table,
@@ -50,7 +50,7 @@ interface AppointmentsProps {
 
 export default function Appointments({ user, appointments = [] }: AppointmentsProps) {
     const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>(appointments);
-    const [dateRange, setDateRange] = useState('thisWeek');
+    const [dateRange, setDateRange] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -72,6 +72,51 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
             hour: '2-digit',
             minute: '2-digit'
         });
+    };
+
+    // Parse details to extract appointment reason
+    const parseAppointmentReason = (details: string) => {
+        if (!details) return "N/A";
+
+        try {
+            // Check if it looks like JSON
+            if (details.trim().startsWith('{') && details.trim().endsWith('}')) {
+                const detailsObj = JSON.parse(details);
+                if (detailsObj.reason) {
+                    return detailsObj.reason;
+                }
+            }
+            return details;
+        } catch (_) {
+            // Return original string if JSON parsing fails
+            return details;
+        }
+    };
+
+    // Handle marking appointment as done/completed
+    const markAppointmentAsDone = (appointmentId: number) => {
+        if (confirm('Mark this appointment as completed?')) {
+            router.post(route('doctor.appointments.updateStatus', {
+                appointment_id: appointmentId,
+                status: 'completed',
+                notes: 'Appointment completed successfully'
+            }), {}, {
+                onSuccess: () => {
+                    // Update the local state to reflect the change immediately
+                    setFilteredAppointments(prevAppointments =>
+                        prevAppointments.map(appointment => {
+                            if (appointment.id === appointmentId) {
+                                return { ...appointment, status: 'completed' };
+                            }
+                            return appointment;
+                        })
+                    );
+
+                    // Show success notification
+                    alert("Appointment has been marked as completed");
+                }
+            });
+        }
     };
 
     // Filter appointments based on search and filters
@@ -137,23 +182,17 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
 
     return (
         <DoctorLayout user={user}>
-            <Head title="Appointments" />
+            <Head title="Appointment History" />
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex flex-col gap-2">
-                            <h1 className="text-2xl font-bold text-gray-900">Appointments</h1>
+                            <h1 className="text-2xl font-bold text-gray-900">Appointment History</h1>
                             <p className="text-gray-500">
-                                Manage your upcoming and past appointments
+                                View your past and upcoming appointments
                             </p>
                         </div>
                         <div className="flex gap-2">
-                            <Button asChild>
-                                <Link href={route('doctor.appointments.create')}>
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    New Appointment
-                                </Link>
-                            </Button>
                             <Button variant="outline" asChild>
                                 <Link href={route('doctor.appointments.calendar')}>
                                     <Calendar className="mr-2 h-4 w-4" />
@@ -170,7 +209,7 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                                 <div className="space-y-1">
                                     <label className="text-sm font-medium leading-none">Date Range</label>
                                     <Select
-                                        defaultValue="thisWeek"
+                                        defaultValue="all"
                                         onValueChange={(value) => setDateRange(value)}
                                     >
                                         <SelectTrigger>
@@ -197,9 +236,10 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="all">All Statuses</SelectItem>
-                                            <SelectItem value="completed">Confirmed</SelectItem>
+                                            <SelectItem value="confirmed">Confirmed</SelectItem>
                                             <SelectItem value="pending">Pending</SelectItem>
                                             <SelectItem value="cancelled">Cancelled</SelectItem>
+                                            <SelectItem value="completed">Completed</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -233,7 +273,7 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                     {/* Appointments Table */}
                     <Card>
                         <CardHeader className="pb-2">
-                            <CardTitle>Upcoming Appointments</CardTitle>
+                            <CardTitle>Appointment History</CardTitle>
                             <CardDescription>
                                 Showing {filteredAppointments.length} appointments
                             </CardDescription>
@@ -261,26 +301,41 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                                                     <div>{formatDate(appointment.appointment_date)}</div>
                                                     <div className="text-sm text-gray-500">{formatTime(appointment.appointment_date)}</div>
                                                 </TableCell>
-                                                <TableCell className="max-w-[200px] truncate" title={appointment.details}>
-                                                    {appointment.details || "N/A"}
+                                                <TableCell className="max-w-[200px] truncate" title={parseAppointmentReason(appointment.details)}>
+                                                    {parseAppointmentReason(appointment.details)}
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge
-                                                        variant={
-                                                            appointment.status === 'completed' ? 'default' :
-                                                            appointment.status === 'pending' ? 'outline' :
-                                                            'destructive'
+                                                        className={
+                                                            appointment.status === 'completed' ? "bg-green-100 text-green-800" :
+                                                            appointment.status === 'confirmed' ? "bg-blue-100 text-blue-800" :
+                                                            appointment.status === 'pending' ? "bg-gray-100 text-gray-800" :
+                                                            "bg-red-100 text-red-800"
                                                         }
                                                     >
                                                         {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button asChild variant="outline" size="sm">
-                                                        <Link href={route('doctor.appointments.show', appointment.id)}>
-                                                            View
-                                                        </Link>
-                                                    </Button>
+                                                    <div className="flex justify-end items-center gap-2">
+                                                        <Button asChild variant="outline" size="sm">
+                                                            <Link href={route('doctor.appointments.show', appointment.id)}>
+                                                                View
+                                                            </Link>
+                                                        </Button>
+
+                                                        {appointment.status === 'confirmed' && (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="bg-green-50 text-green-600 border-green-200 hover:bg-green-100"
+                                                                onClick={() => markAppointmentAsDone(appointment.id)}
+                                                            >
+                                                                <CheckCircle className="mr-1 h-4 w-4" />
+                                                                Done
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         ))}
