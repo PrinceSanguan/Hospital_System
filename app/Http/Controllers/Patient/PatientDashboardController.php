@@ -26,19 +26,24 @@ class PatientDashboardController extends Controller
         // First clear any query cache to ensure we have fresh data
         DB::statement("SET SESSION query_cache_type=0");
 
-        // Explicitly check for confirmed status as well as pending status
+        // Directly query for appointments with pending or confirmed status
         $upcomingAppointments = PatientRecord::where('patient_id', $user->id)
-            ->where(function($query) {
-                $query->whereIn('status', ['pending', 'confirmed'])
-                      ->orWhere(function($q) {
-                        $q->where('status', '!=', 'cancelled')
-                          ->where('status', '!=', 'completed');
-                      });
-            })
+            ->whereIn('status', ['pending', 'confirmed'])
             ->where('appointment_date', '>=', now()->startOfDay())
             ->with('assignedDoctor')
             ->orderBy('appointment_date', 'asc')
             ->get();
+
+        // Debug the SQL query being executed
+        Log::info('Upcoming appointments query', [
+            'query' => PatientRecord::where('patient_id', $user->id)
+                ->whereIn('status', ['pending', 'confirmed'])
+                ->where('appointment_date', '>=', now()->startOfDay())
+                ->toSql(),
+            'count' => $upcomingAppointments->count(),
+            'appointment_ids' => $upcomingAppointments->pluck('id')->toArray(),
+            'appointment_statuses' => $upcomingAppointments->pluck('status')->toArray()
+        ]);
 
         // Force fresh data by avoiding any potential caching
         $upcomingAppointments->load(['assignedDoctor']);
@@ -194,13 +199,20 @@ class PatientDashboardController extends Controller
             ->orderBy('appointment_date', 'desc')
             ->get();
 
+        // Get unread notifications
+        $notifications = Notification::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get();
+
         return Inertia::render('Patient/Appointments', [
             'user' => [
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
             ],
-            'appointments' => $appointments
+            'appointments' => $appointments,
+            'notifications' => $notifications,
         ]);
     }
 
@@ -233,13 +245,20 @@ class PatientDashboardController extends Controller
             ->with(['schedules', 'services'])
             ->get();
 
+        // Get notifications for the user
+        $notifications = Notification::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get();
+
         return Inertia::render('Patient/BookAppointment', [
             'user' => [
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
             ],
-            'doctors' => $doctors
+            'doctors' => $doctors,
+            'notifications' => $notifications,
         ]);
     }
 
@@ -328,13 +347,20 @@ class PatientDashboardController extends Controller
                 ];
             });
 
+        // Get notifications for the user
+        $notifications = Notification::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get();
+
         return Inertia::render('Patient/Doctors', [
             'user' => [
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
             ],
-            'doctors' => $doctors
+            'doctors' => $doctors,
+            'notifications' => $notifications,
         ]);
     }
 

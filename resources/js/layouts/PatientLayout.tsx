@@ -14,7 +14,7 @@ type PatientLayoutProps = {
 export function PatientLayout({ children, user }: PatientLayoutProps) {
   const navItems = [
     { name: 'Dashboard', href: route('patient.dashboard'), icon: <User className="w-5 h-5" /> },
-    { name: 'Book Appointment', href: route('patient.appointments.create'), icon: <Calendar className="w-5 h-5" /> },
+    { name: 'Book Appointment', href: route('patient.appointments.book'), icon: <Calendar className="w-5 h-5" /> },
     { name: 'My Appointments', href: route('patient.appointments.index'), icon: <ClipboardList className="w-5 h-5" /> },
     { name: 'Profile Settings', href: route('patient.profile.edit'), icon: <Settings className="w-5 h-5" /> },
   ];
@@ -35,7 +35,7 @@ export function PatientLayout({ children, user }: PatientLayoutProps) {
               <div className="ml-3 relative">
                 <div className="flex items-center">
                   <span className="mr-2 text-sm text-gray-700">Welcome, {user.name}</span>
-                  <Link href={route('logout')} method="post" as="button" className="text-red-500 hover:text-red-700">
+                  <Link href="/auth/logout" method="post" as="button" className="text-red-500 hover:text-red-700">
                     <LogOut className="w-5 h-5" />
                   </Link>
                 </div>

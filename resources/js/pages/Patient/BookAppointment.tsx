@@ -1,20 +1,23 @@
 import React, { useState } from 'react';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, Link, router } from '@inertiajs/react';
 import {
   Calendar as CalendarIcon,
   Clock,
-  Stethoscope
+  Stethoscope,
+  Bell,
+  Home,
+  FileText,
+  Menu,
+  LogOut
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle
 } from '@/components/ui/card';
@@ -31,7 +34,16 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { PatientLayout } from '@/layouts/PatientLayout';
+import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Doctor {
   id: number;
@@ -48,15 +60,25 @@ interface BookAppointmentProps {
     role: string;
   };
   doctors: Doctor[];
+  notifications?: Array<{
+    id: number;
+    title: string;
+    message: string;
+    read: boolean;
+    created_at: string;
+    related_id?: number;
+    related_type?: string;
+  }>;
 }
 
-export default function BookAppointment({ user, doctors }: BookAppointmentProps) {
+export default function BookAppointment({ user, doctors, notifications = [] }: BookAppointmentProps) {
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([
     '09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'
   ]);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const { data, setData, post, processing, errors, reset } = useForm({
     doctor_id: '',
@@ -65,6 +87,9 @@ export default function BookAppointment({ user, doctors }: BookAppointmentProps)
     reason: '',
     notes: '',
   });
+
+  // Calculate unread notifications
+  const unreadNotificationsCount = notifications.filter(notification => !notification.read).length;
 
   // Handle date change
   const handleDateChange = (newDate: Date | undefined) => {
@@ -116,12 +141,197 @@ export default function BookAppointment({ user, doctors }: BookAppointmentProps)
     });
   };
 
+  // Sidebar items
+  const sidebarItems = [
+    {
+      name: "Dashboard",
+      icon: <Home size={18} />,
+      path: "/patient/dashboard",
+      active: false
+    },
+    {
+      name: "Book Appointment",
+      icon: <CalendarIcon size={18} />,
+      path: "/patient/appointments/book",
+      active: true
+    },
+    {
+      name: "My Appointments",
+      icon: <Clock size={18} />,
+      path: "/patient/appointments",
+      active: false
+    },
+    {
+      name: "Medical Records",
+      icon: <FileText size={18} />,
+      path: "/patient/records",
+      active: false
+    },
+    {
+      name: "Doctors",
+      icon: <Stethoscope size={18} />,
+      path: "/patient/doctors",
+      active: false
+    }
+  ];
+
+  // Handle logout functionality
+  const handleLogout = (e: React.MouseEvent) => {
+    e.preventDefault();
+    router.post('/logout');
+  };
+
   return (
-    <PatientLayout user={user}>
+    <div className="flex h-screen bg-gray-50">
       <Head title="Book Appointment" />
-      <div className="py-8">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Book Appointment</h1>
+
+      {/* Sidebar - hidden on mobile */}
+      <div className={`bg-white fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 md:relative md:translate-x-0 ${
+        mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+      }`}>
+        <div className="flex h-16 items-center justify-center border-b px-4">
+          <Link href="/patient/dashboard" className="flex items-center">
+            <Stethoscope className="h-6 w-6 text-blue-600" />
+            <span className="ml-2 text-xl font-semibold text-gray-900">Choros Health</span>
+          </Link>
+        </div>
+
+        <div className="flex flex-col gap-2 p-4">
+          <div className="space-y-1">
+            {sidebarItems.map((item) => (
+              <Link
+                key={item.name}
+                href={item.path}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+                  item.active
+                    ? "bg-blue-50 text-blue-700"
+                    : "hover:bg-gray-100 text-gray-700"
+                }`}
+              >
+                {item.icon}
+                {item.name}
+              </Link>
+            ))}
+          </div>
+
+          <Separator className="my-4" />
+
+          <div className="mt-auto">
+            <button
+              onClick={handleLogout}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              <LogOut size={18} />
+              Logout
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto">
+        {/* Header */}
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-white px-4 md:px-6">
+          <div className="flex items-center md:hidden">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              <Menu size={20} />
+              <span className="sr-only">Toggle menu</span>
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-4 md:ml-auto">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell size={20} />
+                  {unreadNotificationsCount > 0 && (
+                    <Badge
+                      className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white"
+                    >
+                      {unreadNotificationsCount}
+                    </Badge>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0" align="end">
+                <div className="border-b p-4">
+                  <h4 className="text-sm font-semibold">Notifications</h4>
+                </div>
+                <div className="max-h-80 overflow-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-sm text-gray-500">
+                      No notifications
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {notifications.map((notification) => (
+                        <div
+                          key={notification.id}
+                          className={`p-4 ${notification.read ? "" : "bg-blue-50"} cursor-pointer`}
+                        >
+                          <p className="text-sm font-medium">{notification.title}</p>
+                          <p className="text-sm">{notification.message}</p>
+                          <p className="mt-1 text-xs text-gray-500">
+                            {new Date(notification.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="border-t p-2">
+                  <Button asChild variant="ghost" size="sm" className="w-full">
+                    <Link href="/patient/notifications">View all notifications</Link>
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src="https://ui.shadcn.com/avatars/01.png" alt={user.name} />
+                    <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/patient/profile">Profile</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/patient/settings">Settings</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      router.post('/logout');
+                    }}
+                    className="w-full text-left"
+                  >
+                    Logout
+                  </button>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="p-4 md:p-6 lg:p-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Book Appointment</h1>
+            <p className="mt-1 text-gray-600">Schedule a visit with one of our specialists</p>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Doctor Selection */}
@@ -290,8 +500,8 @@ export default function BookAppointment({ user, doctors }: BookAppointmentProps)
               </Card>
             </div>
           </div>
-        </div>
+        </main>
       </div>
-    </PatientLayout>
+    </div>
   );
 }

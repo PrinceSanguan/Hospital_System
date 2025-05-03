@@ -188,6 +188,15 @@ export default function PatientDashboard({
   // Calculate unread notifications
   const unreadNotificationsCount = notifications.filter(notification => !notification.read).length;
 
+  // Calculate appointments for today
+  const appointmentsTodayCount = upcomingAppointments.filter(appointment => {
+    const appointmentDate = new Date(appointment.appointment_date);
+    const today = new Date();
+    return appointmentDate.getDate() === today.getDate() &&
+           appointmentDate.getMonth() === today.getMonth() &&
+           appointmentDate.getFullYear() === today.getFullYear();
+  }).length;
+
   const sidebarItems = [
     {
       name: "Dashboard",
@@ -220,12 +229,6 @@ export default function PatientDashboard({
       active: activeTab === "doctors"
     }
   ];
-
-  const appointmentsTodayCount = upcomingAppointments.filter(appointment => {
-    const today = new Date();
-    const apptDate = new Date(appointment.appointment_date);
-    return apptDate.toDateString() === today.toDateString();
-  }).length;
 
   // Handle logout functionality
   const handleLogout = (e: React.MouseEvent) => {
@@ -739,7 +742,7 @@ export default function PatientDashboard({
               </CardContent>
               <CardFooter>
                 <Button asChild variant="outline" className="w-full">
-                  <Link href="/patient/appointments">View All Appointments</Link>
+                  <Link href={route('patient.appointments.index')}>View All Appointments</Link>
                 </Button>
               </CardFooter>
             </Card>
@@ -757,9 +760,12 @@ export default function PatientDashboard({
                       <div className="flex overflow-hidden">
                       <div className="w-1/3">
                         <img
-                          src={doctor.image}
+                          src={doctor.image || "https://ui.shadcn.com/avatars/01.png"}
                           alt={doctor.name}
                           className="h-full w-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "https://ui.shadcn.com/avatars/01.png";
+                          }}
                         />
                       </div>
                       <div className="w-2/3 p-4">
