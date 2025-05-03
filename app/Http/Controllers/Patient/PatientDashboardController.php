@@ -23,8 +23,12 @@ class PatientDashboardController extends Controller
 
         // Get upcoming appointments - make sure we're getting the latest status
         // Get upcoming appointments - make sure we're getting the latest status without caching
-        // First clear any query cache to ensure we have fresh data
-        DB::statement("SET SESSION query_cache_type=0");
+        // Database-agnostic approach to ensure fresh data
+        if (DB::connection()->getDriverName() === 'mysql') {
+            // MySQL specific cache setting
+            DB::statement("SET SESSION query_cache_type=0");
+        }
+        // For PostgreSQL we don't need to do anything special
 
         // Directly query for appointments with pending or confirmed status
         $upcomingAppointments = PatientRecord::where('patient_id', $user->id)
