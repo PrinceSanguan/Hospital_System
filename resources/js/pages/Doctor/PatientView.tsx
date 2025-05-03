@@ -223,6 +223,96 @@ const PatientView = ({ user, patient }: PatientViewProps) => {
     }
   };
 
+  // Parse and format appointment details from JSON string
+  const formatAppointmentDetails = (details: string) => {
+    if (!details) return null;
+
+    try {
+      // Check if it's a JSON string
+      if (details.trim().startsWith('{') && details.trim().endsWith('}')) {
+        const parsedDetails = JSON.parse(details);
+
+        return (
+          <div className="space-y-2">
+            {parsedDetails.appointment_time && (
+              <div className="flex items-center text-sm">
+                <Clock className="h-4 w-4 mr-1 text-blue-500" />
+                <span className="font-medium mr-1">Time:</span> {parsedDetails.appointment_time}
+              </div>
+            )}
+
+            {parsedDetails.reason && (
+              <div>
+                <span className="font-medium">Reason:</span> {parsedDetails.reason}
+              </div>
+            )}
+
+            {parsedDetails.notes && (
+              <div>
+                <span className="font-medium">Notes:</span> {parsedDetails.notes}
+              </div>
+            )}
+
+            {parsedDetails.doctor_notes && (
+              <div>
+                <span className="font-medium">Doctor Notes:</span> {parsedDetails.doctor_notes}
+              </div>
+            )}
+
+            {/* Vital Signs Section */}
+            {parsedDetails.vital_signs && (
+              <div className="mt-2 p-2 bg-purple-50 rounded-md">
+                <h5 className="font-medium text-xs mb-1 text-purple-800">Vital Signs:</h5>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                  {parsedDetails.vital_signs.temperature && (
+                    <div><span className="text-gray-600">Temperature:</span> {parsedDetails.vital_signs.temperature} °C</div>
+                  )}
+                  {parsedDetails.vital_signs.pulse_rate && (
+                    <div><span className="text-gray-600">Pulse:</span> {parsedDetails.vital_signs.pulse_rate} BPM</div>
+                  )}
+                  {parsedDetails.vital_signs.respiratory_rate && (
+                    <div><span className="text-gray-600">Respiratory:</span> {parsedDetails.vital_signs.respiratory_rate} breaths/min</div>
+                  )}
+                  {parsedDetails.vital_signs.blood_pressure && (
+                    <div><span className="text-gray-600">BP:</span> {parsedDetails.vital_signs.blood_pressure} mmHg</div>
+                  )}
+                  {parsedDetails.vital_signs.oxygen_saturation && (
+                    <div><span className="text-gray-600">O2:</span> {parsedDetails.vital_signs.oxygen_saturation}%</div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Patient Info Section */}
+            {parsedDetails.patient_info && (
+              <div className="mt-2 p-2 bg-green-50 rounded-md">
+                <h5 className="font-medium text-xs mb-1 text-green-800">Patient Info:</h5>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                  {parsedDetails.patient_info.age && (
+                    <div><span className="text-gray-600">Age:</span> {parsedDetails.patient_info.age}</div>
+                  )}
+                  {parsedDetails.patient_info.height && (
+                    <div><span className="text-gray-600">Height:</span> {parsedDetails.patient_info.height} cm</div>
+                  )}
+                  {parsedDetails.patient_info.weight && (
+                    <div><span className="text-gray-600">Weight:</span> {parsedDetails.patient_info.weight} kg</div>
+                  )}
+                  {parsedDetails.patient_info.bmi && (
+                    <div><span className="text-gray-600">BMI:</span> {parsedDetails.patient_info.bmi}</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+    } catch {
+      // If parsing fails, return the original string
+    }
+
+    return <p>{details}</p>;
+  };
+
   const activeRecords = getActiveRecords();
 
   // Add validation for patient data
@@ -666,7 +756,9 @@ const PatientView = ({ user, patient }: PatientViewProps) => {
                                 {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
                               </span>
                             </div>
-                            <p className="text-gray-600 text-sm mb-2">{appointment.details}</p>
+                            <div className="text-gray-600 text-sm mb-2">
+                              {formatAppointmentDetails(appointment.details)}
+                            </div>
                             {appointment.appointment_date && (
                               <div className="flex items-center text-sm font-medium text-blue-600 mb-1">
                                 <Calendar className="h-4 w-4 mr-1" />

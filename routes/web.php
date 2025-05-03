@@ -327,6 +327,7 @@ Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staf
 */
 
 use App\Http\Controllers\Patient\PatientDashboardController;
+use App\Http\Controllers\Patient\ProfileController;
 use App\Http\Middleware\PatientMiddleware;
 
 Route::middleware([PatientMiddleware::class])->prefix('patient')->name('patient.')->group(function () {
@@ -334,7 +335,7 @@ Route::middleware([PatientMiddleware::class])->prefix('patient')->name('patient.
   Route::get('/dashboard', [PatientDashboardController::class, 'index'])->name('dashboard');
 
   // Appointments
-  Route::post('/appointments', [PatientDashboardController::class, 'storeAppointment'])->name('appointments.store');
+  Route::post('/appointments', [PatientDashboardController::class, 'store'])->name('appointments.store');
   Route::get('/appointments', [PatientDashboardController::class, 'listAppointments'])->name('appointments.index');
   Route::get('/appointments/book', [PatientDashboardController::class, 'bookAppointment'])->name('appointments.book');
   Route::get('/appointments/{id}', [PatientDashboardController::class, 'viewAppointment'])->name('appointments.show');
@@ -350,6 +351,11 @@ Route::middleware([PatientMiddleware::class])->prefix('patient')->name('patient.
   // Profile
   Route::get('/profile', [PatientDashboardController::class, 'viewProfile'])->name('profile.edit');
   Route::put('/profile', [PatientDashboardController::class, 'updateProfile'])->name('profile.update');
+
+  // Use dedicated ProfileController for improved profile management
+  Route::get('/my-profile', [ProfileController::class, 'index'])->name('my-profile.index');
+  Route::get('/my-profile/edit', [ProfileController::class, 'edit'])->name('my-profile.edit');
+  Route::put('/my-profile', [ProfileController::class, 'update'])->name('my-profile.update');
 });
 
 // Patient notification routes

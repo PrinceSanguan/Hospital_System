@@ -67,10 +67,24 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
 
     // Helper function to format time
     const formatTime = (dateString: string) => {
+        // Use the raw date string from appointment details if available
+        if (typeof appointment.details === 'string') {
+            try {
+                const details = JSON.parse(appointment.details);
+                if (details.appointment_time) {
+                    return details.appointment_time;
+                }
+            } catch {
+                // Continue with normal formatting if parsing fails
+            }
+        }
+
         const date = new Date(dateString);
+        // Format without timezone adjustment to display the time as stored
         return date.toLocaleTimeString('en-US', {
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
+            hour12: true
         });
     };
 
@@ -85,35 +99,136 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                 if (appointment.details.trim().startsWith('{') && appointment.details.trim().endsWith('}')) {
                     const detailsObj = JSON.parse(appointment.details);
                     return (
-                        <div className="space-y-3">
-                            {detailsObj.appointment_time && (
-                                <div>
-                                    <h4 className="text-sm font-medium text-gray-700">Appointment Time:</h4>
-                                    <p className="text-gray-700">{detailsObj.appointment_time}</p>
+                        <div className="space-y-5">
+                            {/* Appointment Basic Info */}
+                            <div className="bg-blue-50 p-4 rounded-md">
+                                <h3 className="text-md font-semibold text-blue-800 mb-2">Appointment Information</h3>
+                                {detailsObj.appointment_time && (
+                                    <div className="mb-2">
+                                        <h4 className="text-sm font-medium text-gray-700">Appointment Time:</h4>
+                                        <p className="text-gray-700">{detailsObj.appointment_time}</p>
+                                    </div>
+                                )}
+                                {detailsObj.reason && (
+                                    <div className="mb-2">
+                                        <h4 className="text-sm font-medium text-gray-700">Reason:</h4>
+                                        <p className="text-gray-700">{detailsObj.reason}</p>
+                                    </div>
+                                )}
+                                {detailsObj.notes && (
+                                    <div className="mb-2">
+                                        <h4 className="text-sm font-medium text-gray-700">Additional Notes:</h4>
+                                        <p className="text-gray-700">{detailsObj.notes}</p>
+                                    </div>
+                                )}
+                                {detailsObj.service && (
+                                    <div className="mb-2">
+                                        <h4 className="text-sm font-medium text-gray-700">Service:</h4>
+                                        <p className="text-gray-700">{detailsObj.service.name}</p>
+                                        {detailsObj.service.price && (
+                                            <p className="text-gray-700">Price: ${detailsObj.service.price}</p>
+                                        )}
+                                        {detailsObj.service.duration_minutes && (
+                                            <p className="text-gray-700">Duration: {detailsObj.service.duration_minutes} minutes</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Patient Personal Information */}
+                            {detailsObj.patient_info && (
+                                <div className="bg-green-50 p-4 rounded-md">
+                                    <h3 className="text-md font-semibold text-green-800 mb-2">Patient Information</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {detailsObj.patient_info.name && (
+                                            <div>
+                                                <h4 className="text-sm font-medium text-gray-700">Name:</h4>
+                                                <p className="text-gray-700">{detailsObj.patient_info.name}</p>
+                                            </div>
+                                        )}
+                                        {detailsObj.patient_info.birthdate && (
+                                            <div>
+                                                <h4 className="text-sm font-medium text-gray-700">Birthdate:</h4>
+                                                <p className="text-gray-700">{new Date(detailsObj.patient_info.birthdate).toLocaleDateString()}</p>
+                                            </div>
+                                        )}
+                                        {detailsObj.patient_info.age && (
+                                            <div>
+                                                <h4 className="text-sm font-medium text-gray-700">Age:</h4>
+                                                <p className="text-gray-700">{detailsObj.patient_info.age} years</p>
+                                            </div>
+                                        )}
+                                        {detailsObj.patient_info.height && (
+                                            <div>
+                                                <h4 className="text-sm font-medium text-gray-700">Height:</h4>
+                                                <p className="text-gray-700">{detailsObj.patient_info.height} cm</p>
+                                            </div>
+                                        )}
+                                        {detailsObj.patient_info.weight && (
+                                            <div>
+                                                <h4 className="text-sm font-medium text-gray-700">Weight:</h4>
+                                                <p className="text-gray-700">{detailsObj.patient_info.weight} kg</p>
+                                            </div>
+                                        )}
+                                        {detailsObj.patient_info.bmi && (
+                                            <div>
+                                                <h4 className="text-sm font-medium text-gray-700">BMI:</h4>
+                                                <p className="text-gray-700">{detailsObj.patient_info.bmi}</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
-                            {detailsObj.reason && (
-                                <div>
-                                    <h4 className="text-sm font-medium text-gray-700">Reason:</h4>
-                                    <p className="text-gray-700">{detailsObj.reason}</p>
-                                </div>
-                            )}
-                            {detailsObj.notes && (
-                                <div>
-                                    <h4 className="text-sm font-medium text-gray-700">Additional Notes:</h4>
-                                    <p className="text-gray-700">{detailsObj.notes}</p>
-                                </div>
-                            )}
-                            {detailsObj.service && (
-                                <div>
-                                    <h4 className="text-sm font-medium text-gray-700">Service:</h4>
-                                    <p className="text-gray-700">{detailsObj.service.name}</p>
+
+                            {/* Vital Signs */}
+                            {detailsObj.vital_signs && (
+                                <div className="bg-purple-50 p-4 rounded-md">
+                                    <h3 className="text-md font-semibold text-purple-800 mb-2">Vital Signs</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {detailsObj.vital_signs.temperature && (
+                                            <div>
+                                                <h4 className="text-sm font-medium text-gray-700">Temperature:</h4>
+                                                <p className="text-gray-700">{detailsObj.vital_signs.temperature} °C</p>
+                                            </div>
+                                        )}
+                                        {detailsObj.vital_signs.pulse_rate && (
+                                            <div>
+                                                <h4 className="text-sm font-medium text-gray-700">Pulse Rate:</h4>
+                                                <p className="text-gray-700">{detailsObj.vital_signs.pulse_rate} BPM</p>
+                                            </div>
+                                        )}
+                                        {detailsObj.vital_signs.respiratory_rate && (
+                                            <div>
+                                                <h4 className="text-sm font-medium text-gray-700">Respiratory Rate:</h4>
+                                                <p className="text-gray-700">{detailsObj.vital_signs.respiratory_rate} breaths/min</p>
+                                            </div>
+                                        )}
+                                        {detailsObj.vital_signs.blood_pressure && (
+                                            <div>
+                                                <h4 className="text-sm font-medium text-gray-700">Blood Pressure:</h4>
+                                                <p className="text-gray-700">{detailsObj.vital_signs.blood_pressure} mmHg</p>
+                                            </div>
+                                        )}
+                                        {detailsObj.vital_signs.oxygen_saturation && (
+                                            <div>
+                                                <h4 className="text-sm font-medium text-gray-700">Oxygen Saturation:</h4>
+                                                <p className="text-gray-700">{detailsObj.vital_signs.oxygen_saturation}%</p>
+                                            </div>
+                                        )}
+                                        {detailsObj.vital_signs.recorded_at && (
+                                            <div className="col-span-1 md:col-span-3">
+                                                <h4 className="text-sm font-medium text-gray-700">Recorded At:</h4>
+                                                <p className="text-gray-700">{new Date(detailsObj.vital_signs.recorded_at).toLocaleString()}</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>
                     );
                 }
-            } catch {
+            } catch (error) {
+                console.error("Error parsing appointment details:", error);
                 // Not valid JSON, display as regular text
             }
             return <p className="text-gray-700">{appointment.details}</p>;
@@ -143,13 +258,15 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
 
         post(route('doctor.appointments.updateStatus', {
             appointment_id: appointment.id,
-            status: status === 'completed' ? 'confirmed' : 'cancelled',
+            status: status === 'completed' ? 'confirmed' : (status === 'cancelled' ? 'cancelled' : 'confirmed'),
             notes: data.notes
         }), {
             onSuccess: () => {
                 setShowConfirmComplete(false);
                 setShowConfirmCancel(false);
                 setData('notes', '');
+                // Redirect to appointments list after successful confirmation
+                window.location.href = route('doctor.appointments.index');
             },
             preserveState: true,
             preserveScroll: true,

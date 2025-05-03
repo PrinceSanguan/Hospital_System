@@ -75,6 +75,152 @@ const PatientMedicalRecords: React.FC<PatientMedicalRecordsProps> = ({ records, 
     }
   };
 
+  // Format details for display in the records list
+  const formatDetailsPreview = (details: string) => {
+    if (!details) return "No details provided";
+
+    try {
+      // Check if it's a JSON string
+      if (details.trim().startsWith('{') && details.trim().endsWith('}')) {
+        const parsedDetails = JSON.parse(details);
+
+        // Format based on content
+        if (parsedDetails.reason) {
+          return `Reason: ${parsedDetails.reason}`;
+        } else if (parsedDetails.notes) {
+          return parsedDetails.notes;
+        } else if (parsedDetails.doctor_notes) {
+          return `Doctor's note: ${parsedDetails.doctor_notes}`;
+        }
+      }
+    } catch {
+      // If parsing fails, return the original string
+    }
+
+    return details;
+  };
+
+  // Parse and display formatted details for the record dialog
+  const renderDetailedView = (details: string) => {
+    if (!details) return <p>No details provided</p>;
+
+    try {
+      // Check if it's a JSON string
+      if (details.trim().startsWith('{') && details.trim().endsWith('}')) {
+        const parsedDetails = JSON.parse(details);
+
+        return (
+          <div className="space-y-4">
+            {parsedDetails.appointment_time && (
+              <div className="flex gap-2">
+                <span className="font-medium">Appointment Time:</span>
+                <span>{parsedDetails.appointment_time}</span>
+              </div>
+            )}
+
+            {parsedDetails.reason && (
+              <div className="flex gap-2">
+                <span className="font-medium">Reason:</span>
+                <span>{parsedDetails.reason}</span>
+              </div>
+            )}
+
+            {parsedDetails.notes && (
+              <div className="flex gap-2">
+                <span className="font-medium">Notes:</span>
+                <span>{parsedDetails.notes}</span>
+              </div>
+            )}
+
+            {parsedDetails.doctor_notes && (
+              <div className="flex gap-2">
+                <span className="font-medium">Doctor Notes:</span>
+                <span>{parsedDetails.doctor_notes}</span>
+              </div>
+            )}
+
+            {/* Patient Info Section */}
+            {parsedDetails.patient_info && (
+              <div className="mt-4 p-3 bg-green-50 rounded-md">
+                <h5 className="font-medium mb-2">Patient Information</h5>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  {parsedDetails.patient_info.name && (
+                    <div>
+                      <span className="text-gray-600">Name:</span> {parsedDetails.patient_info.name}
+                    </div>
+                  )}
+                  {parsedDetails.patient_info.birthdate && (
+                    <div>
+                      <span className="text-gray-600">Birthdate:</span> {new Date(parsedDetails.patient_info.birthdate).toLocaleDateString()}
+                    </div>
+                  )}
+                  {parsedDetails.patient_info.age && (
+                    <div>
+                      <span className="text-gray-600">Age:</span> {parsedDetails.patient_info.age}
+                    </div>
+                  )}
+                  {parsedDetails.patient_info.height && (
+                    <div>
+                      <span className="text-gray-600">Height:</span> {parsedDetails.patient_info.height} cm
+                    </div>
+                  )}
+                  {parsedDetails.patient_info.weight && (
+                    <div>
+                      <span className="text-gray-600">Weight:</span> {parsedDetails.patient_info.weight} kg
+                    </div>
+                  )}
+                  {parsedDetails.patient_info.bmi && (
+                    <div>
+                      <span className="text-gray-600">BMI:</span> {parsedDetails.patient_info.bmi}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Vital Signs Section */}
+            {parsedDetails.vital_signs && (
+              <div className="mt-4 p-3 bg-purple-50 rounded-md">
+                <h5 className="font-medium mb-2">Vital Signs</h5>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  {parsedDetails.vital_signs.temperature && (
+                    <div>
+                      <span className="text-gray-600">Temperature:</span> {parsedDetails.vital_signs.temperature} °C
+                    </div>
+                  )}
+                  {parsedDetails.vital_signs.pulse_rate && (
+                    <div>
+                      <span className="text-gray-600">Pulse Rate:</span> {parsedDetails.vital_signs.pulse_rate} BPM
+                    </div>
+                  )}
+                  {parsedDetails.vital_signs.respiratory_rate && (
+                    <div>
+                      <span className="text-gray-600">Respiratory Rate:</span> {parsedDetails.vital_signs.respiratory_rate} breaths/min
+                    </div>
+                  )}
+                  {parsedDetails.vital_signs.blood_pressure && (
+                    <div>
+                      <span className="text-gray-600">Blood Pressure:</span> {parsedDetails.vital_signs.blood_pressure} mmHg
+                    </div>
+                  )}
+                  {parsedDetails.vital_signs.oxygen_saturation && (
+                    <div>
+                      <span className="text-gray-600">Oxygen Saturation:</span> {parsedDetails.vital_signs.oxygen_saturation}%
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+    } catch {
+      // If parsing fails, return the original string
+    }
+
+    return <p>{details}</p>;
+  };
+
   // View record details
   const viewRecord = (record: PatientRecord) => {
     setSelectedRecord(record);
@@ -167,7 +313,9 @@ const PatientMedicalRecords: React.FC<PatientMedicalRecordsProps> = ({ records, 
                       {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
                     </span>
                   </div>
-                  <p className="text-gray-600 text-sm mb-2 line-clamp-2">{record.details}</p>
+                  <p className="text-gray-600 text-sm mb-2 line-clamp-2">
+                    {formatDetailsPreview(record.details)}
+                  </p>
                   <div className="flex justify-between items-center">
                     <div className="flex items-center text-xs text-gray-500">
                       <Clock className="h-3 w-3 mr-1" />
@@ -224,7 +372,7 @@ const PatientMedicalRecords: React.FC<PatientMedicalRecordsProps> = ({ records, 
               <div className="border-t pt-4">
                 <h4 className="text-sm font-medium">Details</h4>
                 <div className="mt-2 text-sm whitespace-pre-wrap p-3 bg-gray-50 rounded">
-                  {selectedRecord.details || "No details provided"}
+                  {renderDetailedView(selectedRecord.details)}
                 </div>
               </div>
 

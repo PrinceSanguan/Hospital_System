@@ -122,15 +122,34 @@ class PatientDashboardController extends Controller
     /**
      * Store a new appointment request
      */
-    public function storeAppointment(Request $request)
+    public function store(Request $request)
     {
+        // Log the received request data
+        Log::info('Appointment request received', [
+            'request_data' => $request->all(),
+            'user_id' => Auth::id()
+        ]);
+
         $request->validate([
             'doctor_id' => 'required|exists:users,id',
-            'appointment_date' => 'required|date|after_or_equal:today',
+            'appointment_date' => 'required|date',
             'appointment_time' => 'required|string',
             'reason' => 'required|string',
             'notes' => 'nullable|string',
             'service_id' => 'nullable|exists:doctor_services,id',
+            // Patient information - make these optional to allow direct booking
+            'name' => 'required|string',
+            'birthdate' => 'required|date',
+            'age' => 'required|numeric|min:0|max:120',
+            'height' => 'required|numeric|min:1',
+            'weight' => 'required|numeric|min:1',
+            'bmi' => 'required|numeric',
+            // Vital signs - make these optional to allow direct booking
+            'temperature' => 'required|numeric|min:35|max:42',
+            'pulse_rate' => 'required|numeric|min:40|max:220',
+            'respiratory_rate' => 'required|numeric|min:8|max:30',
+            'blood_pressure' => 'required|string|regex:/^\d{2,3}\/\d{2,3}$/',
+            'oxygen_saturation' => 'required|numeric|min:80|max:100',
         ]);
 
         $user = Auth::user();
@@ -142,17 +161,46 @@ class PatientDashboardController extends Controller
         $appointment->assigned_doctor_id = $doctor->id;
         $appointment->record_type = 'medical_checkup';
         $appointment->status = 'pending';
-        $appointment->appointment_date = $request->appointment_date;
 
         // Format the appointment date and time correctly
         $appointmentDateTime = $request->appointment_date . ' ' . $request->appointment_time;
+        Log::info('Formatting appointment date and time', [
+            'date' => $request->appointment_date,
+            'time' => $request->appointment_time,
+            'combined' => $appointmentDateTime
+        ]);
+
         $appointment->appointment_date = $appointmentDateTime;
+
+        // If service_id is provided, associate it with the appointment
+        if ($request->has('service_id') && !empty($request->service_id)) {
+            $appointment->service_id = $request->service_id;
+            Log::info('Service associated with appointment', ['service_id' => $request->service_id]);
+        }
 
         // Store additional information in details field
         $details = [
             'appointment_time' => $request->appointment_time,
             'reason' => $request->reason,
             'notes' => $request->notes,
+            // Patient information
+            'patient_info' => [
+                'name' => $request->name,
+                'birthdate' => $request->birthdate,
+                'age' => $request->age,
+                'height' => $request->height,
+                'weight' => $request->weight,
+                'bmi' => $request->bmi,
+            ],
+            // Vital signs
+            'vital_signs' => [
+                'temperature' => $request->temperature,
+                'pulse_rate' => $request->pulse_rate,
+                'respiratory_rate' => $request->respiratory_rate,
+                'blood_pressure' => $request->blood_pressure,
+                'oxygen_saturation' => $request->oxygen_saturation,
+                'recorded_at' => now()->format('Y-m-d H:i:s'),
+            ],
         ];
 
         // Add service if selected
@@ -167,26 +215,42 @@ class PatientDashboardController extends Controller
         }
 
         $appointment->details = json_encode($details);
-        $appointment->save();
 
-        // Create notification for the doctor
-        Notification::create([
-            'user_id' => $doctor->id,
-            'type' => Notification::TYPE_APPOINTMENT_REQUEST,
-            'title' => 'New Appointment Request',
-            'message' => "Patient {$user->name} has requested an appointment on " . date('F j, Y', strtotime($request->appointment_date)) . " at {$request->appointment_time}.",
-            'related_id' => $appointment->id,
-            'related_type' => 'appointment',
-            'data' => [
+        try {
+            $saved = $appointment->save();
+            Log::info('Appointment saved result', [
+                'saved' => $saved,
                 'appointment_id' => $appointment->id,
-                'patient_id' => $user->id,
-                'patient_name' => $user->name,
-                'appointment_date' => $request->appointment_date,
-                'appointment_time' => $request->appointment_time,
-            ]
-        ]);
+                'appointment_data' => $appointment->toArray()
+            ]);
 
-        return redirect()->back()->with('success', 'Appointment request has been submitted. You will be notified when the doctor confirms your appointment.');
+            // Create notification for the doctor
+            Notification::create([
+                'user_id' => $doctor->id,
+                'type' => Notification::TYPE_APPOINTMENT_REQUEST,
+                'title' => 'New Appointment Request',
+                'message' => "Patient {$user->name} has requested an appointment on " . date('F j, Y', strtotime($request->appointment_date)) . " at {$request->appointment_time}.",
+                'related_id' => $appointment->id,
+                'related_type' => 'appointment',
+                'data' => [
+                    'appointment_id' => $appointment->id,
+                    'patient_id' => $user->id,
+                    'patient_name' => $user->name,
+                    'appointment_date' => $request->appointment_date,
+                    'appointment_time' => $request->appointment_time,
+                    'has_patient_info' => true,
+                    'has_vital_signs' => true,
+                ]
+            ]);
+
+            return redirect()->back()->with('success', 'Appointment request has been submitted. You will be notified when the doctor confirms your appointment.');
+        } catch (\Exception $e) {
+            Log::error('Failed to save appointment', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->back()->withErrors(['error' => 'Failed to save appointment. Please try again.']);
+        }
     }
 
     // List all patient appointments
@@ -241,7 +305,7 @@ class PatientDashboardController extends Controller
     }
 
     // Show booking form
-    public function bookAppointment()
+    public function bookAppointment(Request $request)
     {
         $user = Auth::user();
 
@@ -255,6 +319,9 @@ class PatientDashboardController extends Controller
             ->take(5)
             ->get();
 
+        // Check if a doctor_id is provided in the query string
+        $preSelectedDoctorId = $request->query('doctor_id') ? (int)$request->query('doctor_id') : null;
+
         return Inertia::render('Patient/BookAppointment', [
             'user' => [
                 'name' => $user->name,
@@ -263,6 +330,7 @@ class PatientDashboardController extends Controller
             ],
             'doctors' => $doctors,
             'notifications' => $notifications,
+            'preSelectedDoctorId' => $preSelectedDoctorId,
         ]);
     }
 

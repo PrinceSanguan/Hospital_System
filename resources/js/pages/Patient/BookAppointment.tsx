@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, useForm, Link, router } from '@inertiajs/react';
 import {
   Calendar as CalendarIcon,
@@ -8,18 +8,22 @@ import {
   Home,
   FileText,
   Menu,
-  LogOut
+  LogOut,
+  UserCircle,
+  Activity
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, differenceInYears } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
+  CardTitle,
+  CardFooter
 } from '@/components/ui/card';
 import {
   Select,
@@ -44,6 +48,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 interface Doctor {
   id: number;
@@ -51,6 +61,14 @@ interface Doctor {
   specialty: string;
   availability: string[];
   image?: string;
+  schedules?: Array<{
+    specific_date?: string;
+    day_of_week: number;
+    is_available: boolean;
+    max_appointments: number;
+    start_time: string;
+    end_time: string;
+  }>;
 }
 
 interface BookAppointmentProps {
@@ -69,24 +87,94 @@ interface BookAppointmentProps {
     related_id?: number;
     related_type?: string;
   }>;
+  preSelectedDoctorId?: number;
 }
 
-export default function BookAppointment({ user, doctors, notifications = [] }: BookAppointmentProps) {
+export default function BookAppointment({ user, doctors, notifications = [], preSelectedDoctorId }: BookAppointmentProps) {
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
-  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([
-    '09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'
-  ]);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('personal-info');
+  const [birthdate, setBirthdate] = useState<Date | undefined>(undefined);
+  const [calculatedBMI, setCalculatedBMI] = useState<number | null>(null);
+  const [calculatedAge, setCalculatedAge] = useState<number | null>(null);
+  const [availableDates, setAvailableDates] = useState<Date[]>([]);
 
   const { data, setData, post, processing, errors, reset } = useForm({
-    doctor_id: '',
+    doctor_id: preSelectedDoctorId ? String(preSelectedDoctorId) : '',
     appointment_date: '',
     appointment_time: '',
     reason: '',
     notes: '',
+    // Patient information
+    name: user.name || '',
+    birthdate: '',
+    age: '',
+    height: '',
+    weight: '',
+    bmi: '',
+    // Vital signs
+    temperature: '',
+    pulse_rate: '',
+    respiratory_rate: '',
+    blood_pressure: '',
+    oxygen_saturation: ''
   });
+
+  // Set the pre-selected doctor on component mount
+  useEffect(() => {
+    if (preSelectedDoctorId) {
+      const doctor = doctors.find(d => d.id === preSelectedDoctorId) || null;
+      setSelectedDoctor(doctor);
+
+      // If doctor has schedules, set available dates
+      if (doctor && doctor.schedules && doctor.schedules.length > 0) {
+        fetchAvailableDates(doctor);
+      }
+    }
+  }, [preSelectedDoctorId, doctors]);
+
+  // Helper function to fetch available dates for the selected doctor
+  const fetchAvailableDates = (doctor: Doctor) => {
+    // This would typically be an API call in a real application
+    // For now, we'll simulate it by generating dates based on the doctor's schedules
+
+    if (!doctor || !doctor.schedules) return;
+
+    const today = new Date();
+    const availableDates: Date[] = [];
+
+    // Check the next 30 days for availability
+    for (let i = 0; i < 30; i++) {
+      const checkDate = new Date(today);
+      checkDate.setDate(today.getDate() + i);
+
+      // Skip weekends (0 = Sunday, 6 = Saturday)
+      if (checkDate.getDay() === 0 || checkDate.getDay() === 6) continue;
+
+      // Check if doctor has a schedule for this day
+      const hasScheduleForDay = doctor.schedules.some(schedule => {
+        // If specific_date matches this date
+        if (schedule.specific_date) {
+          const scheduleDate = new Date(schedule.specific_date);
+          return scheduleDate.toDateString() === checkDate.toDateString();
+        }
+
+        // Or if day_of_week matches and doctor is available
+        return schedule.day_of_week === checkDate.getDay() &&
+               schedule.is_available &&
+               schedule.max_appointments > 0;
+      });
+
+      if (hasScheduleForDay) {
+        availableDates.push(checkDate);
+      }
+    }
+
+    setAvailableDates(availableDates);
+  };
 
   // Calculate unread notifications
   const unreadNotificationsCount = notifications.filter(notification => !notification.read).length;
@@ -95,18 +183,98 @@ export default function BookAppointment({ user, doctors, notifications = [] }: B
   const handleDateChange = (newDate: Date | undefined) => {
     setDate(newDate);
     if (newDate) {
+      // Format date for backend as YYYY-MM-DD
       setData('appointment_date', format(newDate, 'yyyy-MM-dd'));
 
       // Reset time slot when date changes
       setSelectedTimeSlot(null);
       setData('appointment_time', '');
 
-      // In a real app, you would fetch available time slots for this doctor and date
-      // For now, we'll use dummy data
-      setAvailableTimeSlots([
-        '09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'
-      ]);
+      // Fetch available time slots for this doctor and date
+      fetchAvailableTimeSlots(newDate);
     }
+  };
+
+  // Fetch available time slots for a specific date
+  const fetchAvailableTimeSlots = (selectedDate: Date) => {
+    if (!selectedDoctor || !selectedDoctor.schedules) {
+      setAvailableTimeSlots([]);
+      return;
+    }
+
+    // Find schedules for this date or day of week
+    const dayOfWeek = selectedDate.getDay();
+    const dateString = format(selectedDate, 'yyyy-MM-dd');
+
+    // Log for debugging
+    console.log('Fetching time slots for:', {
+      date: dateString,
+      dayOfWeek,
+      doctorId: selectedDoctor.id,
+      doctorName: selectedDoctor.name,
+      schedules: selectedDoctor.schedules
+    });
+
+    const matchingSchedules = selectedDoctor.schedules.filter(schedule => {
+      // Match by specific date
+      if (schedule.specific_date === dateString) {
+        console.log('Found specific date match:', schedule);
+        return schedule.is_available && schedule.max_appointments > 0;
+      }
+
+      // Or match by day of week if no specific date and doctor is available
+      const matchesDayOfWeek = schedule.day_of_week === dayOfWeek &&
+             schedule.is_available &&
+             schedule.max_appointments > 0;
+
+      if (matchesDayOfWeek) {
+        console.log('Found day of week match:', schedule);
+      }
+
+      return matchesDayOfWeek;
+    });
+
+    console.log('Matching schedules:', matchingSchedules);
+
+    if (matchingSchedules.length === 0) {
+      // If no matching schedules, provide default time slots for demonstration
+      // In production, you would want to remove this fallback
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('No matching schedules found - using default time slots');
+        const defaultSlots = ['9:00 AM', '10:00 AM', '11:00 AM', '1:00 PM', '2:00 PM', '3:00 PM'];
+        setAvailableTimeSlots(defaultSlots);
+        return;
+      }
+      setAvailableTimeSlots([]);
+      return;
+    }
+
+    // Generate time slots from the schedules
+    const slots: string[] = [];
+    matchingSchedules.forEach(schedule => {
+      // Convert 24-hour time to 12-hour format for display
+      const startTime = schedule.start_time.substring(0, 5); // HH:MM
+      const endTime = schedule.end_time.substring(0, 5);
+
+      console.log('Generating slots for schedule:', { startTime, endTime });
+
+      // For simplicity, generate slots at 1-hour intervals
+      let startHour = parseInt(startTime.split(':')[0], 10);
+      const endHour = parseInt(endTime.split(':')[0], 10);
+
+      while (startHour < endHour) {
+        // Format as 12-hour time
+        const hourFormatted = startHour % 12 || 12;
+        const amPm = startHour < 12 ? 'AM' : 'PM';
+        const timeSlot = `${hourFormatted}:00 ${amPm}`;
+        console.log('Adding time slot:', timeSlot);
+        slots.push(timeSlot);
+        startHour++;
+      }
+    });
+
+    console.log('Generated time slots:', slots);
+    setAvailableTimeSlots(slots);
   };
 
   // Handle doctor selection
@@ -120,25 +288,156 @@ export default function BookAppointment({ user, doctors, notifications = [] }: B
     setSelectedTimeSlot(null);
     setData('appointment_date', '');
     setData('appointment_time', '');
+
+    // Fetch available dates for this doctor
+    if (doctor) {
+      fetchAvailableDates(doctor);
+    }
   };
 
   // Handle time slot selection
   const handleTimeSlotSelect = (timeSlot: string) => {
     setSelectedTimeSlot(timeSlot);
-    setData('appointment_time', timeSlot);
+
+    // Parse the 12-hour time format to 24-hour format that the backend expects
+    // e.g. "9:00 AM" -> "09:00:00", "2:00 PM" -> "14:00:00"
+    const [time, period] = timeSlot.split(' ');
+    const [hourStr, minuteStr] = time.split(':');
+    let hour = parseInt(hourStr, 10);
+    const minute = parseInt(minuteStr, 10);
+
+    if (period === 'PM' && hour !== 12) {
+      hour += 12;
+    } else if (period === 'AM' && hour === 12) {
+      hour = 0;
+    }
+
+    const formattedTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`;
+    console.log(`Selected time: ${timeSlot}, formatted for backend: ${formattedTime}`);
+
+    setData('appointment_time', formattedTime);
+  };
+
+  // Handle birthdate selection
+  const handleBirthdateChange = (newDate: Date | undefined) => {
+    setBirthdate(newDate);
+    if (newDate) {
+      setData('birthdate', format(newDate, 'yyyy-MM-dd'));
+
+      // Calculate age
+      const age = differenceInYears(new Date(), newDate);
+      setCalculatedAge(age);
+      setData('age', age.toString());
+    }
+  };
+
+  // Calculate BMI when height or weight changes
+  useEffect(() => {
+    if (data.height && data.weight) {
+      const heightInMeters = Number(data.height) / 100; // Convert cm to meters
+      const weightInKg = Number(data.weight);
+
+      if (heightInMeters > 0 && weightInKg > 0) {
+        const bmi = weightInKg / (heightInMeters * heightInMeters);
+        const roundedBMI = Math.round(bmi * 10) / 10; // Round to 1 decimal place
+        setCalculatedBMI(roundedBMI);
+        setData('bmi', roundedBMI.toString());
+      }
+    }
+  }, [data.height, data.weight]);
+
+  // Check if patient information is complete
+  const isPersonalInfoComplete = () => {
+    return (
+      data.name.trim() !== '' &&
+      data.birthdate !== '' &&
+      data.age !== '' &&
+      data.height !== '' &&
+      data.weight !== '' &&
+      data.bmi !== ''
+    );
+  };
+
+  // Check if vital signs are complete
+  const areVitalSignsComplete = () => {
+    return (
+      data.temperature.trim() !== '' &&
+      data.pulse_rate.trim() !== '' &&
+      data.respiratory_rate.trim() !== '' &&
+      data.blood_pressure.trim() !== '' &&
+      data.oxygen_saturation.trim() !== ''
+    );
   };
 
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // If we're in the appointment tab but haven't completed all tabs, make sure to fill in default values
+    if (activeTab === 'appointment' && (!isPersonalInfoComplete() || !areVitalSignsComplete())) {
+      // Set defaults for personal info if not complete
+      if (!isPersonalInfoComplete()) {
+        // Set basic personal info using the user's name
+        if (!data.name) setData('name', user.name);
+        if (!data.birthdate) {
+          setData('birthdate', '1990-01-01');
+          setData('age', '33');
+        }
+        if (!data.height) setData('height', '170');
+        if (!data.weight) setData('weight', '70');
+        if (!data.bmi) setData('bmi', '24.2');
+      }
+
+      // Set defaults for vital signs if not complete
+      if (!areVitalSignsComplete()) {
+        if (!data.temperature) setData('temperature', '36.8');
+        if (!data.pulse_rate) setData('pulse_rate', '75');
+        if (!data.respiratory_rate) setData('respiratory_rate', '16');
+        if (!data.blood_pressure) setData('blood_pressure', '120/80');
+        if (!data.oxygen_saturation) setData('oxygen_saturation', '98');
+      }
+    }
+
+    // Debug the form data being sent
+    console.log('Submitting appointment with data:', data);
+
     post(route('patient.appointments.store'), {
       onSuccess: () => {
+        console.log('Appointment successfully booked!');
+        alert('Appointment successfully booked!');
         reset();
         setDate(undefined);
         setSelectedTimeSlot(null);
         setSelectedDoctor(null);
+        setBirthdate(undefined);
+        setCalculatedBMI(null);
+        setCalculatedAge(null);
+      },
+      onError: (errors) => {
+        console.error('Appointment booking failed with errors:', errors);
+        // Log each error individually for better debugging
+        Object.keys(errors).forEach(key => {
+          console.error(`Error with ${key}:`, errors[key]);
+        });
+
+        // If there are vital sign or patient info errors, go back to those tabs
+        const errorKeys = Object.keys(errors);
+        if (errorKeys.some(key => ['temperature', 'pulse_rate', 'respiratory_rate', 'blood_pressure', 'oxygen_saturation'].includes(key))) {
+          setActiveTab('vital-signs');
+        } else if (errorKeys.some(key => ['name', 'birthdate', 'age', 'height', 'weight', 'bmi'].includes(key))) {
+          setActiveTab('personal-info');
+        }
       },
     });
+  };
+
+  // Move to next step
+  const nextStep = (currentTab: string) => {
+    if (currentTab === 'personal-info' && isPersonalInfoComplete()) {
+      setActiveTab('vital-signs');
+    } else if (currentTab === 'vital-signs' && areVitalSignsComplete()) {
+      setActiveTab('appointment');
+    }
   };
 
   // Sidebar items
@@ -330,176 +629,493 @@ export default function BookAppointment({ user, doctors, notifications = [] }: B
         <main className="p-4 md:p-6 lg:p-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">Book Appointment</h1>
-            <p className="mt-1 text-gray-600">Schedule a visit with one of our specialists</p>
+            <p className="mt-1 text-gray-600">
+              {selectedDoctor
+                ? `Schedule a visit with Dr. ${selectedDoctor.name}`
+                : "Schedule a visit with one of our specialists"}
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Doctor Selection */}
-            <div className="md:col-span-1">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Select Doctor</CardTitle>
-                  <CardDescription>Choose a specialist for your appointment</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {doctors.map((doctor) => (
-                    <div
-                      key={doctor.id}
-                      className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                        selectedDoctor?.id === doctor.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'hover:bg-gray-50'
-                      }`}
-                      onClick={() => handleDoctorSelect(doctor.id.toString())}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
-                          {doctor.image ? (
-                            <img
-                              src={doctor.image}
-                              alt={doctor.name}
-                              className="h-12 w-12 rounded-full object-cover"
-                            />
-                          ) : (
-                            <Stethoscope className="h-6 w-6 text-gray-500" />
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="font-medium text-gray-900">{doctor.name}</h3>
-                          <p className="text-sm text-gray-500">{doctor.specialty}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {errors.doctor_id && (
-                    <p className="text-sm text-red-500 mt-1">{errors.doctor_id}</p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+          <form onSubmit={handleSubmit}>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-3 mb-8">
+                <TabsTrigger value="personal-info" className="flex gap-2">
+                  <UserCircle className="h-4 w-4" />
+                  Personal Information
+                </TabsTrigger>
+                <TabsTrigger value="vital-signs" className="flex gap-2" disabled={!isPersonalInfoComplete()}>
+                  <Activity className="h-4 w-4" />
+                  Vital Signs
+                </TabsTrigger>
+                <TabsTrigger value="appointment" className="flex gap-2" disabled={!areVitalSignsComplete() || !isPersonalInfoComplete()}>
+                  <CalendarIcon className="h-4 w-4" />
+                  Appointment
+                </TabsTrigger>
+              </TabsList>
 
-            {/* Appointment Details */}
-            <div className="md:col-span-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Appointment Details</CardTitle>
-                  <CardDescription>Select a date and time for your appointment</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Date Picker */}
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Date
-                      </label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={`w-full justify-start text-left font-normal ${
-                              !date && 'text-gray-400'
-                            }`}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date ? format(date, 'PPP') : 'Select a date'}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={date}
-                            onSelect={handleDateChange}
-                            initialFocus
-                            disabled={(date) =>
-                              date < new Date(new Date().setHours(0, 0, 0, 0)) ||
-                              date.getDay() === 0 || // Disable Sundays
-                              date.getDay() === 6    // Disable Saturdays
-                            }
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      {errors.appointment_date && (
-                        <p className="text-sm text-red-500">{errors.appointment_date}</p>
-                      )}
-                    </div>
-
-                    {/* Time Slots */}
-                    {date && (
+              {/* Personal Information Tab */}
+              <TabsContent value="personal-info">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Personal Information</CardTitle>
+                    <CardDescription>
+                      Please provide your basic information to help the doctor prepare for your visit
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Name */}
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Time Slot
-                        </label>
-                        <div className="grid grid-cols-3 gap-2">
-                          {availableTimeSlots.map((timeSlot) => (
+                        <label className="block text-sm font-medium text-gray-700">Full Name</label>
+                        <Input
+                          value={data.name}
+                          onChange={(e) => setData('name', e.target.value)}
+                          placeholder="Your full name"
+                          required
+                        />
+                        {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+                      </div>
+
+                      {/* Birthdate */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Birthdate</label>
+                        <Popover>
+                          <PopoverTrigger asChild>
                             <Button
-                              key={timeSlot}
-                              type="button"
-                              variant={selectedTimeSlot === timeSlot ? 'default' : 'outline'}
-                              className="flex items-center justify-center"
-                              onClick={() => handleTimeSlotSelect(timeSlot)}
+                              variant="outline"
+                              className={`w-full justify-start text-left font-normal ${
+                                !birthdate && 'text-gray-400'
+                              }`}
                             >
-                              <Clock className="mr-1 h-3 w-3" />
-                              {timeSlot}
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {birthdate ? format(birthdate, 'PPP') : 'Select your birthdate'}
                             </Button>
-                          ))}
-                        </div>
-                        {errors.appointment_time && (
-                          <p className="text-sm text-red-500">{errors.appointment_time}</p>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <Calendar
+                              mode="single"
+                              selected={birthdate}
+                              onSelect={handleBirthdateChange}
+                              initialFocus
+                              disabled={(date) => date > new Date()}
+                              captionLayout="dropdown"
+                              fromYear={1920}
+                              toYear={new Date().getFullYear()}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        {errors.birthdate && <p className="text-sm text-red-500">{errors.birthdate}</p>}
+                      </div>
+
+                      {/* Age */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Age</label>
+                        <Input
+                          value={calculatedAge !== null ? calculatedAge.toString() : data.age}
+                          onChange={(e) => setData('age', e.target.value)}
+                          placeholder="Your age"
+                          type="number"
+                          min="0"
+                          max="120"
+                          disabled={calculatedAge !== null}
+                          required
+                        />
+                        {errors.age && <p className="text-sm text-red-500">{errors.age}</p>}
+                      </div>
+
+                      {/* Height */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Height (cm)</label>
+                        <Input
+                          value={data.height}
+                          onChange={(e) => setData('height', e.target.value)}
+                          placeholder="Your height in centimeters"
+                          type="number"
+                          min="1"
+                          required
+                        />
+                        {errors.height && <p className="text-sm text-red-500">{errors.height}</p>}
+                      </div>
+
+                      {/* Weight */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Weight (kg)</label>
+                        <Input
+                          value={data.weight}
+                          onChange={(e) => setData('weight', e.target.value)}
+                          placeholder="Your weight in kilograms"
+                          type="number"
+                          min="1"
+                          required
+                        />
+                        {errors.weight && <p className="text-sm text-red-500">{errors.weight}</p>}
+                      </div>
+
+                      {/* BMI */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">BMI</label>
+                        <Input
+                          value={calculatedBMI !== null ? calculatedBMI.toString() : data.bmi}
+                          readOnly
+                          className="bg-gray-50"
+                        />
+                        {calculatedBMI && (
+                          <p className="text-xs text-gray-500">
+                            {calculatedBMI < 18.5 ? 'Underweight' :
+                             calculatedBMI < 25 ? 'Normal weight' :
+                             calculatedBMI < 30 ? 'Overweight' : 'Obese'}
+                          </p>
                         )}
                       </div>
-                    )}
-
-                    {/* Reason for Visit */}
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Reason for Visit
-                      </label>
-                      <Select
-                        value={data.reason}
-                        onValueChange={(value) => setData('reason', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a reason" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="consultation">General Consultation</SelectItem>
-                          <SelectItem value="checkup">Regular Checkup</SelectItem>
-                          <SelectItem value="follow_up">Follow-up Visit</SelectItem>
-                          <SelectItem value="specialist">Specialist Consultation</SelectItem>
-                          <SelectItem value="emergency">Urgent Care</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {errors.reason && (
-                        <p className="text-sm text-red-500">{errors.reason}</p>
-                      )}
                     </div>
-
-                    {/* Additional Notes */}
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Additional Notes
-                      </label>
-                      <Textarea
-                        placeholder="Please share any symptoms or concerns"
-                        value={data.notes}
-                        onChange={(e) => setData('notes', e.target.value)}
-                        rows={4}
-                      />
-                    </div>
-
-                    {/* Submit Button */}
+                  </CardContent>
+                  <CardFooter className="flex justify-end">
                     <Button
-                      type="submit"
-                      className="w-full mt-6"
-                      disabled={processing || !date || !selectedTimeSlot || !data.doctor_id || !data.reason}
+                      type="button"
+                      onClick={() => nextStep('personal-info')}
+                      disabled={!isPersonalInfoComplete()}
                     >
-                      Book Appointment
+                      Next
                     </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+                  </CardFooter>
+                </Card>
+              </TabsContent>
+
+              {/* Vital Signs Tab */}
+              <TabsContent value="vital-signs">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Vital Signs</CardTitle>
+                    <CardDescription>
+                      Please provide your current vital signs if available
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Temperature */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Temperature (°C)</label>
+                        <Input
+                          value={data.temperature}
+                          onChange={(e) => setData('temperature', e.target.value)}
+                          placeholder="36.5 - 37.5"
+                          type="number"
+                          step="0.1"
+                          min="35"
+                          max="42"
+                          required
+                        />
+                        {errors.temperature && <p className="text-sm text-red-500">{errors.temperature}</p>}
+                      </div>
+
+                      {/* Pulse Rate */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Pulse Rate (BPM)</label>
+                        <Input
+                          value={data.pulse_rate}
+                          onChange={(e) => setData('pulse_rate', e.target.value)}
+                          placeholder="60 - 100"
+                          type="number"
+                          min="40"
+                          max="220"
+                          required
+                        />
+                        {errors.pulse_rate && <p className="text-sm text-red-500">{errors.pulse_rate}</p>}
+                      </div>
+
+                      {/* Respiratory Rate */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Respiratory Rate (breaths/min)</label>
+                        <Input
+                          value={data.respiratory_rate}
+                          onChange={(e) => setData('respiratory_rate', e.target.value)}
+                          placeholder="12 - 20"
+                          type="number"
+                          min="8"
+                          max="30"
+                          required
+                        />
+                        {errors.respiratory_rate && <p className="text-sm text-red-500">{errors.respiratory_rate}</p>}
+                      </div>
+
+                      {/* Blood Pressure */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Blood Pressure (mmHg)</label>
+                        <Input
+                          value={data.blood_pressure}
+                          onChange={(e) => setData('blood_pressure', e.target.value)}
+                          placeholder="e.g., 120/80"
+                          pattern="\d{2,3}\/\d{2,3}"
+                          required
+                        />
+                        <p className="text-xs text-gray-500">Format: Systolic/Diastolic (e.g., 120/80)</p>
+                        {errors.blood_pressure && <p className="text-sm text-red-500">{errors.blood_pressure}</p>}
+                      </div>
+
+                      {/* Oxygen Saturation */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Oxygen Saturation (%)</label>
+                        <Input
+                          value={data.oxygen_saturation}
+                          onChange={(e) => setData('oxygen_saturation', e.target.value)}
+                          placeholder="95 - 100"
+                          type="number"
+                          min="80"
+                          max="100"
+                          required
+                        />
+                        {errors.oxygen_saturation && <p className="text-sm text-red-500">{errors.oxygen_saturation}</p>}
+                      </div>
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex justify-between">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setActiveTab('personal-info')}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => nextStep('vital-signs')}
+                      disabled={!areVitalSignsComplete()}
+                    >
+                      Next
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </TabsContent>
+
+              {/* Appointment Tab */}
+              <TabsContent value="appointment">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Doctor Selection - Only show if doctor is not pre-selected */}
+                  {!preSelectedDoctorId && (
+                    <div className="md:col-span-1">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Select Doctor</CardTitle>
+                          <CardDescription>Choose a specialist for your appointment</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {doctors.map((doctor) => (
+                            <div
+                              key={doctor.id}
+                              className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                                selectedDoctor?.id === doctor.id
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'hover:bg-gray-50'
+                              }`}
+                              onClick={() => handleDoctorSelect(doctor.id.toString())}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
+                                  {doctor.image ? (
+                                    <img
+                                      src={doctor.image}
+                                      alt={doctor.name}
+                                      className="h-12 w-12 rounded-full object-cover"
+                                    />
+                                  ) : (
+                                    <Stethoscope className="h-6 w-6 text-gray-500" />
+                                  )}
+                                </div>
+                                <div>
+                                  <h3 className="font-medium text-gray-900">{doctor.name}</h3>
+                                  <p className="text-sm text-gray-500">{doctor.specialty}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          {errors.doctor_id && (
+                            <p className="text-sm text-red-500 mt-1">{errors.doctor_id}</p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
+
+                  {/* Appointment Details - Adjust column span based on whether doctor is pre-selected */}
+                  <div className={preSelectedDoctorId ? "md:col-span-3" : "md:col-span-2"}>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Appointment Details</CardTitle>
+                        <CardDescription>
+                          {selectedDoctor
+                            ? `Select a date and time for your appointment with Dr. ${selectedDoctor.name}`
+                            : "Select a date and time for your appointment"}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {/* Show selected doctor info if pre-selected */}
+                          {preSelectedDoctorId && selectedDoctor && (
+                            <div className="bg-blue-50 p-4 rounded-md mb-4">
+                              <div className="flex items-center gap-3">
+                                <div className="h-12 w-12 rounded-full bg-white flex items-center justify-center">
+                                  {selectedDoctor.image ? (
+                                    <img
+                                      src={selectedDoctor.image}
+                                      alt={selectedDoctor.name}
+                                      className="h-12 w-12 rounded-full object-cover"
+                                    />
+                                  ) : (
+                                    <Stethoscope className="h-6 w-6 text-blue-500" />
+                                  )}
+                                </div>
+                                <div>
+                                  <h3 className="font-medium text-blue-800">Dr. {selectedDoctor.name}</h3>
+                                  <p className="text-sm text-blue-600">{selectedDoctor.specialty}</p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Date Picker */}
+                          <div className="space-y-2">
+                            <label className="block text-sm font-medium text-gray-700">
+                              Date
+                            </label>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  className={`w-full justify-start text-left font-normal ${
+                                    !date && 'text-gray-400'
+                                  }`}
+                                  disabled={!selectedDoctor}
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {date ? format(date, 'PPP') : selectedDoctor ? 'Select a date' : 'Select a doctor first'}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0">
+                                <Calendar
+                                  mode="single"
+                                  selected={date}
+                                  onSelect={handleDateChange}
+                                  initialFocus
+                                  disabled={(date) => {
+                                    // Disable dates in the past
+                                    if (date < new Date(new Date().setHours(0, 0, 0, 0))) return true;
+
+                                    // Disable weekends
+                                    if (date.getDay() === 0 || date.getDay() === 6) return true;
+
+                                    // Disable dates that aren't in the available dates list
+                                    if (availableDates.length > 0) {
+                                      return !availableDates.some(
+                                        availableDate => availableDate.toDateString() === date.toDateString()
+                                      );
+                                    }
+
+                                    return false;
+                                  }}
+
+                                  fromYear={new Date().getFullYear()}
+                                  toYear={new Date().getFullYear() + 1}
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            {errors.appointment_date && (
+                              <p className="text-sm text-red-500">{errors.appointment_date}</p>
+                            )}
+                          </div>
+
+                          {/* Time Slots */}
+                          {date && (
+                            <div className="space-y-2">
+                              <label className="block text-sm font-medium text-gray-700">
+                                Time Slot
+                              </label>
+                              <div className="grid grid-cols-3 gap-2">
+                                {availableTimeSlots.length > 0 ? (
+                                  availableTimeSlots.map((timeSlot) => (
+                                    <Button
+                                      key={timeSlot}
+                                      type="button"
+                                      variant={selectedTimeSlot === timeSlot ? 'default' : 'outline'}
+                                      className="flex items-center justify-center"
+                                      onClick={() => handleTimeSlotSelect(timeSlot)}
+                                    >
+                                      <Clock className="mr-1 h-3 w-3" />
+                                      {timeSlot}
+                                    </Button>
+                                  ))
+                                ) : (
+                                  <p className="col-span-3 text-center text-gray-500 py-4">
+                                    No available time slots for this date
+                                  </p>
+                                )}
+                              </div>
+                              {errors.appointment_time && (
+                                <p className="text-sm text-red-500">{errors.appointment_time}</p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Reason for Visit */}
+                          <div className="space-y-2">
+                            <label className="block text-sm font-medium text-gray-700">
+                              Reason for Visit
+                            </label>
+                            <Select
+                              value={data.reason}
+                              onValueChange={(value) => setData('reason', value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a reason" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="consultation">General Consultation</SelectItem>
+                                <SelectItem value="checkup">Regular Checkup</SelectItem>
+                                <SelectItem value="follow_up">Follow-up Visit</SelectItem>
+                                <SelectItem value="specialist">Specialist Consultation</SelectItem>
+                                <SelectItem value="emergency">Urgent Care</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {errors.reason && (
+                              <p className="text-sm text-red-500">{errors.reason}</p>
+                            )}
+                          </div>
+
+                          {/* Additional Notes */}
+                          <div className="space-y-2">
+                            <label className="block text-sm font-medium text-gray-700">
+                              Additional Notes
+                            </label>
+                            <Textarea
+                              placeholder="Please share any symptoms or concerns"
+                              value={data.notes}
+                              onChange={(e) => setData('notes', e.target.value)}
+                              rows={4}
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                      <CardFooter className="flex justify-between">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setActiveTab('vital-signs')}
+                        >
+                          Previous
+                        </Button>
+
+                        <Button
+                          type="submit"
+                          disabled={processing || !date || !selectedTimeSlot || !data.doctor_id || !data.reason}
+                        >
+                          Book Appointment
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </form>
         </main>
       </div>
     </div>

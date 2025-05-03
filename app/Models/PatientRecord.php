@@ -15,13 +15,14 @@ class PatientRecord extends Model
      * Record type constants
      */
     const TYPE_MEDICAL_CHECKUP = 'medical_checkup';
-    const TYPE_LABORATORY = 'laboratory';
+    const TYPE_LABORATORY = 'laboratory_test';
     const TYPE_MEDICAL_RECORD = 'medical_record';
 
     /**
      * Status constants
      */
     const STATUS_PENDING = 'pending';
+    const STATUS_CONFIRMED = 'confirmed';
     const STATUS_COMPLETED = 'completed';
     const STATUS_CANCELLED = 'cancelled';
 
@@ -33,6 +34,7 @@ class PatientRecord extends Model
     protected $fillable = [
         'patient_id',
         'assigned_doctor_id',
+        'service_id',
         'record_type',
         'status',
         'appointment_date',
@@ -68,5 +70,13 @@ class PatientRecord extends Model
     public function assignedDoctor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_doctor_id');
+    }
+
+    /**
+     * Get the service associated with the record.
+     */
+    public function service(): BelongsTo
+    {
+        return $this->belongsTo(DoctorService::class, 'service_id');
     }
 }

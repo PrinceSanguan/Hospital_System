@@ -238,10 +238,8 @@ export default function PatientDashboard({
 
   // Handle doctor selection for booking
   const handleDoctorSelect = (doctor: typeof doctors[0]) => {
-    setBookingDoctor(doctor);
-    setBookingDate(null);
-    setBookingTime('');
-    setIsBookingDialogOpen(true);
+    // Instead of opening a dialog, navigate directly to the appointment booking page
+    router.visit(`/patient/appointments/book?doctor_id=${doctor.id}`);
   };
 
   // Generate available time slots based on doctor's schedule
