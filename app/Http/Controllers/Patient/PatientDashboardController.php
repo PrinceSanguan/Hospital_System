@@ -11,6 +11,8 @@ use App\Models\Notification;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class PatientDashboardController extends Controller
@@ -20,10 +22,18 @@ class PatientDashboardController extends Controller
         $user = Auth::user();
 
         // Get upcoming appointments - make sure we're getting the latest status
+        // Get upcoming appointments - make sure we're getting the latest status without caching
+        // First clear any query cache to ensure we have fresh data
+        DB::statement("SET SESSION query_cache_type=0");
+
+        // Explicitly check for confirmed status as well as pending status
         $upcomingAppointments = PatientRecord::where('patient_id', $user->id)
             ->where(function($query) {
-                $query->where('status', '!=', 'cancelled')
-                      ->where('status', '!=', 'completed');
+                $query->whereIn('status', ['pending', 'confirmed'])
+                      ->orWhere(function($q) {
+                        $q->where('status', '!=', 'cancelled')
+                          ->where('status', '!=', 'completed');
+                      });
             })
             ->where('appointment_date', '>=', now()->startOfDay())
             ->with('assignedDoctor')
@@ -32,6 +42,9 @@ class PatientDashboardController extends Controller
 
         // Force fresh data by avoiding any potential caching
         $upcomingAppointments->load(['assignedDoctor']);
+
+        // Debug appointments to check statuses
+        Log::info('Patient appointments statuses:', $upcomingAppointments->pluck('status', 'id')->toArray());
 
         // Get lab results
         $labResults = PatientRecord::where('patient_id', $user->id)
@@ -121,6 +134,10 @@ class PatientDashboardController extends Controller
         $appointment->record_type = 'medical_checkup';
         $appointment->status = 'pending';
         $appointment->appointment_date = $request->appointment_date;
+
+        // Format the appointment date and time correctly
+        $appointmentDateTime = $request->appointment_date . ' ' . $request->appointment_time;
+        $appointment->appointment_date = $appointmentDateTime;
 
         // Store additional information in details field
         $details = [

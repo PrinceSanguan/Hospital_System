@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class AppointmentController extends Controller
@@ -20,12 +21,29 @@ class AppointmentController extends Controller
     {
         $user = Auth::user();
 
-        // Get all appointments for this doctor
+        // Get all appointments for this doctor - get both pending and confirmed
         $appointments = PatientRecord::where('assigned_doctor_id', $user->id)
             ->where('record_type', PatientRecord::TYPE_MEDICAL_CHECKUP)
+            ->whereIn('status', [PatientRecord::STATUS_PENDING, 'confirmed', PatientRecord::STATUS_COMPLETED])
             ->with('patient')
             ->orderBy('appointment_date', 'desc')
             ->get();
+
+        // Process appointment details to extract additional information
+        $appointments->each(function ($appointment) {
+            if ($appointment->details) {
+                $details = json_decode($appointment->details, true);
+                if (isset($details['appointment_time'])) {
+                    $appointment->appointment_time = $details['appointment_time'];
+                }
+                if (isset($details['reason'])) {
+                    $appointment->reason = $details['reason'];
+                }
+                if (isset($details['notes'])) {
+                    $appointment->notes = $details['notes'];
+                }
+            }
+        });
 
         return Inertia::render('Doctor/Appointments', [
             'user' => [
@@ -73,14 +91,29 @@ class AppointmentController extends Controller
             ->with('patient')
             ->findOrFail($request->appointment_id);
 
-        // Update appointment status
-        $appointment->status = $request->status;
+        // Update appointment status - explicitly set to 'confirmed' for confirmation
+        if ($request->status === 'confirmed') {
+            $appointment->status = 'confirmed';
+        } else {
+            $appointment->status = $request->status;
+        }
 
         // Add doctor notes if provided
         if ($request->notes) {
-            $notes = $appointment->details ? $appointment->details . "\n\nDoctor's Note: " . $request->notes : "Doctor's Note: " . $request->notes;
-            $appointment->details = $notes;
+            $details = is_string($appointment->details) ? json_decode($appointment->details, true) : [];
+            if (!is_array($details)) {
+                $details = [];
+            }
+            $details['doctor_notes'] = $request->notes;
+            $appointment->details = json_encode($details);
         }
+
+        // Log the update for debugging
+        Log::info('Doctor updating appointment status:', [
+            'appointment_id' => $appointment->id,
+            'old_status' => $appointment->getOriginal('status'),
+            'new_status' => $appointment->status,
+        ]);
 
         $appointment->save();
 
@@ -209,6 +242,19 @@ class AppointmentController extends Controller
             ->orderBy('appointment_date', 'asc')
             ->get();
 
+        // Get all appointment time details from the details JSON field
+        $pendingAppointments->each(function ($appointment) {
+            if ($appointment->details) {
+                $details = json_decode($appointment->details, true);
+                if (isset($details['appointment_time'])) {
+                    $appointment->appointment_time = $details['appointment_time'];
+                }
+                if (isset($details['reason'])) {
+                    $appointment->reason = $details['reason'];
+                }
+            }
+        });
+
         return response()->json([
             'pendingAppointments' => $pendingAppointments
         ]);
@@ -244,12 +290,26 @@ class AppointmentController extends Controller
     {
         $user = Auth::user();
 
-        // Get appointments for calendar view
+        // Get appointments for calendar view - get all statuses for calendar visibility
         $appointments = PatientRecord::where('assigned_doctor_id', $user->id)
             ->where('record_type', PatientRecord::TYPE_MEDICAL_CHECKUP)
+            ->whereIn('status', [PatientRecord::STATUS_PENDING, 'confirmed', 'cancelled', PatientRecord::STATUS_COMPLETED])
             ->with('patient')
             ->orderBy('appointment_date', 'asc')
             ->get();
+
+        // Process appointment details to extract appointment times and reasons
+        $appointments->each(function ($appointment) {
+            if ($appointment->details) {
+                $details = json_decode($appointment->details, true);
+                if (isset($details['appointment_time'])) {
+                    $appointment->appointment_time = $details['appointment_time'];
+                }
+                if (isset($details['reason'])) {
+                    $appointment->reason = $details['reason'];
+                }
+            }
+        });
 
         return Inertia::render('Doctor/Appointments', [
             'user' => $user,

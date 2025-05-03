@@ -616,8 +616,8 @@ export default function PatientDashboard({
                     className="mx-auto"
                     modifiers={{
                       booked: upcomingAppointments.map(apt => new Date(apt.appointment_date)),
-                      confirmed: upcomingAppointments.filter(apt => apt.status === 'confirmed').map(apt => new Date(apt.appointment_date)),
-                      pending: upcomingAppointments.filter(apt => apt.status === 'pending').map(apt => new Date(apt.appointment_date))
+                      confirmed: upcomingAppointments.filter(apt => apt.status.toLowerCase() === 'confirmed').map(apt => new Date(apt.appointment_date)),
+                      pending: upcomingAppointments.filter(apt => apt.status.toLowerCase() === 'pending').map(apt => new Date(apt.appointment_date))
                     }}
                     modifiersStyles={{
                       booked: {
@@ -658,9 +658,9 @@ export default function PatientDashboard({
                           </div>
                           <Badge
                             className={
-                              apt.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                              apt.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                              apt.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                              apt.status.toLowerCase() === 'confirmed' ? 'bg-green-100 text-green-800' :
+                              apt.status.toLowerCase() === 'cancelled' ? 'bg-red-100 text-red-800' :
+                              apt.status.toLowerCase() === 'completed' ? 'bg-blue-100 text-blue-800' :
                               'bg-yellow-100 text-yellow-800'
                             }
                           >
@@ -720,9 +720,9 @@ export default function PatientDashboard({
                             {new Date(appointment.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </div>
                           <Badge className={
-                            appointment.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                            appointment.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                            appointment.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                            appointment.status.toLowerCase() === 'confirmed' ? 'bg-green-100 text-green-800' :
+                            appointment.status.toLowerCase() === 'completed' ? 'bg-blue-100 text-blue-800' :
+                            appointment.status.toLowerCase() === 'cancelled' ? 'bg-red-100 text-red-800' :
                             'bg-yellow-100 text-yellow-800'
                           }>
                             {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}

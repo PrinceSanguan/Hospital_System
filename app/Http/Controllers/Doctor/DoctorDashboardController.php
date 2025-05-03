@@ -19,10 +19,10 @@ class DoctorDashboardController extends Controller
             ->distinct('patient_id')
             ->count('patient_id');
 
-        // Get count of upcoming appointments
+        // Get count of upcoming appointments - count both pending and confirmed
         $upcomingAppointmentsCount = PatientRecord::where('assigned_doctor_id', $user->id)
             ->where('record_type', PatientRecord::TYPE_MEDICAL_CHECKUP)
-            ->where('status', PatientRecord::STATUS_PENDING)
+            ->whereIn('status', [PatientRecord::STATUS_PENDING, 'confirmed'])
             ->where('appointment_date', '>=', now())
             ->count();
 
@@ -32,15 +32,22 @@ class DoctorDashboardController extends Controller
             ->where('status', PatientRecord::STATUS_COMPLETED)
             ->count();
 
-        // Get all upcoming appointments for the calendar
+        // Get all upcoming appointments for the calendar - include both pending and confirmed
         $upcomingAppointments = PatientRecord::with('patient')
             ->where('assigned_doctor_id', $user->id)
             ->where('record_type', PatientRecord::TYPE_MEDICAL_CHECKUP)
+            ->whereIn('status', [PatientRecord::STATUS_PENDING, 'confirmed'])
             ->where('appointment_date', '>=', now()->subDays(30))
             ->where('appointment_date', '<=', now()->addDays(60))
             ->orderBy('appointment_date', 'asc')
             ->get()
             ->map(function ($appointment) {
+                // Extract appointment details from JSON field
+                $details = [];
+                if ($appointment->details) {
+                    $details = is_string($appointment->details) ? json_decode($appointment->details, true) : $appointment->details;
+                }
+
                 return [
                     'id' => $appointment->id,
                     'patient' => [
@@ -48,8 +55,10 @@ class DoctorDashboardController extends Controller
                         'name' => $appointment->patient->name,
                     ],
                     'appointment_date' => $appointment->appointment_date,
+                    'appointment_time' => $details['appointment_time'] ?? null,
+                    'reason' => $details['reason'] ?? null,
                     'status' => $appointment->status,
-                    'notes' => $appointment->notes,
+                    'notes' => $details['notes'] ?? null,
                 ];
             });
 

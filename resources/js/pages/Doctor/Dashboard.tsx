@@ -135,20 +135,57 @@ export default function Dashboard({
     );
   };
 
-  // Check if date has appointments
+  // Check if date has appointments - include both pending and confirmed
   const hasAppointments = (date: Date) => {
     const dateString = dayjs(date).format('YYYY-MM-DD');
-    return upcomingAppointments.some(appointment =>
-      appointment.appointment_date === dateString
-    );
+    // Try substring for a date-time field or direct comparison for date-only fields
+    const compareDate = (appDate: string) => {
+      if (appDate.includes('T') || appDate.includes(' ')) {
+        return appDate.substring(0, 10) === dateString;
+      }
+      return appDate === dateString;
+    };
+
+    return upcomingAppointments.some(appointment => compareDate(appointment.appointment_date))
+      || pendingAppointments.some(appointment => compareDate(appointment.appointment_date));
   };
 
-  // Get appointments for a specific date
+  // Get appointments for a specific date - include all appointments (pending and confirmed)
   const getAppointmentsForDate = (date: Date) => {
     const dateString = dayjs(date).format('YYYY-MM-DD');
-    return upcomingAppointments.filter(appointment =>
-      appointment.appointment_date === dateString
+
+    // Function to compare dates accounting for various formats
+    const compareDate = (appDate: string) => {
+      if (appDate.includes('T') || appDate.includes(' ')) {
+        return appDate.substring(0, 10) === dateString;
+      }
+      return appDate === dateString;
+    };
+
+    // Get appointments from both pending and confirmed lists
+    const upcomingForDate = upcomingAppointments.filter(appointment =>
+      compareDate(appointment.appointment_date)
     );
+
+    const pendingForDate = pendingAppointments.filter(appointment =>
+      compareDate(appointment.appointment_date)
+    );
+
+    // Combine both arrays, removing any duplicates by ID
+    const allAppointments = [...upcomingForDate, ...pendingForDate];
+    const uniqueAppointments = Array.from(new Map(allAppointments.map(item => [item.id, item])).values());
+
+    // Sort by time if available
+    return uniqueAppointments.sort((a, b) => {
+      if (a.appointment_time && b.appointment_time) {
+        return a.appointment_time.localeCompare(b.appointment_time);
+      }
+      // If no time, sort by status (pending first)
+      if (a.status !== b.status) {
+        return a.status === 'pending' ? -1 : 1;
+      }
+      return 0;
+    });
   };
 
   // Handle date click
@@ -419,6 +456,20 @@ export default function Dashboard({
               </DialogHeader>
 
               {selectedDateAppointments.length > 0 && (
+                <div className="mb-2">
+                  <h3 className="text-sm font-semibold mb-1">Appointment Status:</h3>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      Confirmed: {selectedDateAppointments.filter(a => a.status.toLowerCase() === 'confirmed').length}
+                    </Badge>
+                    <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                      Pending: {selectedDateAppointments.filter(a => a.status.toLowerCase() === 'pending').length}
+                    </Badge>
+                  </div>
+                </div>
+              )}
+
+              {selectedDateAppointments.length > 0 && (
                 <div className="space-y-4">
                   {selectedDateAppointments.map((appointment) => (
                     <div key={appointment.id} className="p-4 border rounded-md">
@@ -430,13 +481,41 @@ export default function Dashboard({
                           </p>
                         </div>
                         <Badge variant={getStatusBadgeColor(appointment.status)}>
-                          {appointment.status}
+                          {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
                         </Badge>
                       </div>
+                      {appointment.reason && (
+                        <div className="mt-2">
+                          <h4 className="text-sm font-medium">Reason:</h4>
+                          <p className="text-sm text-gray-600">{appointment.reason}</p>
+                        </div>
+                      )}
                       {appointment.notes && (
                         <div className="mt-2">
                           <h4 className="text-sm font-medium">Notes:</h4>
                           <p className="text-sm text-gray-600">{appointment.notes}</p>
+                        </div>
+                      )}
+                      {appointment.status === 'pending' && (
+                        <div className="mt-3 flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 gap-1 text-green-600 hover:text-green-700 hover:bg-green-50"
+                            onClick={() => handleAppointmentResponse(appointment, 'approve')}
+                          >
+                            <CheckCircle size={16} />
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleAppointmentResponse(appointment, 'deny')}
+                          >
+                            <XCircle size={16} />
+                            Deny
+                          </Button>
                         </div>
                       )}
                     </div>
