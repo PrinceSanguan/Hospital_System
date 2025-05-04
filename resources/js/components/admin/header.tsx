@@ -25,7 +25,7 @@ export function Header({ user }: { user: User }) {
                 <LayoutDashboard size={20} />
             </Button>
             <div className="flex flex-1 items-center justify-between">
-                <div className="font-semibold md:hidden">FarmCare Admin</div>
+                <div className="font-semibold md:hidden">Famcare Admin</div>
                 <div className="ml-auto flex items-center gap-4">
                     <Button variant="ghost" size="icon" className="text-gray-500">
                         <Bell size={20} />

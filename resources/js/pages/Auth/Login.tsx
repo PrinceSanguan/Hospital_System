@@ -94,7 +94,7 @@ export default function Login({ flash }: LoginProps) {
 
                 <div className="w-full max-w-md px-4 sm:px-0 relative z-10 animate-fade-in">
                     <div className="text-center mb-6">
-                        <h1 className="text-3xl font-bold text-white mb-2">FarmCare</h1>
+                        <h1 className="text-3xl font-bold text-white mb-2">Famcare</h1>
                         <p className="text-blue-200">Quality Healthcare for Everyone</p>
                     </div>
 

@@ -11,7 +11,8 @@ import {
   LogOut,
   Search,
   Menu,
-  UserIcon
+  UserIcon,
+  ClipboardList
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -223,6 +224,18 @@ export default function PatientDashboard({
       active: activeTab === "records"
     },
     {
+      name: "Lab Results",
+      icon: <Microscope size={18} />,
+      path: "/patient/records/lab-results",
+      active: activeTab === "lab-results"
+    },
+    {
+      name: "Record Requests",
+      icon: <ClipboardList size={18} />,
+      path: "/patient/record-requests",
+      active: activeTab === "record-requests"
+    },
+    {
       name: "Doctors",
       icon: <Stethoscope size={18} />,
       path: "/patient/doctors",
@@ -353,7 +366,7 @@ export default function PatientDashboard({
         <div className="flex h-16 items-center justify-center border-b px-4">
           <Link href="/patient/dashboard" className="flex items-center">
             <Stethoscope className="h-6 w-6 text-blue-600" />
-            <span className="ml-2 text-xl font-semibold text-gray-900">FarmCare</span>
+            <span className="ml-2 text-xl font-semibold text-gray-900">Famcare</span>
           </Link>
         </div>
 

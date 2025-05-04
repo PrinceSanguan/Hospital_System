@@ -20,8 +20,8 @@ export function PatientLayout({ children, user }: PatientLayoutProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-white border-b border-gray-200">
+    <div className="min-h-screen bg-gray-100 print:bg-white print:min-h-0">
+      <nav className="bg-white border-b border-gray-200 print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex">
@@ -45,8 +45,8 @@ export function PatientLayout({ children, user }: PatientLayoutProps) {
         </div>
       </nav>
 
-      <div className="flex">
-        <aside className="w-64 bg-white shadow h-screen sticky top-0 pt-4">
+      <div className="flex print:block">
+        <aside className="w-64 bg-white shadow h-screen sticky top-0 pt-4 print:hidden">
           <div className="px-4 space-y-1">
             {navItems.map((item) => (
               <Link
@@ -65,8 +65,8 @@ export function PatientLayout({ children, user }: PatientLayoutProps) {
           </div>
         </aside>
 
-        <main className="flex-1 overflow-auto">
-          <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <main className="flex-1 overflow-auto print:overflow-visible print:w-full">
+          <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 print:p-0 print:m-0 print:max-w-none">
             {children}
           </div>
         </main>

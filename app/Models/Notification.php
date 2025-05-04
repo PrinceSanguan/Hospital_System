@@ -19,6 +19,8 @@ class Notification extends Model
     const TYPE_VITAL_SIGNS_SUBMITTED = 'vital_signs_submitted';
     const TYPE_LAB_RESULTS_AVAILABLE = 'lab_results_available';
     const TYPE_MEDICAL_RECORD_UPDATED = 'medical_record_updated';
+    const TYPE_RECORD_REQUEST_APPROVED = 'record_request_approved';
+    const TYPE_RECORD_REQUEST_DENIED = 'record_request_denied';
 
     /**
      * The attributes that are mass assignable.

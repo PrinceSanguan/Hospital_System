@@ -211,6 +211,7 @@ Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')-
 use App\Http\Controllers\ClinicalStaff\StaffDashboardController;
 use App\Http\Controllers\ClinicalStaff\LabRecordsController;
 use App\Http\Controllers\ClinicalStaff\MedicalRecordsController;
+use App\Http\Controllers\ClinicalStaff\RecordRequestsController;
 use App\Http\Middleware\ClinicalStaffMiddleware;
 
 Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staff.')->group(function () {
@@ -272,6 +273,15 @@ Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staf
       'user' => Auth::user()
     ]);
   })->name('followups');
+
+  // Record Request Management
+  Route::get('/record-requests', [RecordRequestsController::class, 'index'])->name('record-requests.index');
+  Route::get('/record-requests/pending', [RecordRequestsController::class, 'pendingRequests'])->name('record-requests.pending');
+  Route::get('/record-requests/medical', [RecordRequestsController::class, 'medicalRequests'])->name('record-requests.medical');
+  Route::get('/record-requests/lab', [RecordRequestsController::class, 'labRequests'])->name('record-requests.lab');
+  Route::get('/record-requests/{id}', [RecordRequestsController::class, 'show'])->name('record-requests.show');
+  Route::post('/record-requests/{id}/approve', [RecordRequestsController::class, 'approve'])->name('record-requests.approve');
+  Route::post('/record-requests/{id}/deny', [RecordRequestsController::class, 'deny'])->name('record-requests.deny');
 });
 
 /*
@@ -325,3 +335,14 @@ Route::middleware(['auth', 'role:patient'])->prefix('patient')->name('patient.')
     Route::get('/notifications/unread-count', [App\Http\Controllers\Patient\NotificationController::class, 'getUnreadCount'])->name('notifications.unread.count');
     Route::get('/notifications/recent', [App\Http\Controllers\Patient\NotificationController::class, 'getRecent'])->name('notifications.recent');
 });
+
+// Patient record request routes
+Route::middleware([PatientMiddleware::class])->prefix('patient')->name('patient.')->group(function () {
+    Route::get('/record-requests', [App\Http\Controllers\Patient\RecordRequestController::class, 'index'])->name('records.requests.index');
+    Route::get('/record-requests/create', [App\Http\Controllers\Patient\RecordRequestController::class, 'create'])->name('records.requests.create');
+    Route::post('/record-requests', [App\Http\Controllers\Patient\RecordRequestController::class, 'store'])->name('records.requests.store');
+    Route::get('/record-requests/{id}/view', [App\Http\Controllers\Patient\RecordRequestController::class, 'viewApprovedRecord'])->name('records.requests.view');
+});
+
+// Setup routes
+Route::get('/setup/create-notifications-table', [App\Http\Controllers\SetupController::class, 'createNotificationsTable']);

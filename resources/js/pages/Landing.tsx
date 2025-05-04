@@ -126,7 +126,7 @@ export default function Landing({ services, isAuthenticated, userRole, doctors =
               <div className="flex-shrink-0">
                 <Link href="/" className="flex items-center">
                   <Stethoscope className="h-8 w-8 text-blue-600" />
-                  <span className="ml-2 text-xl font-bold text-blue-800">FarmCare</span>
+                  <span className="ml-2 text-xl font-bold text-blue-800">Famcare</span>
                 </Link>
               </div>
               <div className="hidden md:block">
@@ -186,7 +186,7 @@ export default function Landing({ services, isAuthenticated, userRole, doctors =
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              FarmCare Clinic and Laboratory provides comprehensive healthcare services with state-of-the-art facilities and experienced professionals.
+              Famcare Clinic and Laboratory provides comprehensive healthcare services with state-of-the-art facilities and experienced professionals.
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -582,9 +582,9 @@ export default function Landing({ services, isAuthenticated, userRole, doctors =
         <div className="container mx-auto px-6">
           <div className="flex flex-col items-center justify-between gap-12 md:flex-row">
             <div className="md:w-1/2">
-              <h2 className="mb-6 text-3xl font-bold">About FarmCare Clinic</h2>
+              <h2 className="mb-6 text-3xl font-bold">About Famcare Clinic</h2>
               <p className="mb-4">
-                FarmCare Clinic and Laboratory is dedicated to providing comprehensive healthcare services to our community.
+                Famcare Clinic and Laboratory is dedicated to providing comprehensive healthcare services to our community.
                 With state-of-the-art facilities and experienced healthcare professionals, we are committed to delivering
                 the highest quality of care to our patients.
               </p>
@@ -654,7 +654,7 @@ export default function Landing({ services, isAuthenticated, userRole, doctors =
                   <Mail className="mr-3 h-5 w-5 text-blue-600" />
                   <div>
                     <p className="font-medium">Email Address</p>
-                    <p className="text-gray-600">info@farmcare.com</p>
+                    <p className="text-gray-600">info@Famcare.com</p>
                   </div>
                 </div>
                 <div className="flex items-start">
@@ -697,7 +697,7 @@ export default function Landing({ services, isAuthenticated, userRole, doctors =
             <div>
               <div className="mb-4 flex items-center">
                 <Stethoscope className="h-8 w-8 text-blue-300" />
-                <span className="ml-2 text-xl font-bold">FarmCare</span>
+                <span className="ml-2 text-xl font-bold">Famcare</span>
               </div>
               <p className="mb-4 text-blue-200">Providing quality healthcare services to our community since 2010.</p>
               <div className="flex space-x-4">
@@ -753,7 +753,7 @@ export default function Landing({ services, isAuthenticated, userRole, doctors =
           </div>
 
           <div className="mt-8 border-t border-blue-800 pt-8 text-center text-blue-300">
-            <p>© {new Date().getFullYear()} FarmCare Clinic and Laboratory. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} Famcare Clinic and Laboratory. All rights reserved.</p>
             <div className="mt-2 flex justify-center space-x-4">
               <a href="#" className="text-blue-300 hover:text-white">Privacy Policy</a>
               <a href="#" className="text-blue-300 hover:text-white">Terms of Service</a>

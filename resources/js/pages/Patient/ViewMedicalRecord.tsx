@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
-import { Header } from '@/components/clinicalstaff/header';
-import { Sidebar } from '@/components/clinicalstaff/sidebar';
+import { PatientLayout } from '@/layouts/PatientLayout';
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
 } from '@/components/ui/card';
-import { ChevronLeft, Printer, FileEdit } from 'lucide-react';
+import { ChevronLeft, Printer } from 'lucide-react';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 interface User {
   name: string;
   email: string;
-  role?: string;
+  role: string;
 }
 
 interface Doctor {
@@ -37,6 +36,7 @@ interface MedicalRecordDetails {
   prescriptions?: string[];
   notes?: string;
   followup_date?: string;
+  treatments?: string;
   [key: string]: string | number | string[] | Record<string, string | number> | undefined;
 }
 
@@ -52,12 +52,22 @@ interface MedicalRecord {
   updated_at: string;
 }
 
-interface MedicalRecordsViewProps {
-  user: User;
-  record: MedicalRecord;
+interface RecordRequest {
+  id: number;
+  status: string;
+  request_reason: string;
+  approved_at: string;
+  approved_by: number;
+  expires_at: string | null;
 }
 
-export default function MedicalRecordsView({ user, record }: MedicalRecordsViewProps) {
+interface ViewMedicalRecordProps {
+  user: User;
+  record: MedicalRecord;
+  request: RecordRequest;
+}
+
+export default function ViewMedicalRecord({ user, record, request }: ViewMedicalRecordProps) {
   const [isPrinting, setIsPrinting] = useState(false);
 
   const getStatusBadge = (status: string) => {
@@ -122,29 +132,17 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
   };
 
   return (
-    <div className={`flex h-screen bg-gray-100 dark:bg-gray-900 ${isPrinting ? 'print:bg-white print:h-auto' : ''}`}>
-      {/* Sidebar - hide when printing */}
-      <div className={isPrinting ? 'print:hidden' : ''}>
-        <Sidebar user={user} />
-      </div>
+    <PatientLayout user={user}>
+      <div className={`bg-gray-100 dark:bg-gray-900 ${isPrinting ? 'print:bg-white print:h-auto' : ''}`}>
+        <Head title={`Medical Record - ${formatDate(record.appointment_date)}`} />
 
-      {/* Main Content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Header - hide when printing */}
-        <div className={isPrinting ? 'print:hidden' : ''}>
-          <Header user={user} />
-        </div>
-
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto bg-gray-100 p-4 md:p-6 dark:bg-gray-900 print:bg-white print:p-0 print:dark:bg-white print:overflow-visible">
-          <Head title={`Medical Record - ${record.patient?.name || 'Patient'}`} />
-
+        <main className="container mx-auto py-6 px-4 md:px-6 print:bg-white print:p-0 print:dark:bg-white print:overflow-visible">
           {/* Header Actions - hide when printing */}
           <div className={`flex justify-between items-center mb-6 ${isPrinting ? 'print:hidden' : ''}`}>
             <div className="space-y-1">
               <div className="flex items-center space-x-2">
                 <Button variant="ghost" asChild className="p-0">
-                  <Link href={route('staff.clinical.info')}>
+                  <Link href={route('patient.records.requests.index')}>
                     <ChevronLeft className="h-4 w-4" />
                   </Link>
                 </Button>
@@ -153,7 +151,7 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
                 </h1>
               </div>
               <p className="text-gray-500 dark:text-gray-400">
-                Viewing detailed medical record information
+                Viewing your medical record from {formatDate(record.appointment_date)}
               </p>
             </div>
             <div className="flex gap-2">
@@ -161,21 +159,31 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
                 <Printer className="h-4 w-4" />
                 Print
               </Button>
-              <Button asChild className="flex items-center gap-1">
-                <Link href={route('staff.clinical.info.edit', record.id)}>
-                  <FileEdit className="h-4 w-4" />
-                  Edit
-                </Link>
-              </Button>
             </div>
           </div>
+
+          {/* Access Information */}
+          <Card className="mb-6 border-l-4 border-l-blue-500">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium">Record Access Information</h3>
+                  <p className="text-sm text-gray-500">This record was made available to you on {formatDate(request.approved_at)}</p>
+                  {request.expires_at && (
+                    <p className="text-sm text-orange-500">Access expires on {formatDate(request.expires_at)}</p>
+                  )}
+                </div>
+                <Badge className="bg-green-500">Approved</Badge>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Medical Record Card */}
           <Card className="border-t-4 border-t-blue-500 print:shadow-none print:border print:border-black">
             {/* Header/Title - shows in print */}
             <div className="text-center pt-8 pb-4 border-b print:block">
               <h1 className="text-3xl font-bold mb-1">MEDICAL RECORD</h1>
-              <p className="text-gray-500">Famcare Staff Healthcare System</p>
+              <p className="text-gray-500">Famcare Healthcare System</p>
               <p className="text-sm text-gray-400">
                 All information contained in this record is strictly confidential
               </p>
@@ -258,62 +266,60 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
 
                 <Separator />
 
-                {/* Diagnosis */}
+                {/* Diagnosis and Treatment */}
                 <div>
-                  <h2 className="text-xl font-bold mb-4">DIAGNOSIS</h2>
-                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
-                    <p className="whitespace-pre-wrap">{details.diagnosis || 'No diagnosis provided'}</p>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Prescriptions */}
-                <div>
-                  <h2 className="text-xl font-bold mb-4">PRESCRIPTIONS</h2>
-                  {details.prescriptions && details.prescriptions.length > 0 ? (
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-md">
-                      <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                        {details.prescriptions.map((prescription, index) => (
-                          <li key={index} className="p-4">
-                            <p>{prescription}</p>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : (
+                  <h2 className="text-xl font-bold mb-4">DIAGNOSIS & TREATMENT</h2>
+                  <div className="space-y-4">
                     <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
-                      <p>No prescriptions provided</p>
+                      <h3 className="font-semibold text-sm text-gray-500 mb-2">Diagnosis</h3>
+                      <p className="whitespace-pre-line">{details.diagnosis || 'No diagnosis provided'}</p>
                     </div>
-                  )}
+
+                    {details.prescriptions && details.prescriptions.length > 0 && (
+                      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
+                        <h3 className="font-semibold text-sm text-gray-500 mb-2">Prescriptions</h3>
+                        <ul className="list-disc list-inside">
+                          {Array.isArray(details.prescriptions) ? (
+                            details.prescriptions.map((prescription, index) => (
+                              <li key={index} className="mb-1">{prescription}</li>
+                            ))
+                          ) : (
+                            <li>{details.prescriptions}</li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+
+                    {details.treatments && (
+                      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
+                        <h3 className="font-semibold text-sm text-gray-500 mb-2">Treatments</h3>
+                        <p className="whitespace-pre-line">{String(details.treatments)}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <Separator />
 
-                {/* Notes */}
+                {/* Additional Notes */}
                 <div>
-                  <h2 className="text-xl font-bold mb-4">ADDITIONAL NOTES</h2>
+                  <h2 className="text-xl font-bold mb-4">NOTES</h2>
                   <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
-                    <p className="whitespace-pre-wrap">{details.notes || 'No additional notes'}</p>
+                    <p className="whitespace-pre-line">{details.notes || 'No additional notes'}</p>
                   </div>
                 </div>
 
-                {/* Signature section for printing */}
-                <div className="mt-16 grid grid-cols-2 gap-8 pt-8 print:block print:mt-32">
-                  <div className="border-t pt-4">
-                    <p className="text-center">_________________________</p>
-                    <p className="text-center text-sm mt-1">Dr. {record.assignedDoctor?.name || 'Physician'}'s Signature</p>
-                  </div>
-                  <div className="border-t pt-4">
-                    <p className="text-center">_________________________</p>
-                    <p className="text-center text-sm mt-1">{record.patient?.name || 'Patient'}'s Signature</p>
-                  </div>
+                {/* Footer for print */}
+                <div className="mt-10 text-center hidden print:block">
+                  <Separator className="mb-4" />
+                  <p className="text-sm text-gray-500">Printed on {new Date().toLocaleDateString()}</p>
+                  <p className="text-sm text-gray-500">Famcare Healthcare System</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </main>
       </div>
-    </div>
+    </PatientLayout>
   );
 }

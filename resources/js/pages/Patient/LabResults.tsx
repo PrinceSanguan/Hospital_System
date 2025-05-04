@@ -18,7 +18,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { FileText, FileSearch, Plus } from 'lucide-react';
+import { FileText, FileSearch, Plus, ClipboardList } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 interface User {
@@ -121,12 +121,20 @@ export default function LabResults({ user, labRecords }: LabResultsProps) {
                 View all your laboratory test results and appointments
               </p>
             </div>
-            <Button asChild className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700">
-              <Link href={route('patient.lab-appointments.book')}>
-                <Plus className="h-4 w-4" />
-                Book Lab Test
-              </Link>
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button asChild className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700">
+                <Link href={route('patient.lab-appointments.book')}>
+                  <Plus className="h-4 w-4" />
+                  Book Lab Test
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="flex items-center gap-1">
+                <Link href={route('patient.records.requests.create', { type: 'lab_record' })}>
+                  <ClipboardList className="h-4 w-4" />
+                  Request Lab Record
+                </Link>
+              </Button>
+            </div>
           </div>
 
           <Card>

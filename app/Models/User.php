@@ -127,4 +127,20 @@ class User extends Authenticatable
     {
         return $this->hasMany(DoctorService::class, 'doctor_id');
     }
+
+    /**
+     * Get the record requests made by this patient.
+     */
+    public function recordRequests(): HasMany
+    {
+        return $this->hasMany(RecordRequest::class, 'patient_id');
+    }
+
+    /**
+     * Get the record requests approved by this staff.
+     */
+    public function approvedRequests(): HasMany
+    {
+        return $this->hasMany(RecordRequest::class, 'approved_by');
+    }
 }

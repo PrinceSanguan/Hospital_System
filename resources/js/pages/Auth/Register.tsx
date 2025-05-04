@@ -52,7 +52,7 @@ export default function Register() {
 
         <div className="w-full max-w-md px-4 sm:px-0 relative z-10 animate-fade-in">
           <div className="text-center mb-4">
-            <h1 className="text-2xl font-bold text-white mb-1">FarmCare</h1>
+            <h1 className="text-2xl font-bold text-white mb-1">Famcare</h1>
             <p className="text-blue-200 text-sm">Quality Healthcare for Everyone</p>
           </div>
 
