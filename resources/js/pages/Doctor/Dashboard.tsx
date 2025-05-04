@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, router } from '@inertiajs/react';
 import DoctorLayout from '@/layouts/DoctorLayout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,10 +28,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Schedule {
     id: number;
+  doctor_id?: number;
   day_of_week: number;
   start_time: string;
   end_time: string;
   is_available: boolean;
+  specific_date?: string;
+  max_appointments?: number;
 }
 
 interface Appointment {
@@ -67,6 +70,31 @@ export default function Dashboard({
   schedule = [],
   stats = { total_patients: 0, upcoming_appointments: 0, completed_appointments: 0, pending_appointments: 0 }
 }: DashboardProps) {
+  // Debug: Log schedule data received from backend
+  console.log('Schedule data received:', schedule);
+
+  // Set up state to track processed schedule data
+  const [processedSchedule, setProcessedSchedule] = useState<Schedule[]>([]);
+
+  // Process schedule data when component mounts or when schedule changes
+  useEffect(() => {
+    if (Array.isArray(schedule) && schedule.length > 0) {
+      // Process schedule data to ensure consistent format
+      const processed = schedule.map(item => {
+        // If specific_date exists, make sure it's normalized
+        if (item.specific_date) {
+          // Create a standardized date format
+          const dateString = dayjs(item.specific_date).format('YYYY-MM-DD');
+          return { ...item, specific_date: dateString };
+        }
+        return item;
+      });
+
+      setProcessedSchedule(processed);
+      console.log('Processed schedule data:', processed);
+    }
+  }, [schedule]);
+
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showAppointmentDialog, setShowAppointmentDialog] = useState(false);
@@ -127,12 +155,33 @@ export default function Dashboard({
     setCurrentMonth(newMonth);
   };
 
-  // Check if date has schedule
-  const hasSchedule = (date: Date) => {
-    const dayOfWeek = date.getDay();
-    return schedule.some(scheduleItem =>
-      scheduleItem.day_of_week === dayOfWeek && scheduleItem.is_available
+  // Check if date has a specific schedule (exact date match)
+  const hasSpecificDateSchedule = (date: Date) => {
+    if (!date || !Array.isArray(processedSchedule) || processedSchedule.length === 0) return false;
+
+    const dateString = dayjs(date).format('YYYY-MM-DD');
+
+    return processedSchedule.some(scheduleItem =>
+      scheduleItem.specific_date === dateString && scheduleItem.is_available
     );
+  };
+
+  // Check if date has a recurring weekly schedule
+  const hasWeeklySchedule = (date: Date) => {
+    if (!date || !Array.isArray(processedSchedule) || processedSchedule.length === 0) return false;
+
+    const dayOfWeek = date.getDay();
+
+    return processedSchedule.some(scheduleItem =>
+      scheduleItem.day_of_week === dayOfWeek &&
+      scheduleItem.is_available &&
+      !scheduleItem.specific_date
+    );
+  };
+
+  // Check if date has schedule (either specific or weekly)
+  const hasSchedule = (date: Date) => {
+    return hasSpecificDateSchedule(date) || hasWeeklySchedule(date);
   };
 
   // Check if date has appointments - include both pending and confirmed
@@ -416,12 +465,20 @@ export default function Dashboard({
                             {date.getDate()}
                           </span>
                           <div className="flex flex-wrap gap-1">
-                            {hasSchedule(date) && (
+                            {hasSpecificDateSchedule(date) && (
                               <Badge
                                 variant="outline"
                                 className="bg-green-100 text-green-800 border-green-200 text-[10px]"
                               >
-                                Available
+                                Scheduled
+                              </Badge>
+                            )}
+                            {!hasSpecificDateSchedule(date) && hasWeeklySchedule(date) && (
+                              <Badge
+                                variant="outline"
+                                className="bg-blue-50 text-blue-800 border-blue-200 text-[10px]"
+                              >
+                                Weekly
                               </Badge>
                             )}
                             {hasAppointments(date) && (
@@ -452,6 +509,13 @@ export default function Dashboard({
                   {selectedDateAppointments.length
                     ? `You have ${selectedDateAppointments.length} appointment(s) on this day.`
                     : 'You have no appointments on this day.'}
+                  {selectedDate && hasSchedule(selectedDate) && (
+                    <div className="mt-1">
+                      <span className="text-green-600">
+                        {hasSpecificDateSchedule(selectedDate) ? 'You have specifically scheduled this date.' : 'This is part of your weekly schedule.'}
+                      </span>
+                    </div>
+                  )}
                 </DialogDescription>
               </DialogHeader>
 
@@ -596,3 +660,4 @@ export default function Dashboard({
     </DoctorLayout>
   );
 }
+

@@ -187,6 +187,7 @@ Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')-
   // Records Management
   Route::get('/records', [RecordsController::class, 'index'])->name('records.index');
   Route::get('/records/create', [RecordsController::class, 'create'])->name('records.create');
+  Route::get('/records/{id}/edit', [RecordsController::class, 'edit'])->name('records.edit');
   Route::get('/records/{id}', [RecordsController::class, 'show'])->name('records.show');
   Route::post('/records', [RecordsController::class, 'store'])->name('records.store');
   Route::put('/records/{id}', [RecordsController::class, 'update'])->name('records.update');

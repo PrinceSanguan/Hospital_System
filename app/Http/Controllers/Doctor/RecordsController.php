@@ -57,14 +57,30 @@ class RecordsController extends Controller
         // Get records paginated
         $records = $query->paginate(10)->withQueryString();
 
-        // Get unique patient list for this doctor (for filter dropdown)
-        $patients = PatientRecord::where('assigned_doctor_id', $user->id)
-            ->distinct('patient_id')
-            ->with('patient')
-            ->get()
-            ->pluck('patient')
-            ->unique('id')
-            ->values();
+        // Process records to extract diagnoses
+        $records->getCollection()->transform(function ($record) {
+            // Try to extract diagnosis from details if it's stored as JSON
+            try {
+                $detailsArray = json_decode($record->details, true);
+                if (is_array($detailsArray) && isset($detailsArray['diagnosis'])) {
+                    $record->diagnosis = $detailsArray['diagnosis'];
+                }
+            } catch (\Exception $e) {
+                // Not a valid JSON or no diagnosis field
+            }
+
+            return $record;
+        });
+
+        // Get unique patient list for this doctor (for filter dropdown and record creation)
+        $patients = User::where('user_role', User::ROLE_PATIENT)
+            ->whereIn('id', function($query) use ($user) {
+                $query->select('patient_id')
+                      ->from('patient_records')
+                      ->where('assigned_doctor_id', $user->id)
+                      ->distinct();
+            })
+            ->get(['id', 'name', 'email']);
 
         return Inertia::render('Doctor/Records', [
             'user' => [
@@ -72,7 +88,7 @@ class RecordsController extends Controller
                 'email' => $user->email,
                 'role' => $user->user_role,
             ],
-            'records' => $records,
+            'medicalRecords' => $records,
             'patients' => $patients,
             'filters' => [
                 'search' => $request->search,
@@ -91,16 +107,22 @@ class RecordsController extends Controller
     {
         $user = Auth::user();
         $record = PatientRecord::where('assigned_doctor_id', $user->id)
-            ->with('patient')
             ->findOrFail($id);
 
-        return Inertia::render('Doctor/RecordDetails', [
+        $patient = User::findOrFail($record->patient_id);
+
+        return Inertia::render('Doctor/RecordView', [
             'user' => [
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
             ],
             'record' => $record,
+            'patient' => [
+                'id' => $patient->id,
+                'name' => $patient->name,
+                'email' => $patient->email,
+            ],
         ]);
     }
 
@@ -256,29 +278,39 @@ class RecordsController extends Controller
     }
 
     /**
-     * Show form to create a new medical record
+     * Display the record creation form
      */
     public function create()
     {
         $user = Auth::user();
 
-        // Get patients assigned to this doctor for dropdown
-        $patients = PatientRecord::where('assigned_doctor_id', $user->id)
-            ->distinct('patient_id')
-            ->with('patient')
-            ->get()
-            ->pluck('patient')
-            ->unique('id')
-            ->values();
+        // Get patients assigned to this doctor
+        $patients = User::where('user_role', User::ROLE_PATIENT)
+            ->whereIn('id', function($query) use ($user) {
+                $query->select('patient_id')
+                      ->from('patient_records')
+                      ->where('assigned_doctor_id', $user->id)
+                      ->distinct();
+            })
+            ->get(['id', 'name', 'email']);
 
         return Inertia::render('Doctor/RecordCreate', [
             'user' => [
-                'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
             ],
             'patients' => $patients,
+            'recordTypes' => [
+                ['value' => 'medical_record', 'label' => 'Medical Record'],
+                ['value' => 'laboratory', 'label' => 'Laboratory Results'],
+                ['value' => 'medical_checkup', 'label' => 'Medical Checkup'],
+            ],
+            'statusOptions' => [
+                ['value' => 'completed', 'label' => 'Completed'],
+                ['value' => 'pending', 'label' => 'Pending'],
+                ['value' => 'cancelled', 'label' => 'Cancelled'],
+            ],
         ]);
     }
 
@@ -296,5 +328,31 @@ class RecordsController extends Controller
             ->get();
 
         return response()->json($records);
+    }
+
+    /**
+     * Show the form for editing a record
+     */
+    public function edit($id)
+    {
+        $user = Auth::user();
+        $record = PatientRecord::where('assigned_doctor_id', $user->id)
+            ->findOrFail($id);
+
+        $patient = User::findOrFail($record->patient_id);
+
+        return Inertia::render('Doctor/RecordEdit', [
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+            ],
+            'record' => $record,
+            'patient' => [
+                'id' => $patient->id,
+                'name' => $patient->name,
+                'email' => $patient->email,
+            ],
+        ]);
     }
 }

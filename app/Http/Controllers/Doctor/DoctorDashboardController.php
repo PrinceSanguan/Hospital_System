@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DoctorSchedule;
 use App\Models\PatientRecord;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class DoctorDashboardController extends Controller
@@ -62,19 +63,13 @@ class DoctorDashboardController extends Controller
                 ];
             });
 
-        // Get doctor's schedule
+        // Get doctor's schedule including specific dates
         $schedule = DoctorSchedule::where('doctor_id', $user->id)
-            ->orderBy('day_of_week')
-            ->get()
-            ->map(function ($scheduleItem) {
-                return [
-                    'id' => $scheduleItem->id,
-                    'day_of_week' => $scheduleItem->day_of_week,
-                    'start_time' => $scheduleItem->start_time,
-                    'end_time' => $scheduleItem->end_time,
-                    'is_available' => $scheduleItem->is_available,
-                ];
-            });
+            ->select('id', 'day_of_week', 'start_time', 'end_time', 'is_available', 'specific_date', 'max_appointments')
+            ->get();
+
+        // Log schedule data for debugging
+        Log::info('Doctor schedule data:', ['schedules' => $schedule->toArray()]);
 
         return Inertia::render('Doctor/Dashboard', [
             'user' => [
