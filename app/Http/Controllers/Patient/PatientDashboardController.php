@@ -363,19 +363,19 @@ class PatientDashboardController extends Controller
     {
         $user = Auth::user();
 
-        $labResults = PatientRecord::where('patient_id', $user->id)
-            ->where('record_type', 'laboratory_test')
-            ->whereNotNull('lab_results')
-            ->orderBy('updated_at', 'desc')
-            ->get();
+        $labRecords = PatientRecord::with('assignedDoctor')
+            ->where('patient_id', $user->id)
+            ->where('record_type', 'laboratory')
+            ->latest('updated_at')
+            ->paginate(10);
 
         return Inertia::render('Patient/LabResults', [
             'user' => [
+                'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'role' => $user->user_role,
             ],
-            'labResults' => $labResults
+            'labRecords' => $labRecords
         ]);
     }
 
@@ -474,5 +474,83 @@ class PatientDashboardController extends Controller
         ]);
 
         return back()->with('success', 'Profile updated successfully');
+    }
+
+    /**
+     * Show the lab appointment booking page
+     */
+    public function bookLabAppointment()
+    {
+        $user = Auth::user();
+
+        $doctors = User::where('user_role', User::ROLE_DOCTOR)->get();
+
+        return Inertia::render('Patient/BookLabAppointment', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ],
+            'doctors' => $doctors
+        ]);
+    }
+
+    /**
+     * Store a new lab appointment request
+     */
+    public function storeLabAppointment(Request $request)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'assigned_doctor_id' => 'required|exists:users,id',
+            'appointment_date' => 'required|date|after:yesterday',
+            'appointment_time' => 'required',
+            'lab_type' => 'required|string',
+            'notes' => 'nullable|string',
+        ]);
+
+        $record = new PatientRecord();
+        $record->patient_id = $user->id;
+        $record->assigned_doctor_id = $validated['assigned_doctor_id'];
+        $record->record_type = 'laboratory';
+        $record->appointment_date = $validated['appointment_date'];
+        $record->status = 'pending';
+
+        $details = [
+            'lab_type' => $validated['lab_type'],
+            'appointment_time' => $validated['appointment_time'],
+            'notes' => $validated['notes'] ?? '',
+            'requested_by' => 'patient',
+            'request_date' => now()->toDateString(),
+        ];
+
+        $record->details = json_encode($details);
+        $record->save();
+
+        return redirect()->route('patient.appointments.index')
+            ->with('success', 'Laboratory appointment request submitted successfully. You will be notified once it is confirmed.');
+    }
+
+    /**
+     * Show lab results for a patient
+     */
+    public function viewLabResults($id)
+    {
+        $user = Auth::user();
+
+        $record = PatientRecord::where('id', $id)
+            ->where('patient_id', $user->id)
+            ->where('record_type', 'laboratory')
+            ->firstOrFail();
+
+        return Inertia::render('Patient/LabResultDetail', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ],
+            'record' => $record
+        ]);
     }
 }

@@ -209,6 +209,8 @@ Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')-
 */
 
 use App\Http\Controllers\ClinicalStaff\StaffDashboardController;
+use App\Http\Controllers\ClinicalStaff\LabRecordsController;
+use App\Http\Controllers\ClinicalStaff\MedicalRecordsController;
 use App\Http\Middleware\ClinicalStaffMiddleware;
 
 Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staff.')->group(function () {
@@ -222,43 +224,33 @@ Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staf
     ]);
   })->name('profile');
 
+  // Medical Records Management
+  Route::get('/clinical-info', [MedicalRecordsController::class, 'index'])->name('clinical.info');
+  Route::get('/clinical-info/create', [MedicalRecordsController::class, 'create'])->name('clinical.info.create');
+  Route::post('/clinical-info', [MedicalRecordsController::class, 'store'])->name('clinical.info.store');
+  Route::get('/clinical-info/{id}', [MedicalRecordsController::class, 'show'])->name('clinical.info.show');
+  Route::get('/clinical-info/{id}/edit', [MedicalRecordsController::class, 'edit'])->name('clinical.info.edit');
+  Route::put('/clinical-info/{id}', [MedicalRecordsController::class, 'update'])->name('clinical.info.update');
+  Route::delete('/clinical-info/{id}', [MedicalRecordsController::class, 'destroy'])->name('clinical.info.destroy');
+  Route::get('/patients/{patientId}/history', [MedicalRecordsController::class, 'patientHistory'])->name('patients.history');
+
+  // Lab Records Management
+  Route::get('/lab-records', [LabRecordsController::class, 'index'])->name('lab.records');
+  Route::get('/lab-records/create', [LabRecordsController::class, 'create'])->name('lab.records.create');
+  Route::post('/lab-records', [LabRecordsController::class, 'store'])->name('lab.records.store');
+  Route::get('/lab-records/{id}', [LabRecordsController::class, 'show'])->name('lab.records.show');
+  Route::get('/lab-records/{id}/edit', [LabRecordsController::class, 'edit'])->name('lab.records.edit');
+  Route::put('/lab-records/{id}', [LabRecordsController::class, 'update'])->name('lab.records.update');
+  Route::put('/lab-records/{id}/results', [LabRecordsController::class, 'updateResults'])->name('lab.records.results');
+  Route::delete('/lab-records/{id}', [LabRecordsController::class, 'destroy'])->name('lab.records.destroy');
+  Route::get('/lab-records/pending/list', [LabRecordsController::class, 'pending'])->name('lab.records.pending');
+
   // Appointments Management
   Route::get('/appointments', function() {
     return Inertia::render('ClinicalStaff/Appointments', [
       'user' => Auth::user()
     ]);
   })->name('appointments');
-
-  // Appointment Actions
-  Route::get('/appointments/add', function() {
-    return Inertia::render('ClinicalStaff/AppointmentAdd', [
-      'user' => Auth::user()
-    ]);
-  })->name('appointments.add');
-
-  Route::get('/appointments/delete', function() {
-    return Inertia::render('ClinicalStaff/AppointmentDelete', [
-      'user' => Auth::user()
-    ]);
-  })->name('appointments.delete');
-
-  Route::get('/appointments/view', function() {
-    return Inertia::render('ClinicalStaff/AppointmentView', [
-      'user' => Auth::user()
-    ]);
-  })->name('appointments.view');
-
-  Route::get('/appointments/edit', function() {
-    return Inertia::render('ClinicalStaff/AppointmentEdit', [
-      'user' => Auth::user()
-    ]);
-  })->name('appointments.edit');
-
-  Route::get('/appointments/approve', function() {
-    return Inertia::render('ClinicalStaff/AppointmentApprove', [
-      'user' => Auth::user()
-    ]);
-  })->name('appointments.approve');
 
   // Patient Records Management
   Route::get('/patients', function() {
@@ -280,45 +272,6 @@ Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staf
       'user' => Auth::user()
     ]);
   })->name('followups');
-
-  // Clinical Information
-  Route::get('/clinical-info', function() {
-    return Inertia::render('ClinicalStaff/ClinicalInfo', [
-      'user' => Auth::user()
-    ]);
-  })->name('clinical.info');
-
-  // Lab Records
-  Route::get('/lab-records', function() {
-    return Inertia::render('ClinicalStaff/LabRecords', [
-      'user' => Auth::user()
-    ]);
-  })->name('lab.records');
-
-  // Lab Records Actions
-  Route::get('/lab-records/add', function() {
-    return Inertia::render('ClinicalStaff/LabRecordsAdd', [
-      'user' => Auth::user()
-    ]);
-  })->name('lab.records.add');
-
-  Route::get('/lab-records/delete', function() {
-    return Inertia::render('ClinicalStaff/LabRecordsDelete', [
-      'user' => Auth::user()
-    ]);
-  })->name('lab.records.delete');
-
-  Route::get('/lab-records/view', function() {
-    return Inertia::render('ClinicalStaff/LabRecordsView', [
-      'user' => Auth::user()
-    ]);
-  })->name('lab.records.view');
-
-  Route::get('/lab-records/edit', function() {
-    return Inertia::render('ClinicalStaff/LabRecordsEdit', [
-      'user' => Auth::user()
-    ]);
-  })->name('lab.records.edit');
 });
 
 /*
@@ -345,6 +298,11 @@ Route::middleware([PatientMiddleware::class])->prefix('patient')->name('patient.
   Route::get('/records', [PatientDashboardController::class, 'listRecords'])->name('records.index');
   Route::get('/records/lab-results', [PatientDashboardController::class, 'listLabResults'])->name('records.lab-results');
   Route::get('/records/{id}', [PatientDashboardController::class, 'viewRecord'])->name('records.show');
+  Route::get('/records/lab-results/{id}', [PatientDashboardController::class, 'viewLabResults'])->name('records.lab-results.show');
+
+  // Lab Appointments
+  Route::get('/lab-appointments/book', [PatientDashboardController::class, 'bookLabAppointment'])->name('lab-appointments.book');
+  Route::post('/lab-appointments/book', [PatientDashboardController::class, 'storeLabAppointment'])->name('lab-appointments.store');
 
   // Doctors
   Route::get('/doctors', [PatientDashboardController::class, 'listDoctors'])->name('doctors.index');
