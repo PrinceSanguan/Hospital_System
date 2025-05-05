@@ -9,7 +9,6 @@ import {
   Home,
   FileText,
   Menu,
-  LogOut,
   UserCircle,
   Upload,
   Check,
@@ -43,7 +42,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -638,18 +636,6 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
               </Link>
             ))}
           </div>
-
-          <Separator className="my-4" />
-
-          <div className="mt-auto">
-            <button
-              onClick={handleLogout}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              <LogOut size={18} />
-              Logout
-            </button>
-          </div>
         </div>
       </div>
 
@@ -727,13 +713,6 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/patient/profile">Profile</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/patient/settings">Settings</Link>
-                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
                   <button

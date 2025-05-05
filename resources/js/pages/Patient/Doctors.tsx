@@ -201,25 +201,6 @@ export default function Doctors({
               </Link>
             ))}
           </div>
-
-          <Separator className="my-4" />
-
-          <div className="mt-auto">
-            <Link
-              href="/service/clinical-schedule"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              <Calendar size={18} />
-              Clinical Schedule
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              <LogOut size={18} />
-              Logout
-            </button>
-          </div>
         </div>
       </div>
 
@@ -308,13 +289,6 @@ export default function Doctors({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/patient/profile">Profile</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/patient/settings">Settings</Link>
-                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
                   <button

@@ -4,13 +4,11 @@ import {
   Home,
   Calendar,
   FileText,
-  Settings,
   LogOut,
   X,
   Microscope,
   Stethoscope,
   ChevronDown,
-  User,
   LayoutDashboard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -52,7 +50,6 @@ export function PatientLayout({ children, user }: PatientLayoutProps) {
     { name: 'Medical Records', href: route('patient.records.index'), icon: <FileText className="w-5 h-5" />, path: '/patient/records' },
     { name: 'Lab Results', href: route('patient.records.lab-results'), icon: <Microscope className="w-5 h-5" />, path: '/patient/records/lab-results' },
     { name: 'Doctors', href: route('patient.doctors.index'), icon: <Stethoscope className="w-5 h-5" />, path: '/patient/doctors' },
-    { name: 'Profile Settings', href: route('patient.profile.edit'), icon: <Settings className="w-5 h-5" />, path: '/patient/profile' },
   ];
 
   return (
@@ -98,21 +95,9 @@ export function PatientLayout({ children, user }: PatientLayoutProps) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <Link href={route('patient.profile.edit')} className="w-full">
-                  <DropdownMenuItem className="flex w-full cursor-pointer items-center gap-2">
-                    <User size={16} />
-                    Profile
-                  </DropdownMenuItem>
-                </Link>
-                <Link href={route('patient.profile.edit')} className="w-full">
-                  <DropdownMenuItem className="flex w-full cursor-pointer items-center gap-2">
-                    <Settings size={16} />
-                    Settings
-                  </DropdownMenuItem>
-                </Link>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href={route('auth.logout')} method="post" className="flex w-full cursor-pointer">
+                  <Link href={route('auth.logout')} method="post" className="flex w-full cursor-pointer items-center gap-2">
+                    <LogOut size={16} />
                     Logout
                   </Link>
                 </DropdownMenuItem>

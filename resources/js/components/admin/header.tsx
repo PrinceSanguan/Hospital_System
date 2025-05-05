@@ -64,7 +64,7 @@ export function Header({ user }: { user: User }) {
                             </Link>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem asChild>
-                                <Link href={route('auth.logout')} className="flex w-full cursor-pointer">
+                                <Link href={route('auth.logout')} method="post" className="flex w-full cursor-pointer">
                                     Logout
                                 </Link>
                             </DropdownMenuItem>

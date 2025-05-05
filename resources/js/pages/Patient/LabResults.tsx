@@ -126,12 +126,6 @@ export default function LabResults({ user, labRecords }: LabResultsProps) {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button asChild className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700">
-                <Link href={route('patient.lab-appointments.book')}>
-                  <Plus className="h-4 w-4" />
-                  Book Lab Test
-                </Link>
-              </Button>
               <Button asChild variant="outline" className="flex items-center gap-1">
                 <Link href={route('patient.records.index')}>
                   <FileText className="h-4 w-4" />

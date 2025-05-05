@@ -119,7 +119,6 @@ export default function Records({ user, records }: RecordsProps) {
 
   // Filter records by type
   const medicalCheckups = records.filter(record => record.record_type === 'medical_checkup');
-  const prescriptions = records.filter(record => record.record_type === 'prescription');
 
   return (
     <PatientLayout user={user}>
@@ -150,7 +149,6 @@ export default function Records({ user, records }: RecordsProps) {
             <TabsList className="mb-4">
               <TabsTrigger value="all">All Records</TabsTrigger>
               <TabsTrigger value="checkups">Medical Checkups</TabsTrigger>
-              <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
             </TabsList>
 
             <TabsContent value="all">
@@ -260,60 +258,6 @@ export default function Records({ user, records }: RecordsProps) {
                         <TableRow>
                           <TableCell colSpan={5} className="text-center py-4">
                             No medical checkups found
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="prescriptions">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-blue-500" />
-                    Prescriptions
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Doctor</TableHead>
-                        <TableHead>Notes</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {prescriptions.length > 0 ? (
-                        prescriptions.map((record) => (
-                          <TableRow key={record.id}>
-                            <TableCell>{formatDate(record.appointment_date)}</TableCell>
-                            <TableCell>Dr. {record.assignedDoctor?.name || 'Unknown'}</TableCell>
-                            <TableCell className="max-w-xs truncate">{getDiagnosis(record.details)}</TableCell>
-                            <TableCell>{getStatusBadge(record.status)}</TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                asChild
-                              >
-                                <Link href={route('patient.records.show', record.id)}>
-                                  <FileSearch className="h-4 w-4 mr-1" />
-                                  View
-                                </Link>
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center py-4">
-                            No prescriptions found
                           </TableCell>
                         </TableRow>
                       )}

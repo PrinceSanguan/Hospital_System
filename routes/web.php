@@ -29,7 +29,7 @@ use App\Http\Controllers\Auth\LoginController;
 
 Route::get('login', [LoginController::class, 'index'])->middleware(GuestMiddleware::class)->name('auth.login');
 Route::post('login', [LoginController::class, 'store'])->name('auth.login.store');
-Route::get('logout', [LoginController::class, 'destroy'])->name('auth.logout');
+Route::post('logout', [LoginController::class, 'destroy'])->name('auth.logout');
 
 /*
 |--------------------------------------------------------------------------

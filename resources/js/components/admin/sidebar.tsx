@@ -107,7 +107,7 @@ export function Sidebar() {
             {/* Logout Button */}
             <div className="border-t p-4 dark:border-gray-700">
                 <Button asChild variant="outline" className="w-full">
-                    <Link href={route('auth.logout')} className="flex items-center justify-center">
+                    <Link href={route('auth.logout')} method="post" className="flex items-center justify-center">
                         <LogOut className="mr-2 h-4 w-4" />
                         Logout
                     </Link>

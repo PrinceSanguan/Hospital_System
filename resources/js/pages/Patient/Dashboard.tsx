@@ -8,7 +8,6 @@ import {
   FileText,
   Calendar as CalendarIcon,
   Clock,
-  LogOut,
   Search,
   Menu,
   UserIcon
@@ -23,7 +22,6 @@ import {
   PopoverContent,
   PopoverTrigger
 } from "@/components/ui/popover";
-import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -239,7 +237,7 @@ export default function PatientDashboard({
   // Handle logout functionality
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault();
-    router.get(route('auth.logout'));
+    router.post(route('auth.logout'));
   };
 
   // Handle doctor selection for booking
@@ -381,25 +379,6 @@ export default function PatientDashboard({
               </Link>
             ))}
           </div>
-
-          <Separator className="my-4" />
-
-          <div className="mt-auto">
-            <Link
-              href="/service/clinical-schedule"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              <Calendar size={18} />
-              Clinical Schedule
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              <LogOut size={18} />
-              Logout
-            </button>
-          </div>
         </div>
       </div>
 
@@ -525,15 +504,10 @@ export default function PatientDashboard({
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/patient/profile">Profile</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/patient/settings">Settings</Link>
-                </DropdownMenuItem>
+
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/auth/logout">Logout</Link>
+                  <Link href="#" onClick={handleLogout}>Logout</Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -866,40 +840,6 @@ export default function PatientDashboard({
                 </Button>
               </CardFooter>
             </Card>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="mt-8">
-            <h2 className="mb-4 text-xl font-semibold text-gray-900">Quick Actions</h2>
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
-              <Button asChild variant="outline" className="h-auto flex-col gap-2 p-4">
-                <Link href="/patient/appointments/book" className="space-y-2">
-                  <CalendarIcon className="h-6 w-6 text-blue-600" />
-                  <span>Book Medical Checkup</span>
-                </Link>
-              </Button>
-
-              <Button asChild variant="outline" className="h-auto flex-col gap-2 p-4">
-                <Link href="/patient/appointments/book-lab" className="space-y-2">
-                  <Microscope className="h-6 w-6 text-purple-600" />
-                  <span>Book Laboratory Test</span>
-                </Link>
-              </Button>
-
-              <Button asChild variant="outline" className="h-auto flex-col gap-2 p-4">
-                <Link href="/service/clinical-schedule" className="space-y-2">
-                  <Clock className="h-6 w-6 text-green-600" />
-                  <span>View Clinical Schedule</span>
-                </Link>
-              </Button>
-
-              <Button asChild variant="outline" className="h-auto flex-col gap-2 p-4">
-                <Link href="/patient/doctors" className="space-y-2">
-                  <Stethoscope className="h-6 w-6 text-amber-600" />
-                  <span>Find a Doctor</span>
-                </Link>
-              </Button>
-            </div>
           </div>
         </main>
       </div>

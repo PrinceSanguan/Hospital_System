@@ -29,21 +29,11 @@ interface Doctor {
   availability: string[];
 }
 
-interface ScheduleDay {
-  day: string;
-  slots: {
-    time: string;
-    available: boolean;
-  }[];
-}
-
 interface LandingProps {
   services: Service[];
   hospitalServices: HospitalService[];
   doctors: Doctor[];
   isAuthenticated: boolean;
-  userRole?: string | null;
-  schedule?: ScheduleDay[];
 }
 
 // Map service icons to Lucide icons
@@ -56,76 +46,7 @@ const iconMap: Record<string, LucideIcon> = {
   specialist: UserCog,
 };
 
-// Sample doctors data - in a real app, this would come from the backend
-const sampleDoctors: Doctor[] = [
-  {
-    id: 1,
-    name: "Dr. Sarah Johnson",
-    specialty: "Cardiologist",
-    image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80",
-    availability: ["Monday", "Wednesday", "Friday"]
-  },
-  {
-    id: 2,
-    name: "Dr. Michael Chen",
-    specialty: "Neurologist",
-    image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80",
-    availability: ["Tuesday", "Thursday", "Saturday"]
-  },
-  {
-    id: 3,
-    name: "Dr. Emily Williams",
-    specialty: "Pediatrician",
-    image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80",
-    availability: ["Monday", "Tuesday", "Friday"]
-  },
-  {
-    id: 4,
-    name: "Dr. James Rodriguez",
-    specialty: "Orthopedic Surgeon",
-    image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80",
-    availability: ["Wednesday", "Thursday", "Saturday"]
-  }
-];
-
-// Sample schedule data - in a real app, this would come from the backend
-const sampleSchedule: ScheduleDay[] = [
-  {
-    day: "Monday",
-    slots: [
-      { time: "09:00 AM", available: true },
-      { time: "10:00 AM", available: false },
-      { time: "11:00 AM", available: true },
-      { time: "01:00 PM", available: true },
-      { time: "02:00 PM", available: false },
-      { time: "03:00 PM", available: true },
-    ]
-  },
-  {
-    day: "Tuesday",
-    slots: [
-      { time: "09:00 AM", available: false },
-      { time: "10:00 AM", available: true },
-      { time: "11:00 AM", available: true },
-      { time: "01:00 PM", available: false },
-      { time: "02:00 PM", available: true },
-      { time: "03:00 PM", available: true },
-    ]
-  },
-  {
-    day: "Wednesday",
-    slots: [
-      { time: "09:00 AM", available: true },
-      { time: "10:00 AM", available: true },
-      { time: "11:00 AM", available: false },
-      { time: "01:00 PM", available: true },
-      { time: "02:00 PM", available: false },
-      { time: "03:00 PM", available: true },
-    ]
-  }
-];
-
-export default function Landing({ services, hospitalServices = [], doctors = [], isAuthenticated, schedule = sampleSchedule }: LandingProps) {
+export default function Landing({ services, hospitalServices = [], doctors = [], isAuthenticated }: LandingProps) {
   return (
     <div className="min-h-screen bg-white">
       {/* Navbar */}
@@ -270,8 +191,6 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
             <h2 className="mb-4 text-3xl font-bold text-gray-900 md:text-4xl">Healthcare Services</h2>
             <p className="mx-auto max-w-2xl text-gray-600">Explore our comprehensive healthcare services designed to provide you with quality medical care</p>
           </div>
-
-          {console.log("Hospital Services:", hospitalServices)}
 
           {hospitalServices && hospitalServices.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -448,274 +367,125 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
         <div className="container mx-auto px-6">
           <div className="mb-16 text-center">
             <h2 className="mb-4 text-3xl font-bold text-gray-900 md:text-4xl">Clinical Schedule</h2>
-            <p className="mx-auto max-w-2xl text-gray-600">Check our availability and book your appointment</p>
+            <p className="mx-auto max-w-2xl text-gray-600">Check our doctors' availability and book your appointment</p>
           </div>
 
           <div className="mx-auto max-w-6xl">
-            {/* Calendar View */}
-            <div className="mb-8 overflow-hidden rounded-lg border shadow-lg bg-white">
-              <div className="p-4 border-b flex flex-col sm:flex-row justify-between items-center">
-                <h3 className="font-semibold text-lg text-gray-900 mb-2 sm:mb-0">July 2024</h3>
-                <div className="flex space-x-2">
-                  <Button variant="outline" size="sm">
-                    Previous
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    Today
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    Next
-                  </Button>
-                </div>
-              </div>
-
-              {/* Days of Week Header */}
-              <div className="grid grid-cols-7 border-b">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div key={day} className="p-2 text-center font-medium text-sm text-gray-700">
-                    {day}
-                  </div>
-                ))}
-              </div>
-
-              {/* Calendar Days Grid */}
-              <div className="grid grid-cols-7">
-                {/* First week with empty days */}
-                <div className="border-r border-b min-h-[90px] p-1 bg-gray-50"></div>
-                <div className="border-r border-b min-h-[90px] p-1 bg-gray-50"></div>
-                <div className="border-r border-b min-h-[90px] p-1">
-                  <div className="text-sm p-1 font-medium">1</div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">
-                      Available
-                    </span>
-                  </div>
-                </div>
-                <div className="border-r border-b min-h-[90px] p-1">
-                  <div className="text-sm p-1 font-medium">2</div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">
-                      Available
-                    </span>
-                  </div>
-                </div>
-                <div className="border-r border-b min-h-[90px] p-1">
-                  <div className="text-sm p-1 font-medium">3</div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-red-100 text-red-800">
-                      Booked
-                    </span>
-                  </div>
-                </div>
-                <div className="border-r border-b min-h-[90px] p-1">
-                  <div className="text-sm p-1 font-medium">4</div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">
-                      Available
-                    </span>
-                  </div>
-                </div>
-                <div className="border-r border-b min-h-[90px] p-1">
-                  <div className="text-sm p-1 font-medium">5</div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">
-                      Available
-                    </span>
-                  </div>
-                </div>
-
-                {/* Second week */}
-                <div className="border-r border-b min-h-[90px] p-1">
-                  <div className="text-sm p-1 font-medium">6</div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-red-100 text-red-800">
-                      Booked
-                    </span>
-                  </div>
-                </div>
-                <div className="border-r border-b min-h-[90px] p-1">
-                  <div className="text-sm p-1 font-medium">7</div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">
-                      Available
-                    </span>
-                  </div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800">
-                      Dr. Johnson
-                    </span>
-                  </div>
-                </div>
-                <div className="border-r border-b min-h-[90px] p-1">
-                  <div className="text-sm p-1 font-medium">8</div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">
-                      Available
-                    </span>
-                  </div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800">
-                      Dr. Chen
-                    </span>
-                  </div>
-                </div>
-                <div className="border-r border-b min-h-[90px] p-1">
-                  <div className="text-sm p-1 font-medium">9</div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">
-                      Available
-                    </span>
-                  </div>
-                </div>
-                <div className="border-r border-b min-h-[90px] p-1 bg-blue-50">
-                  <div className="text-sm p-1 font-medium text-blue-800">10</div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">
-                      Available
-                    </span>
-                  </div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800">
-                      Dr. Williams
-                    </span>
-                  </div>
-                </div>
-                <div className="border-r border-b min-h-[90px] p-1">
-                  <div className="text-sm p-1 font-medium">11</div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-red-100 text-red-800">
-                      Booked
-                    </span>
-                  </div>
-                </div>
-                <div className="border-b min-h-[90px] p-1">
-                  <div className="text-sm p-1 font-medium">12</div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">
-                      Available
-                    </span>
-                  </div>
-                </div>
-
-                {/* Third week */}
-                <div className="border-r border-b min-h-[90px] p-1">
-                  <div className="text-sm p-1 font-medium">13</div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">
-                      Available
-                    </span>
-                  </div>
-                </div>
-                <div className="border-r border-b min-h-[90px] p-1">
-                  <div className="text-sm p-1 font-medium">14</div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-red-100 text-red-800">
-                      Booked
-                    </span>
-                  </div>
-                </div>
-                <div className="border-r border-b min-h-[90px] p-1">
-                  <div className="text-sm p-1 font-medium">15</div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">
-                      Available
-                    </span>
-                  </div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800">
-                      Dr. Johnson
-                    </span>
-                  </div>
-                </div>
-                <div className="border-r border-b min-h-[90px] p-1">
-                  <div className="text-sm p-1 font-medium">16</div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">
-                      Available
-                    </span>
-                  </div>
-                </div>
-                <div className="border-r border-b min-h-[90px] p-1">
-                  <div className="text-sm p-1 font-medium">17</div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">
-                      Available
-                    </span>
-                  </div>
-                </div>
-                <div className="border-r border-b min-h-[90px] p-1">
-                  <div className="text-sm p-1 font-medium">18</div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-red-100 text-red-800">
-                      Booked
-                    </span>
-                  </div>
-                </div>
-                <div className="border-b min-h-[90px] p-1">
-                  <div className="text-sm p-1 font-medium">19</div>
-                  <div className="mt-1">
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">
-                      Available
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Available Doctors */}
-            <div className="mb-8">
-              <h3 className="mb-4 text-lg font-semibold text-gray-900">Available Doctors This Week</h3>
+            <div className="mb-12">
+              <h3 className="mb-6 text-xl font-semibold text-gray-900">Available Doctors</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {doctors.map((doctor) => (
-                  <div key={doctor.id} className="p-4 border rounded-lg shadow-sm bg-white flex items-center space-x-3">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden">
-                      <img src={doctor.image} alt={doctor.name} className="h-full w-full object-cover" />
+                  <div key={doctor.id} className="p-4 border rounded-lg shadow-sm bg-white flex flex-col">
+                    <div className="flex items-center space-x-3 mb-3">
+                      <div className="flex-shrink-0 h-12 w-12 rounded-full overflow-hidden">
+                        <img src={doctor.image} alt={doctor.name} className="h-full w-full object-cover"
+                             onError={(e) => {
+                               (e.target as HTMLImageElement).src = "https://ui.shadcn.com/avatars/01.png";
+                             }}
+                        />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{doctor.name}</p>
+                        <p className="text-sm text-blue-600">{doctor.specialty}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{doctor.name}</p>
-                      <p className="text-sm text-gray-500">{doctor.specialty}</p>
+                    <div className="mt-2">
+                      <p className="text-sm font-medium text-gray-700 mb-2">Available on:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {doctor.availability.map((day) => (
+                          <span key={`${doctor.id}-${day}`} className="px-2 py-1 bg-blue-50 text-blue-600 rounded-md text-xs">
+                            {day}
+                          </span>
+                        ))}
+                      </div>
                     </div>
+                    <Button asChild variant="outline" size="sm" className="w-full mt-auto">
+                      <Link href={isAuthenticated ? route('patient.appointments.book', {doctor_id: doctor.id}) : route('auth.login')} className="flex items-center justify-center mt-3">
+                        Book Appointment <ChevronRight className="ml-1 h-4 w-4" />
+                      </Link>
+                    </Button>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Daily Schedule */}
-            <div className="overflow-hidden rounded-lg border shadow-lg bg-white">
+            {/* Weekly Schedule View */}
+            <div className="mb-12 overflow-hidden rounded-lg border shadow-lg bg-white">
               <div className="p-4 border-b">
-                <h3 className="font-semibold text-lg text-gray-900">Daily Schedules</h3>
+                <h3 className="font-semibold text-lg text-gray-900">Weekly Availability</h3>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x">
-                {schedule.map((day) => (
-                  <div key={day.day} className="p-6">
-                    <h3 className="mb-4 text-lg font-semibold text-gray-900">{day.day}</h3>
-                    <div className="space-y-3">
-                      {day.slots.map(slot => (
-                        <div key={slot.time} className="flex items-center justify-between">
-                          <span className="flex items-center text-sm text-gray-700">
-                            <Clock className="mr-2 h-4 w-4 text-gray-400" />
-                            {slot.time}
-                          </span>
-                          <span className={`rounded-full px-2 py-1 text-xs font-medium ${
-                            slot.available
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {slot.available ? 'Available' : 'Booked'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Doctor</th>
+                      <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Monday</th>
+                      <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Tuesday</th>
+                      <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Wednesday</th>
+                      <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Thursday</th>
+                      <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Friday</th>
+                      <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Saturday</th>
+                      <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Sunday</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {doctors.map((doctor) => (
+                      <tr key={doctor.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden">
+                              <img src={doctor.image} alt={doctor.name} className="h-full w-full object-cover"
+                                   onError={(e) => {
+                                     (e.target as HTMLImageElement).src = "https://ui.shadcn.com/avatars/01.png";
+                                   }}
+                              />
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">{doctor.name}</div>
+                              <div className="text-sm text-gray-500">{doctor.specialty}</div>
+                            </div>
+                          </div>
+                        </td>
+                        {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
+                          <td key={`${doctor.id}-${day}`} className="px-4 py-4 whitespace-nowrap text-center">
+                            {doctor.availability.includes(day) ? (
+                              <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Available
+                              </span>
+                            ) : (
+                              <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                Unavailable
+                              </span>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
+            </div>
 
-              <div className="p-4 border-t">
-                <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                  Book an Appointment
+            {/* Booking CTA */}
+            <div className="bg-blue-50 border border-blue-100 rounded-lg p-6 text-center">
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Ready to book your appointment?</h3>
+              <p className="text-gray-600 mb-6">Choose your preferred doctor and schedule a visit at your convenience</p>
+              {isAuthenticated ? (
+                <Button asChild className="bg-blue-600 hover:bg-blue-700">
+                  <Link href={route('patient.appointments.book')}>Book an Appointment Now</Link>
                 </Button>
-              </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Button asChild variant="outline">
+                    <Link href={route('auth.login')}>Login to Book</Link>
+                  </Button>
+                  <Button asChild>
+                    <Link href={route('auth.register')}>Register Now</Link>
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>

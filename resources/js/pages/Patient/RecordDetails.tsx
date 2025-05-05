@@ -494,10 +494,10 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
                     <Separator />
 
                     {/* Diagnosis and Treatment (for medical records) */}
-                    <div>
-                      <h2 className="text-xl font-bold mb-4">DIAGNOSIS & TREATMENT</h2>
+                    <div className="space-y-4">
+                      <h2 className="text-xl font-bold mb-4">DETAILS</h2>
                       <div className="space-y-4">
-                        {details.diagnosis && (
+                        {details.diagnosis && !details.diagnosis.startsWith('{') && (
                           <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
                             <h3 className="font-semibold text-sm text-gray-500 mb-2">Diagnosis</h3>
                             <p className="whitespace-pre-line">{renderValue(details.diagnosis)}</p>
@@ -505,7 +505,8 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
                         )}
 
                         {/* If there's no structured diagnosis but the record details might be plain text */}
-                        {!details.diagnosis && typeof record.details === 'string' && record.details && (
+                        {!details.diagnosis && typeof record.details === 'string' && record.details &&
+                         !record.details.startsWith('{') && !record.details.includes('"appointment_time"') && (
                           <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
                             <h3 className="font-semibold text-sm text-gray-500 mb-2">Diagnosis</h3>
                             <p className="whitespace-pre-line">{renderValue(record.details)}</p>
