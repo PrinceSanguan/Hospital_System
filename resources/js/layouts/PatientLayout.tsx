@@ -205,12 +205,7 @@ export function PatientLayout({ children, user }: PatientLayoutProps) {
         {/* Main Content */}
         <main className="flex-1 overflow-auto print:overflow-visible print:w-full">
           {/* Welcome header - shown on all patient pages */}
-          <div className="border-b border-gray-200 bg-white">
-            <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-              <h1 className="text-2xl font-bold text-gray-900">Welcome, {user.name}</h1>
-              <p className="text-sm text-gray-600">Here's an overview of your health information</p>
-            </div>
-          </div>
+
 
           <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 print:p-0 print:m-0 print:max-w-none">
             {children}

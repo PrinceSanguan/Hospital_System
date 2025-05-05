@@ -4,29 +4,32 @@ import {
     LayoutDashboard,
     Calendar,
     FileText,
-    Users,
-    Clipboard,
     LogOut,
-    Bell,
     Stethoscope
 } from 'lucide-react';
 
-export function Sidebar() {
+interface User {
+    name: string;
+    email: string;
+}
+
+interface SidebarProps {
+    user: User;
+}
+
+export function Sidebar({ user }: SidebarProps) {
     const { url } = usePage(); // Get the current route
 
-    // Function to check if the route matches
-    const isActive = (path: string) => url.startsWith(path);
+    // Simple check if the current route is active
+    const isActive = (path: string) => {
+        return url.startsWith(path);
+    };
 
-    // Helper function to check if routes exist - using a more defensive approach
+    // Get page props to check if routes exist
     const pageData = usePage();
+    const props = pageData.props as Record<string, unknown>;
 
-    interface PageProps {
-        ziggy?: {
-            routes: Record<string, string>;
-        };
-    }
-
-    const routes = (pageData.props as PageProps)?.ziggy?.routes || {};
+    const routes = (props?.ziggy?.routes as Record<string, unknown>) || {};
 
     const routeExists = (name: string) => {
         return Object.keys(routes).includes(name);
@@ -45,24 +48,9 @@ export function Sidebar() {
             icon: <Calendar size={18} />
         },
         {
-            name: 'Patients',
-            route: 'staff.patients',
-            icon: <Users size={18} />
-        },
-        {
             name: 'Medical Records',
             route: 'staff.clinical.info',
             icon: <FileText size={18} />
-        },
-        {
-            name: 'Follow-ups',
-            route: 'staff.followups',
-            icon: <Clipboard size={18} />
-        },
-        {
-            name: 'Notifications',
-            route: 'staff.notifications',
-            icon: <Bell size={18} />
         }
     ];
 
@@ -80,7 +68,7 @@ export function Sidebar() {
             <div className="flex-1 overflow-auto py-6">
                 <nav className="grid items-start gap-2 px-3 text-sm font-medium">
                     {/* Navigation items */}
-                    {navigationItems.map((item) => (
+                    {navigationItems.map(item => (
                         routeExists(item.route) ? (
                             <Link href={route(item.route)} key={item.name} className="w-full">
                                 <Button

@@ -201,7 +201,9 @@ Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')-
   Route::post('/records', [RecordsController::class, 'store'])->name('records.store');
   Route::put('/records/{id}', [RecordsController::class, 'update'])->name('records.update');
   Route::delete('/records/{id}', [RecordsController::class, 'destroy'])->name('records.destroy');
-  Route::get('/patients/{patientId}/records', [RecordsController::class, 'getPatientRecords'])->name('patients.records');
+  Route::get('/records/{id}/print', [RecordsController::class, 'printRecord'])->name('records.print');
+  Route::get('/records/{id}/print-prescriptions', [RecordsController::class, 'printPrescriptions'])->name('records.print-prescriptions');
+  Route::get('/records/patient/{patientId}', [RecordsController::class, 'getPatientRecords'])->name('patient.records');
 
   // Notifications Management
   Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');

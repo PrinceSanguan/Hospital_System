@@ -282,7 +282,7 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
                 CH
               </div>
               <div>
-                <h1 className="text-2xl font-bold">Choros Health</h1>
+                <h1 className="text-2xl font-bold">Famcare Health</h1>
                 <p className="text-sm text-gray-600">Medical Center & Healthcare System</p>
                 <p className="text-xs text-gray-500">123 Healthcare Avenue • Medical City • Phone: (555) 123-4567</p>
               </div>
@@ -367,7 +367,7 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
 
           {/* Print-only message at top of printed page */}
           <div className="hidden print:block print:mb-4 print:mt-2 print:text-center print:text-sm print:text-gray-500">
-            This is an official medical record printed from Choros Health System on {new Date().toLocaleDateString()}.
+            This is an official medical record printed from Famcare Health System on {new Date().toLocaleDateString()}.
             For verification, contact Medical Records Department at (555) 123-4567.
           </div>
 

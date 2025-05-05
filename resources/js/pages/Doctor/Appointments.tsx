@@ -7,7 +7,8 @@ import {
     Calendar,
     Search,
     Filter,
-    CheckCircle
+    CheckCircle,
+    Eye
 } from "lucide-react";
 import {
     Table,
@@ -187,6 +188,16 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
             );
         }
 
+        // Sort by status (pending first) and then by date in ascending order
+        filtered.sort((a, b) => {
+            // First sort by status (pending first, then others)
+            if (a.status === 'pending' && b.status !== 'pending') return -1;
+            if (a.status !== 'pending' && b.status === 'pending') return 1;
+
+            // For the same status, sort by date (ascending)
+            return new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime();
+        });
+
         setFilteredAppointments(filtered);
     }, [appointments, dateRange, statusFilter, searchTerm]);
 
@@ -335,6 +346,7 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                                                     <div className="flex justify-end items-center gap-2">
                                                         <Button asChild variant="outline" size="sm">
                                                             <Link href={route('doctor.appointments.show', appointment.id)}>
+                                                                <Eye className="h-4 w-4 mr-1" />
                                                                 View
                                                             </Link>
                                                         </Button>

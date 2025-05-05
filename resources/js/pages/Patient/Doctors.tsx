@@ -180,7 +180,7 @@ export default function Doctors({
         <div className="flex h-16 items-center justify-center border-b px-4">
           <Link href="/patient/dashboard" className="flex items-center">
             <Stethoscope className="h-6 w-6 text-blue-600" />
-            <span className="ml-2 text-xl font-semibold text-gray-900">Choros Health</span>
+            <span className="ml-2 text-xl font-semibold text-gray-900">Famcare Health</span>
           </Link>
         </div>
 

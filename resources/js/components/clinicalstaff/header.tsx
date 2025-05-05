@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 import { Link, usePage } from '@inertiajs/react';
-import { ChevronDown, LayoutDashboard, Settings, Bell, LogOut } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, Bell, LogOut } from 'lucide-react';
 
 interface User {
     name: string;
@@ -80,7 +80,7 @@ export function Header({ user }: { user: User }) {
             </Button>
             <div className="flex flex-1 items-center justify-between">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 md:hidden">
-                    Choros Health
+                    Famcare Health
                 </h2>
                 <div className="ml-auto flex items-center gap-4">
                     {/* Notifications Dropdown */}
@@ -155,23 +155,6 @@ export function Header({ user }: { user: User }) {
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
 
-                            {routeExists('staff.profile') ? (
-                                <Link href={route('staff.profile')} className="w-full">
-                                    <DropdownMenuItem className="flex w-full cursor-pointer items-center gap-2">
-                                        <Settings size={16} />
-                                        Profile Settings
-                                    </DropdownMenuItem>
-                                </Link>
-                            ) : (
-                                <Link href={route('staff.dashboard')} className="w-full">
-                                    <DropdownMenuItem className="flex w-full cursor-pointer items-center gap-2">
-                                        <Settings size={16} />
-                                        Settings
-                                    </DropdownMenuItem>
-                                </Link>
-                            )}
-
-                            <DropdownMenuSeparator />
                             <DropdownMenuItem asChild>
                                 <Link href={route('auth.logout')} className="flex w-full cursor-pointer items-center gap-2">
                                     <LogOut size={16} />

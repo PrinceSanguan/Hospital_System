@@ -6,10 +6,8 @@ import {
     FileText,
     Calendar,
     Settings,
-    LogOut,
     Stethoscope,
-    Clock,
-    Search
+    Clock
 } from 'lucide-react';
 
 interface User {
@@ -26,12 +24,16 @@ interface SidebarProps {
 export function Sidebar({ user, unreadNotifications = 0 }: SidebarProps) {
     const { url } = usePage(); // Get the current route
 
-    // Function to check if the route matches
-    const isActive = (path: string) => url.startsWith(path);
+    // Simple check if the current route is active
+    const isActive = (path: string) => {
+        return url.startsWith(path);
+    };
 
-    // Helper function to check if routes exist
-    const { props } = usePage();
-    const routes = (props as { ziggy?: { routes: Record<string, unknown> } })?.ziggy?.routes || {};
+    // Get page props to check if routes exist
+    const pageData = usePage();
+    const props = pageData.props as Record<string, unknown>;
+
+    const routes = (props?.ziggy?.routes as Record<string, unknown>) || {};
 
     const routeExists = (name: string) => {
         return Object.keys(routes).includes(name);
@@ -42,44 +44,38 @@ export function Sidebar({ user, unreadNotifications = 0 }: SidebarProps) {
         {
             name: 'Dashboard',
             route: 'doctor.dashboard',
-            icon: <LayoutDashboard size={18} />,
-            path: '/doctor/dashboard'
+            path: '/doctor/dashboard',
+            icon: <LayoutDashboard size={18} />
         },
         {
-            name: 'My Patients',
+            name: 'Patients',
             route: 'doctor.patients.index',
-            icon: <Users size={18} />,
-            path: '/doctor/patients'
+            path: '/doctor/patients',
+            icon: <Users size={18} />
         },
         {
             name: 'Appointments',
             route: 'doctor.appointments.index',
-            icon: <Calendar size={18} />,
-            path: '/doctor/appointments'
+            path: '/doctor/appointments',
+            icon: <Calendar size={18} />
         },
         {
             name: 'Schedule',
             route: 'doctor.schedule.index',
-            icon: <Clock size={18} />,
-            path: '/doctor/schedule'
+            path: '/doctor/schedule',
+            icon: <Clock size={18} />
         },
         {
-            name: 'Medical Records',
+            name: 'Records',
             route: 'doctor.records.index',
-            icon: <FileText size={18} />,
-            path: '/doctor/records'
+            path: '/doctor/records',
+            icon: <FileText size={18} />
         },
         {
-            name: 'Patient Search',
-            route: 'doctor.patients.search',
-            icon: <Search size={18} />,
-            path: '/doctor/patients/search'
-        },
-        {
-            name: 'My Profile',
+            name: 'Settings',
             route: 'doctor.profile',
-            icon: <Settings size={18} />,
-            path: '/doctor/profile'
+            path: '/doctor/profile',
+            icon: <Settings size={18} />
         }
     ];
 
@@ -121,19 +117,9 @@ export function Sidebar({ user, unreadNotifications = 0 }: SidebarProps) {
                                     </span>
                                 )}
                             </Link>
-                            </Button>
+                        </Button>
                     ))}
                 </nav>
-            </div>
-
-            {/* Logout Button */}
-            <div className="border-t p-4 dark:border-gray-700">
-                <Button asChild variant="outline" className="w-full">
-                    <Link href={route('auth.logout')} className="flex items-center justify-center">
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Logout
-                    </Link>
-                </Button>
             </div>
         </div>
     );

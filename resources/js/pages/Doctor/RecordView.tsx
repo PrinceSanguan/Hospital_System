@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { UserData } from '@/types';
-import { ArrowLeft, Edit, Calendar, Clock, Pill, User } from 'lucide-react';
+import { ArrowLeft, Edit, Calendar, Clock, FilePlus, Pill, User } from 'lucide-react';
 
 interface VitalSign {
   name: string;
@@ -21,6 +21,14 @@ interface Prescription {
   instructions: string;
 }
 
+interface UploadedFile {
+  name: string;
+  path: string;
+  url: string;
+  size: number;
+  type: string;
+}
+
 interface PatientRecord {
   id: number;
   patient_id: number;
@@ -34,6 +42,7 @@ interface PatientRecord {
   vital_signs?: Record<string, VitalSign>;
   prescriptions?: Prescription[];
   lab_results?: Record<string, unknown>;
+  uploaded_files?: UploadedFile[];
 }
 
 interface Patient {
@@ -94,6 +103,30 @@ export default function RecordView({ user, record, patient }: RecordViewProps) {
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
     );
+  };
+
+  // Helper function to get file icon based on mime type
+  const getFileIcon = (mimeType: string) => {
+    if (mimeType.includes('image/')) {
+      return '🖼️';
+    } else if (mimeType.includes('pdf')) {
+      return '📄';
+    } else if (mimeType.includes('word') || mimeType.includes('doc')) {
+      return '📝';
+    } else {
+      return '📎';
+    }
+  };
+
+  // Helper function to format file size
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) {
+      return bytes + ' bytes';
+    } else if (bytes < 1024 * 1024) {
+      return (bytes / 1024).toFixed(1) + ' KB';
+    } else {
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
   };
 
   // Add this function to parse and display details in a formatted way
@@ -356,6 +389,93 @@ export default function RecordView({ user, record, patient }: RecordViewProps) {
                         </div>
                       </div>
                     )}
+
+                    {/* Uploaded Files */}
+                    {(() => {
+                      // Check if uploaded_files property exists on the record
+                      if (record.uploaded_files && record.uploaded_files.length > 0) {
+                        return (
+                          <div className="mt-4">
+                            <h3 className="font-medium text-lg flex items-center">
+                              <FilePlus className="mr-2 h-5 w-5 text-blue-600" />
+                              Patient Uploaded Files
+                            </h3>
+                            <div className="mt-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                              <div className="space-y-3">
+                                {record.uploaded_files.map((file, index) => (
+                                  <div key={index} className="flex items-center justify-between bg-white px-4 py-3 rounded-lg border border-gray-100">
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-xl" aria-hidden="true">
+                                        {getFileIcon(file.type)}
+                                      </span>
+                                      <div>
+                                        <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                                        <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                                      </div>
+                                    </div>
+                                    <a
+                                      href={file.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+                                    >
+                                      <span>View</span>
+                                    </a>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Also check if the details has uploaded_files in JSON format
+                      try {
+                        const detailsObj = typeof record.details === 'string'
+                          ? JSON.parse(record.details)
+                          : record.details;
+
+                        if (detailsObj && detailsObj.uploaded_files && Array.isArray(detailsObj.uploaded_files) && detailsObj.uploaded_files.length > 0) {
+                          return (
+                            <div className="mt-4">
+                              <h3 className="font-medium text-lg flex items-center">
+                                <FilePlus className="mr-2 h-5 w-5 text-blue-600" />
+                                Patient Uploaded Files
+                              </h3>
+                              <div className="mt-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                                <div className="space-y-3">
+                                  {detailsObj.uploaded_files.map((file: UploadedFile, index: number) => (
+                                    <div key={index} className="flex items-center justify-between bg-white px-4 py-3 rounded-lg border border-gray-100">
+                                      <div className="flex items-center gap-3">
+                                        <span className="text-xl" aria-hidden="true">
+                                          {getFileIcon(file.type)}
+                                        </span>
+                                        <div>
+                                          <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                                          <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                                        </div>
+                                      </div>
+                                      <a
+                                        href={file.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+                                      >
+                                        <span>View</span>
+                                      </a>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+                      } catch (e) {
+                        console.error("Error parsing record details for uploaded files:", e);
+                      }
+
+                      return null;
+                    })()}
                   </div>
                 </CardContent>
               </Card>

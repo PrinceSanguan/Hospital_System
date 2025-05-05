@@ -4,11 +4,11 @@ import DoctorLayout from '@/layouts/DoctorLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-    PlusCircle,
     Search,
     Filter,
     ArrowUpDown,
-    Eye
+    Eye,
+    Printer
 } from "lucide-react";
 import {
     Select,
@@ -201,12 +201,6 @@ export default function Records({ user, medicalRecords, patients = [] }: Records
                                 View and manage patient medical records
                             </p>
                         </div>
-                        <div className="flex gap-2">
-                            <Button onClick={() => setIsCreateModalOpen(true)}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                New Record
-                            </Button>
-                        </div>
                     </div>
 
                     {/* Tabs for different record views */}
@@ -309,16 +303,28 @@ export default function Records({ user, medicalRecords, patients = [] }: Records
                                                         </Badge>
                                                     </td>
                                                     <td className="py-3 px-2 text-right">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            asChild
-                                                        >
-                                                            <Link href={route('doctor.records.show', record.id)}>
-                                                                <Eye className="h-4 w-4 mr-1" />
-                                                                View
-                                                            </Link>
-                                                        </Button>
+                                                        <div className="flex justify-end gap-2">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                asChild
+                                                            >
+                                                                <Link href={route('doctor.records.show', record.id)}>
+                                                                    <Eye className="h-4 w-4 mr-1" />
+                                                                    View
+                                                                </Link>
+                                                            </Button>
+                                                            {record.prescriptions && record.prescriptions.length > 0 && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => window.open(route('doctor.records.print-prescriptions', record.id), '_blank')}
+                                                                >
+                                                                    <Printer className="h-4 w-4 mr-1" />
+                                                                    Print Rx
+                                                                </Button>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -328,10 +334,6 @@ export default function Records({ user, medicalRecords, patients = [] }: Records
                             ) : (
                                 <div className="text-center py-12">
                                     <p className="text-gray-500 mb-4">No medical records found</p>
-                                    <Button onClick={() => setIsCreateModalOpen(true)}>
-                                        <PlusCircle className="mr-2 h-4 w-4" />
-                                        Create First Record
-                                    </Button>
                                 </div>
                             )}
                         </CardContent>
