@@ -1,7 +1,6 @@
 import { Link } from "@inertiajs/react";
 import { motion } from "framer-motion";
 import { LucideIcon, Microscope, Stethoscope, Calendar, ClipboardList, UserRound, UserCog, Clock, MapPin, Phone, Mail, ChevronRight } from "lucide-react";
-import { PageProps } from "@/types";
 import { Button } from "@/components/ui/button";
 
 interface Service {
@@ -10,6 +9,16 @@ interface Service {
   description: string;
   icon: string;
   requires_auth: boolean;
+}
+
+interface HospitalService {
+  id: number;
+  name: string;
+  description: string;
+  category: string;
+  price: number;
+  icon: string;
+  is_active: boolean;
 }
 
 interface Doctor {
@@ -30,9 +39,10 @@ interface ScheduleDay {
 
 interface LandingProps {
   services: Service[];
+  hospitalServices: HospitalService[];
+  doctors: Doctor[];
   isAuthenticated: boolean;
-  userRole: string | null;
-  doctors?: Doctor[];
+  userRole?: string | null;
   schedule?: ScheduleDay[];
 }
 
@@ -115,7 +125,7 @@ const sampleSchedule: ScheduleDay[] = [
   }
 ];
 
-export default function Landing({ services, isAuthenticated, userRole, doctors = sampleDoctors, schedule = sampleSchedule }: PageProps<LandingProps>) {
+export default function Landing({ services, hospitalServices = [], doctors = [], isAuthenticated, schedule = sampleSchedule }: LandingProps) {
   return (
     <div className="min-h-screen bg-white">
       {/* Navbar */}
@@ -220,7 +230,7 @@ export default function Landing({ services, isAuthenticated, userRole, doctors =
             <p className="mx-auto max-w-2xl text-gray-600">We provide a wide range of medical services to meet all your healthcare needs</p>
           </div>
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {services.map((service, index) => {
+            {services.map((service: Service, index: number) => {
               const Icon = iconMap[service.icon] || ClipboardList;
               return (
                 <motion.div
@@ -253,44 +263,178 @@ export default function Landing({ services, isAuthenticated, userRole, doctors =
         </div>
       </section>
 
-      {/* Doctors Section */}
-      <section id="doctors" className="bg-blue-50 py-20">
+      {/* Detailed Hospital Services Section */}
+      <section id="hospital-services" className="py-20 bg-gray-50">
         <div className="container mx-auto px-6">
           <div className="mb-16 text-center">
-            <h2 className="mb-4 text-3xl font-bold text-gray-900 md:text-4xl">Our Specialists</h2>
-            <p className="mx-auto max-w-2xl text-gray-600">Meet our team of experienced doctors and specialists</p>
+            <h2 className="mb-4 text-3xl font-bold text-gray-900 md:text-4xl">Healthcare Services</h2>
+            <p className="mx-auto max-w-2xl text-gray-600">Explore our comprehensive healthcare services designed to provide you with quality medical care</p>
+          </div>
+
+          {console.log("Hospital Services:", hospitalServices)}
+
+          {hospitalServices && hospitalServices.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {hospitalServices.map((service: HospitalService, index: number) => (
+                <motion.div
+                  key={service.id}
+                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                >
+                  <div className="p-5 flex flex-col h-full">
+                    <div className="mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 mb-3">
+                        {service.icon && (
+                          <span className="text-blue-600 text-xl">{service.icon === 'stethoscope' ? '🩺' :
+                                                                service.icon === 'heart' ? '❤️' :
+                                                                service.icon === 'home' ? '🏠' :
+                                                                service.icon === 'baby' ? '👶' :
+                                                                service.icon === 'scissors' ? '✂️' :
+                                                                service.icon === 'file-text' ? '📄' :
+                                                                service.icon === 'syringe' ? '💉' :
+                                                                service.icon === 'ear' ? '👂' : '🏥'}</span>
+                        )}
+                      </div>
+                      <h4 className="text-lg font-semibold text-gray-800">{service.name}</h4>
+                    </div>
+                    <p className="text-gray-600 mb-4 text-sm flex-grow">{service.description}</p>
+                    <Button asChild variant="outline" size="sm" className="w-full mt-auto">
+                      <Link href={`#contact`} className="flex items-center justify-center">
+                        Inquire Now <ChevronRight className="ml-1 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            // Fallback hardcoded services
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {[
+                {
+                  id: 1,
+                  name: "Pediatric Medical Check-up",
+                  description: "Comprehensive medical examination for children, including growth and developmental assessment.",
+                  icon: "stethoscope"
+                },
+                {
+                  id: 2,
+                  name: "Adult Medical Check-up",
+                  description: "Complete health evaluation for adults, including vital signs assessment and specialized screenings.",
+                  icon: "stethoscope"
+                },
+                {
+                  id: 3,
+                  name: "Maternal and Child Care",
+                  description: "Specialized care for mothers and children, focusing on maternal health and child development.",
+                  icon: "heart"
+                },
+                {
+                  id: 4,
+                  name: "Pre-Natal Check-up",
+                  description: "Regular health check-ups during pregnancy to monitor mother and baby's health.",
+                  icon: "baby"
+                },
+                {
+                  id: 5,
+                  name: "Post-Natal Check-up",
+                  description: "Follow-up care for mothers after childbirth to ensure proper recovery and health maintenance.",
+                  icon: "baby"
+                },
+                {
+                  id: 6,
+                  name: "Minor Surgery/Wound Suturing",
+                  description: "Treatment for minor wounds requiring sutures or minor surgical procedures.",
+                  icon: "scissors"
+                },
+                {
+                  id: 7,
+                  name: "Circumcision (Tuli)",
+                  description: "Safe and professional circumcision services with proper care instructions.",
+                  icon: "scissors"
+                },
+                {
+                  id: 8,
+                  name: "Home Service - NGT Insertion",
+                  description: "Professional nasogastric tube insertion service provided at your residence.",
+                  icon: "home"
+                }
+              ].map((service, index) => (
+                <motion.div
+                  key={service.id}
+                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                >
+                  <div className="p-5 flex flex-col h-full">
+                    <div className="mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 mb-3">
+                        <span className="text-blue-600 text-xl">{service.icon === 'stethoscope' ? '🩺' :
+                                                            service.icon === 'heart' ? '❤️' :
+                                                            service.icon === 'home' ? '🏠' :
+                                                            service.icon === 'baby' ? '👶' :
+                                                            service.icon === 'scissors' ? '✂️' :
+                                                            service.icon === 'file-text' ? '📄' :
+                                                            service.icon === 'syringe' ? '💉' :
+                                                            service.icon === 'ear' ? '👂' : '🏥'}</span>
+                      </div>
+                      <h4 className="text-lg font-semibold text-gray-800">{service.name}</h4>
+                    </div>
+                    <p className="text-gray-600 mb-4 text-sm flex-grow">{service.description}</p>
+                    <Button asChild variant="outline" size="sm" className="w-full mt-auto">
+                      <Link href={`#contact`} className="flex items-center justify-center">
+                        Inquire Now <ChevronRight className="ml-1 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Doctors Section */}
+      <section id="doctors" className="py-20">
+        <div className="container mx-auto px-6">
+          <div className="mb-16 text-center">
+            <h2 className="mb-4 text-3xl font-bold text-gray-900 md:text-4xl">Our Doctors</h2>
+            <p className="mx-auto max-w-2xl text-gray-600">Meet our team of experienced and caring medical professionals</p>
           </div>
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
-            {doctors.map((doctor, index) => (
+            {doctors.map((doctor: Doctor, index: number) => (
               <motion.div
                 key={doctor.id}
-                className="overflow-hidden rounded-lg bg-white shadow-lg"
+                className="bg-white rounded-lg overflow-hidden shadow-lg transition-all hover:shadow-xl"
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
               >
-                <div className="aspect-w-3 aspect-h-4 w-full">
-                  <img
-                    src={doctor.image}
-                    alt={doctor.name}
-                    className="h-64 w-full object-cover object-center"
-                  />
-                </div>
+                <img
+                  src={doctor.image}
+                  alt={doctor.name}
+                  className="w-full h-56 object-cover object-center"
+                />
                 <div className="p-6">
-                  <h3 className="mb-1 text-xl font-semibold text-gray-900">{doctor.name}</h3>
-                  <p className="mb-3 text-blue-600">{doctor.specialty}</p>
+                  <h3 className="text-xl font-semibold text-gray-800 mb-1">{doctor.name}</h3>
+                  <p className="text-blue-600 mb-4 text-sm">{doctor.specialty}</p>
                   <div className="mb-4">
-                    <p className="text-sm font-medium text-gray-700">Available on:</p>
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {doctor.availability.map(day => (
-                        <span key={day} className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Available on:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {doctor.availability.map((day: string) => (
+                        <span key={day} className="px-2 py-1 bg-blue-50 text-blue-600 rounded-md text-xs">
                           {day}
                         </span>
                       ))}
                     </div>
                   </div>
-                  <Button asChild variant="outline" size="sm" className="w-full">
-                    <Link href={`/service/appointment?doctor=${doctor.id}`}>Book Appointment</Link>
+                  <Button asChild variant="outline" size="sm" className="w-full mt-2">
+                    <Link href={isAuthenticated ? route('patient.appointments.book') : route('auth.login')} className="flex items-center justify-center">
+                      Book Appointment <ChevronRight className="ml-1 h-4 w-4" />
+                    </Link>
                   </Button>
                 </div>
               </motion.div>
@@ -371,7 +515,7 @@ export default function Landing({ services, isAuthenticated, userRole, doctors =
                     </span>
                   </div>
                 </div>
-                <div className="border-b min-h-[90px] p-1">
+                <div className="border-r border-b min-h-[90px] p-1">
                   <div className="text-sm p-1 font-medium">5</div>
                   <div className="mt-1">
                     <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">

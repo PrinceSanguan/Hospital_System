@@ -17,6 +17,7 @@ use App\Http\Controllers\LandingController;
 // Replacing the home route with our new landing page
 Route::get('/', [LandingController::class, 'index'])->name('home');
 Route::get('/service/{service}', [LandingController::class, 'viewService'])->name('service.view');
+Route::get('/api/services', [App\Http\Controllers\HospitalServiceController::class, 'getActiveServices'])->name('api.services');
 
 /*
 |--------------------------------------------------------------------------
@@ -112,6 +113,14 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
   Route::get('/users/{user}/edit', [UserManagementController::class, 'edit'])->name('users.edit');
   Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('users.update');
   Route::delete('/users/{user}', [UserManagementController::class, 'destroy'])->name('users.destroy');
+
+  // Hospital Services Management
+  Route::get('/services', [App\Http\Controllers\HospitalServiceController::class, 'index'])->name('services.index');
+  Route::get('/services/create', [App\Http\Controllers\HospitalServiceController::class, 'create'])->name('services.create');
+  Route::post('/services', [App\Http\Controllers\HospitalServiceController::class, 'store'])->name('services.store');
+  Route::get('/services/{service}/edit', [App\Http\Controllers\HospitalServiceController::class, 'edit'])->name('services.edit');
+  Route::put('/services/{service}', [App\Http\Controllers\HospitalServiceController::class, 'update'])->name('services.update');
+  Route::delete('/services/{service}', [App\Http\Controllers\HospitalServiceController::class, 'destroy'])->name('services.destroy');
 
   // Records Management
   Route::get('/records', [RecordsManagementController::class, 'index'])->name('records.index');
