@@ -139,7 +139,7 @@ export default function Appointments({
   // Handle logout functionality
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault();
-    router.post('/logout');
+    router.get('/logout');
   };
 
   return (
@@ -291,7 +291,7 @@ export default function Appointments({
                   <button
                     onClick={(e) => {
                       e.preventDefault();
-                      router.post('/logout');
+                      router.get('/logout');
                     }}
                     className="w-full text-left"
                   >

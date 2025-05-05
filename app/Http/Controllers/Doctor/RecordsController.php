@@ -169,7 +169,23 @@ class RecordsController extends Controller
         $record = new PatientRecord();
         $record->patient_id = $request->patient_id;
         $record->assigned_doctor_id = Auth::id();
-        $record->record_type = $request->record_type;
+
+        // Ensure we use the correct record type constant values from PatientRecord model
+        // This is to ensure consistency between what doctors create and what patients see
+        switch ($request->record_type) {
+            case 'medical_record':
+                $record->record_type = PatientRecord::TYPE_MEDICAL_RECORD;
+                break;
+            case 'laboratory':
+                $record->record_type = PatientRecord::TYPE_LABORATORY;
+                break;
+            case 'medical_checkup':
+                $record->record_type = PatientRecord::TYPE_MEDICAL_CHECKUP;
+                break;
+            default:
+                $record->record_type = $request->record_type;
+        }
+
         $record->status = $request->status;
         $record->details = $request->details;
         $record->appointment_date = $request->appointment_date;

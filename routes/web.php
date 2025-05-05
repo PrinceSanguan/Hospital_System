@@ -200,6 +200,7 @@ Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')-
   Route::put('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark.all.read');
   Route::get('/notifications/unread/count', [NotificationController::class, 'getUnreadCount'])->name('notifications.unread.count');
   Route::get('/notifications/recent', [NotificationController::class, 'getRecent'])->name('notifications.recent');
+  Route::post('/notifications/mark-appointment-notifications-read', [NotificationController::class, 'markAllAppointmentNotificationsAsRead'])->name('notifications.mark.appointment.read');
 });
 
 /*
@@ -325,6 +326,15 @@ Route::middleware([PatientMiddleware::class])->prefix('patient')->name('patient.
   Route::get('/my-profile', [ProfileController::class, 'index'])->name('my-profile.index');
   Route::get('/my-profile/edit', [ProfileController::class, 'edit'])->name('my-profile.edit');
   Route::put('/my-profile', [ProfileController::class, 'update'])->name('my-profile.update');
+
+  // Patient record request routes
+  Route::get('/record-requests', [App\Http\Controllers\Patient\RecordRequestController::class, 'index'])->name('records.requests.index');
+  Route::get('/record-requests/create', [App\Http\Controllers\Patient\RecordRequestController::class, 'create'])->name('records.requests.create');
+  Route::post('/record-requests', [App\Http\Controllers\Patient\RecordRequestController::class, 'store'])->name('records.requests.store');
+  Route::get('/record-requests/{id}/view', [App\Http\Controllers\Patient\RecordRequestController::class, 'viewApprovedRecord'])->name('records.requests.view');
+
+  // File upload routes
+  Route::post('/upload/medical-records', [App\Http\Controllers\Patient\FileUploadController::class, 'uploadMedicalRecords'])->name('upload.medical-records');
 });
 
 // Patient notification routes
@@ -334,14 +344,6 @@ Route::middleware(['auth', 'role:patient'])->prefix('patient')->name('patient.')
     Route::put('/notifications/mark-all-read', [App\Http\Controllers\Patient\NotificationController::class, 'markAllAsRead'])->name('notifications.mark.all.read');
     Route::get('/notifications/unread-count', [App\Http\Controllers\Patient\NotificationController::class, 'getUnreadCount'])->name('notifications.unread.count');
     Route::get('/notifications/recent', [App\Http\Controllers\Patient\NotificationController::class, 'getRecent'])->name('notifications.recent');
-});
-
-// Patient record request routes
-Route::middleware([PatientMiddleware::class])->prefix('patient')->name('patient.')->group(function () {
-    Route::get('/record-requests', [App\Http\Controllers\Patient\RecordRequestController::class, 'index'])->name('records.requests.index');
-    Route::get('/record-requests/create', [App\Http\Controllers\Patient\RecordRequestController::class, 'create'])->name('records.requests.create');
-    Route::post('/record-requests', [App\Http\Controllers\Patient\RecordRequestController::class, 'store'])->name('records.requests.store');
-    Route::get('/record-requests/{id}/view', [App\Http\Controllers\Patient\RecordRequestController::class, 'viewApprovedRecord'])->name('records.requests.view');
 });
 
 // Setup routes

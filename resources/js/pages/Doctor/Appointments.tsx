@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { UserData } from '@/types';
+import axios from 'axios';
 
 interface Patient {
     id: number;
@@ -53,6 +54,20 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
     const [dateRange, setDateRange] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Mark all appointment notifications as read when the page loads
+    useEffect(() => {
+        // Call the API endpoint to mark all appointment notifications as read
+        axios.post(route('doctor.notifications.mark.appointment.read'))
+            .then(() => {
+                // Force refresh of notification badge in the layout
+                const event = new CustomEvent('notifications-updated');
+                window.dispatchEvent(event);
+            })
+            .catch(error => {
+                console.error('Failed to mark notifications as read:', error);
+            });
+    }, []);
 
     // Helper function to format date
     const formatDate = (dateString: string) => {

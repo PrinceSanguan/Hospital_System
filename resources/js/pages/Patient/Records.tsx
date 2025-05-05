@@ -24,7 +24,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
-import { FileText, FileSearch, ClipboardList } from 'lucide-react';
+import { FileText, FileSearch } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 interface User {
@@ -137,12 +137,6 @@ export default function Records({ user, records }: RecordsProps) {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button asChild className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700">
-                <Link href={route('patient.records.requests.create', { type: 'medical_record' })}>
-                  <ClipboardList className="h-4 w-4" />
-                  Request Medical Record
-                </Link>
-              </Button>
               <Button asChild variant="outline" className="flex items-center gap-1">
                 <Link href={route('patient.records.lab-results')}>
                   <FileText className="h-4 w-4" />

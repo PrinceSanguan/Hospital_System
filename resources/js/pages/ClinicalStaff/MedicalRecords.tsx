@@ -45,13 +45,15 @@ interface Patient {
   name: string;
 }
 
-interface MedicalRecordDetails {
+interface RecordDetails {
   appointment_time?: string;
   vital_signs?: Record<string, string | number>;
   diagnosis?: string;
   prescriptions?: string[];
   notes?: string;
   followup_date?: string;
+  lab_type?: string;
+  results?: string;
   [key: string]: string | number | string[] | Record<string, string | number> | undefined;
 }
 
@@ -62,7 +64,7 @@ interface MedicalRecord {
   record_type: string;
   appointment_date: string;
   status: string;
-  details: string | MedicalRecordDetails;
+  details: string | RecordDetails;
   created_at: string;
   updated_at: string;
 }
@@ -124,21 +126,36 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
         return 'General Record';
       case 'prescription':
         return 'Prescription';
+      case 'laboratory':
+        return 'Lab Test';
       default:
         return recordType.replace('_', ' ');
     }
   };
 
-  const getDiagnosis = (details: string | MedicalRecordDetails): string => {
-    if (typeof details === 'string') {
+  const getDetailsValue = (record: MedicalRecord, key: string): string => {
+    let details: RecordDetails;
+
+    if (typeof record.details === 'string') {
       try {
-        details = JSON.parse(details) as MedicalRecordDetails;
+        details = JSON.parse(record.details) as RecordDetails;
       } catch {
         return 'N/A';
       }
+    } else {
+      details = record.details;
     }
 
-    return details?.diagnosis || 'N/A';
+    // Return either diagnosis or lab_type based on record type
+    if (key === 'info') {
+      if (record.record_type === 'laboratory') {
+        return details?.lab_type || 'N/A';
+      } else {
+        return details?.diagnosis || 'N/A';
+      }
+    }
+
+    return 'N/A';
   };
 
   const formatDate = (dateString: string): string => {
@@ -152,7 +169,7 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
       {/* Sidebar */}
-      <Sidebar user={user} />
+      <Sidebar />
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
@@ -191,7 +208,7 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
                       <TableHead>Date</TableHead>
                       <TableHead>Patient</TableHead>
                       <TableHead>Record Type</TableHead>
-                      <TableHead>Diagnosis</TableHead>
+                      <TableHead>Details</TableHead>
                       <TableHead>Doctor</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -204,7 +221,7 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
                           <TableCell>{formatDate(record.appointment_date)}</TableCell>
                           <TableCell className="font-medium">{record.patient?.name || 'Unknown Patient'}</TableCell>
                           <TableCell>{getRecordTypeDisplay(record.record_type)}</TableCell>
-                          <TableCell className="max-w-xs truncate">{getDiagnosis(record.details)}</TableCell>
+                          <TableCell className="max-w-xs truncate">{getDetailsValue(record, 'info')}</TableCell>
                           <TableCell>{record.assignedDoctor?.name || 'Unassigned'}</TableCell>
                           <TableCell>{getStatusBadge(record.status)}</TableCell>
                           <TableCell className="text-right">
@@ -248,23 +265,29 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
                   </TableBody>
                 </Table>
 
-                {/* Pagination */}
+                {/* Pagination Links */}
                 {medicalRecords.links && medicalRecords.links.length > 3 && (
-                  <div className="mt-6 flex justify-center gap-2">
-                    {medicalRecords.links.map((link, i) => (
-                      <Button
-                        key={i}
-                        variant={link.active ? "default" : "outline"}
-                        disabled={!link.url}
-                        asChild={!!link.url}
-                      >
-                        {link.url ? (
-                          <Link href={link.url}>{link.label}</Link>
-                        ) : (
-                          <span>{link.label}</span>
-                        )}
-                      </Button>
-                    ))}
+                  <div className="flex justify-center mt-6">
+                    <nav className="flex space-x-1" aria-label="Pagination">
+                      {medicalRecords.links.map((link, index) => {
+                        // Skip the "prev" and "next" links
+                        if (index === 0 || index === medicalRecords.links.length - 1) return null;
+
+                        return (
+                          <a
+                            key={index}
+                            href={link.url || '#'}
+                            aria-current={link.active ? 'page' : undefined}
+                            className={`relative inline-flex items-center px-4 py-2 text-sm ${
+                              link.active
+                                ? 'bg-blue-500 text-white font-semibold'
+                                : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800'
+                            } rounded-md`}
+                            dangerouslySetInnerHTML={{ __html: link.label }}
+                          />
+                        );
+                      })}
+                    </nav>
                   </div>
                 )}
               </CardContent>

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Head, useForm, Link, router } from '@inertiajs/react';
+import axios, { AxiosError } from 'axios';
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -10,7 +11,11 @@ import {
   Menu,
   LogOut,
   UserCircle,
-  Activity
+  Upload,
+  Check,
+  X,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { format, differenceInYears } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
@@ -90,19 +95,34 @@ interface BookAppointmentProps {
   preSelectedDoctorId?: number;
 }
 
-export default function BookAppointment({ user, doctors, notifications = [], preSelectedDoctorId }: BookAppointmentProps) {
-  const [date, setDate] = useState<Date | undefined>(undefined);
-  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
-  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('personal-info');
-  const [birthdate, setBirthdate] = useState<Date | undefined>(undefined);
-  const [calculatedBMI, setCalculatedBMI] = useState<number | null>(null);
-  const [calculatedAge, setCalculatedAge] = useState<number | null>(null);
-  const [availableDates, setAvailableDates] = useState<Date[]>([]);
+// Add a proper interface for the form data
+interface AppointmentFormData {
+  doctor_id: string;
+  appointment_date: string;
+  appointment_time: string;
+  reason: string;
+  notes: string;
+  name: string;
+  birthdate: string;
+  age: string;
+  height: string;
+  weight: string;
+  bmi: string;
+  address: string;
+  has_previous_records: boolean;
+  [key: string]: string | boolean; // More specific type for the index signature
+}
 
-  const { data, setData, post, processing, errors, reset } = useForm({
+// Fix the uploadedFiles type
+interface UploadedFile {
+  name: string;
+  path: string;
+  size: number;
+  type: string;
+}
+
+export default function BookAppointment({ user, doctors, notifications = [], preSelectedDoctorId }: BookAppointmentProps) {
+  const { data, setData, post, processing, errors, reset } = useForm<AppointmentFormData>({
     doctor_id: preSelectedDoctorId ? String(preSelectedDoctorId) : '',
     appointment_date: '',
     appointment_time: '',
@@ -115,13 +135,26 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
     height: '',
     weight: '',
     bmi: '',
-    // Vital signs
-    temperature: '',
-    pulse_rate: '',
-    respiratory_rate: '',
-    blood_pressure: '',
-    oxygen_saturation: ''
+    address: '',
+    // Instead of storing the files in the form data, we'll use a separate state
+    has_previous_records: false
   });
+
+  const [date, setDate] = useState<Date | undefined>(undefined);
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('personal-info');
+  const [birthdate, setBirthdate] = useState<Date | undefined>(undefined);
+  const [calculatedBMI, setCalculatedBMI] = useState<number | null>(null);
+  const [calculatedAge, setCalculatedAge] = useState<number | null>(null);
+  const [availableDates, setAvailableDates] = useState<Date[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [noRecordsChecked, setNoRecordsChecked] = useState(false);
 
   // Set the pre-selected doctor on component mount
   useEffect(() => {
@@ -146,33 +179,49 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
     const today = new Date();
     const availableDates: Date[] = [];
 
-    // Check the next 30 days for availability
-    for (let i = 0; i < 30; i++) {
-      const checkDate = new Date(today);
-      checkDate.setDate(today.getDate() + i);
+    console.log("Doctor schedules:", doctor.schedules);
 
-      // Skip weekends (0 = Sunday, 6 = Saturday)
-      if (checkDate.getDay() === 0 || checkDate.getDay() === 6) continue;
+    // First, add specific dates if they exist - these take precedence
+    const specificDates = doctor.schedules
+      .filter(schedule => schedule.specific_date && schedule.is_available && schedule.max_appointments > 0)
+      .map(schedule => new Date(schedule.specific_date!));
 
-      // Check if doctor has a schedule for this day
-      const hasScheduleForDay = doctor.schedules.some(schedule => {
-        // If specific_date matches this date
-        if (schedule.specific_date) {
-          const scheduleDate = new Date(schedule.specific_date);
-          return scheduleDate.toDateString() === checkDate.toDateString();
+    console.log("Found specific dates:", specificDates);
+
+    // Add all specific dates to available dates
+    specificDates.forEach(date => {
+      if (date >= today) {
+        availableDates.push(date);
+      }
+    });
+
+    // Only check recurring schedules if no specific dates are set
+    // or if the doctor has both specific dates and recurring schedules
+    if (specificDates.length === 0) {
+      // Check the next 30 days for availability based on day_of_week
+      for (let i = 0; i < 30; i++) {
+        const checkDate = new Date(today);
+        checkDate.setDate(today.getDate() + i);
+
+        // Get day of week (0 = Sunday, 6 = Saturday)
+        const dayOfWeek = checkDate.getDay();
+
+        // Check if doctor has a schedule for this day of week
+        const hasScheduleForDay = doctor.schedules.some(schedule =>
+          // Only use day_of_week if there's no specific date and doctor is available
+          !schedule.specific_date &&
+          schedule.day_of_week === dayOfWeek &&
+          schedule.is_available &&
+          schedule.max_appointments > 0
+        );
+
+        if (hasScheduleForDay) {
+          availableDates.push(new Date(checkDate));
         }
-
-        // Or if day_of_week matches and doctor is available
-        return schedule.day_of_week === checkDate.getDay() &&
-               schedule.is_available &&
-               schedule.max_appointments > 0;
-      });
-
-      if (hasScheduleForDay) {
-        availableDates.push(checkDate);
       }
     }
 
+    console.log("All available dates:", availableDates);
     setAvailableDates(availableDates);
   };
 
@@ -349,24 +398,19 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
   // Check if patient information is complete
   const isPersonalInfoComplete = () => {
     return (
-      data.name.trim() !== '' &&
+      typeof data.name === 'string' && data.name.trim() !== '' &&
       data.birthdate !== '' &&
       data.age !== '' &&
       data.height !== '' &&
       data.weight !== '' &&
-      data.bmi !== ''
+      data.bmi !== '' &&
+      typeof data.address === 'string' && data.address.trim() !== ''
     );
   };
 
-  // Check if vital signs are complete
-  const areVitalSignsComplete = () => {
-    return (
-      data.temperature.trim() !== '' &&
-      data.pulse_rate.trim() !== '' &&
-      data.respiratory_rate.trim() !== '' &&
-      data.blood_pressure.trim() !== '' &&
-      data.oxygen_saturation.trim() !== ''
-    );
+  // Check if medical records information is complete
+  const hasMedicalRecordsInfo = () => {
+    return uploadedFiles.length > 0 || data.has_previous_records === false;
   };
 
   // Handle form submission
@@ -374,7 +418,7 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
     e.preventDefault();
 
     // If we're in the appointment tab but haven't completed all tabs, make sure to fill in default values
-    if (activeTab === 'appointment' && (!isPersonalInfoComplete() || !areVitalSignsComplete())) {
+    if (activeTab === 'appointment' && (!isPersonalInfoComplete() || !hasMedicalRecordsInfo())) {
       // Set defaults for personal info if not complete
       if (!isPersonalInfoComplete()) {
         // Set basic personal info using the user's name
@@ -386,16 +430,24 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
         if (!data.height) setData('height', '170');
         if (!data.weight) setData('weight', '70');
         if (!data.bmi) setData('bmi', '24.2');
+        if (!data.address) setData('address', 'Default address');
       }
 
-      // Set defaults for vital signs if not complete
-      if (!areVitalSignsComplete()) {
-        if (!data.temperature) setData('temperature', '36.8');
-        if (!data.pulse_rate) setData('pulse_rate', '75');
-        if (!data.respiratory_rate) setData('respiratory_rate', '16');
-        if (!data.blood_pressure) setData('blood_pressure', '120/80');
-        if (!data.oxygen_saturation) setData('oxygen_saturation', '98');
+      // For medical records, if nothing is set, mark as no previous records
+      if (!hasMedicalRecordsInfo()) {
+        setData('has_previous_records', false);
       }
+    }
+
+    // Include uploaded files information in the form data
+    if (uploadedFiles.length > 0) {
+      // Convert the uploaded files to a JSON string
+      const uploadedFilesJson = JSON.stringify(uploadedFiles);
+      console.log('Including uploaded files in submission:', uploadedFiles);
+      console.log('JSON string of uploaded files:', uploadedFilesJson);
+      setData('uploaded_files', uploadedFilesJson);
+    } else {
+      console.log('No uploaded files to include');
     }
 
     // Debug the form data being sent
@@ -412,6 +464,7 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
         setBirthdate(undefined);
         setCalculatedBMI(null);
         setCalculatedAge(null);
+        setUploadedFiles([]); // Clear uploaded files after successful submission
       },
       onError: (errors) => {
         console.error('Appointment booking failed with errors:', errors);
@@ -420,10 +473,10 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
           console.error(`Error with ${key}:`, errors[key]);
         });
 
-        // If there are vital sign or patient info errors, go back to those tabs
+        // If there are medical records or patient info errors, go back to those tabs
         const errorKeys = Object.keys(errors);
-        if (errorKeys.some(key => ['temperature', 'pulse_rate', 'respiratory_rate', 'blood_pressure', 'oxygen_saturation'].includes(key))) {
-          setActiveTab('vital-signs');
+        if (errorKeys.some(key => ['medical_records', 'has_previous_records', 'uploaded_files'].includes(key))) {
+          setActiveTab('medical-records');
         } else if (errorKeys.some(key => ['name', 'birthdate', 'age', 'height', 'weight', 'bmi'].includes(key))) {
           setActiveTab('personal-info');
         }
@@ -434,9 +487,82 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
   // Move to next step
   const nextStep = (currentTab: string) => {
     if (currentTab === 'personal-info' && isPersonalInfoComplete()) {
-      setActiveTab('vital-signs');
-    } else if (currentTab === 'vital-signs' && areVitalSignsComplete()) {
+      setActiveTab('medical-records');
+    } else if (currentTab === 'medical-records' && hasMedicalRecordsInfo()) {
       setActiveTab('appointment');
+    }
+  };
+
+  // Update the handle file upload function
+  const handleFileSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    setUploadError(null);
+
+    const formData = new FormData();
+    // Make sure we're using the correct field name 'files[]' for the server
+    Array.from(files).forEach(file => {
+      formData.append('files[]', file);
+    });
+
+    try {
+      // Add CSRF token to the request
+      const response = await axios.post(route('patient.upload.medical-records'), formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        }
+      });
+
+      if (response.data.success) {
+        // Show upload status in UI
+        setUploadedFiles(prev => [...prev, ...response.data.files]);
+        setData('has_previous_records', true);
+      } else {
+        // Handle server-side validation errors
+        setUploadError(response.data.message || 'Failed to upload files. Please try again.');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      // Extract validation error message if available
+      if (axios.isAxiosError(error)) {
+        const axiosError = error as AxiosError<{
+          message: string;
+          errors?: Record<string, string[]>;
+        }>;
+
+        if (axiosError.response?.status === 422 && axiosError.response.data) {
+          const responseData = axiosError.response.data;
+          const errorMessages = responseData.errors
+            ? Object.values(responseData.errors).flat().join(', ')
+            : responseData.message;
+          setUploadError(`Validation error: ${errorMessages}`);
+        } else {
+          setUploadError('An error occurred while uploading files. Please try again.');
+        }
+      } else {
+        setUploadError('An error occurred while uploading files. Please try again.');
+      }
+    } finally {
+      setIsUploading(false);
+      // Clear the file input to allow re-uploading same files
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Add a function to remove uploaded files
+  const removeFile = (index: number) => {
+    const newFiles = [...uploadedFiles];
+    newFiles.splice(index, 1);
+    setUploadedFiles(newFiles);
+
+    // If we removed all files and the checkbox isn't checked, reset has_previous_records
+    if (newFiles.length === 0 && !noRecordsChecked) {
+      setData('has_previous_records', false);
     }
   };
 
@@ -477,7 +603,7 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
   // Handle logout functionality
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault();
-    router.post('/logout');
+    router.get('/logout');
   };
 
   return (
@@ -613,7 +739,7 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
                   <button
                     onClick={(e) => {
                       e.preventDefault();
-                      router.post('/logout');
+                      router.get('/logout');
                     }}
                     className="w-full text-left"
                   >
@@ -643,11 +769,11 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
                   <UserCircle className="h-4 w-4" />
                   Personal Information
                 </TabsTrigger>
-                <TabsTrigger value="vital-signs" className="flex gap-2" disabled={!isPersonalInfoComplete()}>
-                  <Activity className="h-4 w-4" />
-                  Vital Signs
+                <TabsTrigger value="medical-records" className="flex gap-2" disabled={!isPersonalInfoComplete()}>
+                  <FileText className="h-4 w-4" />
+                  Medical Records
                 </TabsTrigger>
-                <TabsTrigger value="appointment" className="flex gap-2" disabled={!areVitalSignsComplete() || !isPersonalInfoComplete()}>
+                <TabsTrigger value="appointment" className="flex gap-2" disabled={!hasMedicalRecordsInfo() || !isPersonalInfoComplete()}>
                   <CalendarIcon className="h-4 w-4" />
                   Appointment
                 </TabsTrigger>
@@ -737,6 +863,19 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
                         {errors.height && <p className="text-sm text-red-500">{errors.height}</p>}
                       </div>
 
+                      {/* Address */}
+                      <div className="space-y-2 md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700">Address</label>
+                        <Textarea
+                          value={data.address}
+                          onChange={(e) => setData('address', e.target.value)}
+                          placeholder="Your full address"
+                          className="resize-none h-24"
+                          required
+                        />
+                        {errors.address && <p className="text-sm text-red-500">{errors.address}</p>}
+                      </div>
+
                       {/* Weight */}
                       <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700">Weight (kg)</label>
@@ -781,90 +920,119 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
                 </Card>
               </TabsContent>
 
-              {/* Vital Signs Tab */}
-              <TabsContent value="vital-signs">
+              {/* Medical Records Tab */}
+              <TabsContent value="medical-records">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Vital Signs</CardTitle>
+                    <CardTitle>Previous Medical Records</CardTitle>
                     <CardDescription>
-                      Please provide your current vital signs if available
+                      Upload any previous medical records, lab results, or prescriptions that may be relevant for your appointment
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Temperature */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Temperature (°C)</label>
-                        <Input
-                          value={data.temperature}
-                          onChange={(e) => setData('temperature', e.target.value)}
-                          placeholder="36.5 - 37.5"
-                          type="number"
-                          step="0.1"
-                          min="35"
-                          max="42"
-                          required
-                        />
-                        {errors.temperature && <p className="text-sm text-red-500">{errors.temperature}</p>}
+                  <CardContent className="space-y-6">
+                    <div className="bg-blue-50 p-4 rounded-md">
+                      <div className="flex items-start gap-3">
+                        <FileText className="h-5 w-5 text-blue-600 mt-0.5" />
+                        <div>
+                          <h3 className="font-medium text-blue-800">Why upload medical records?</h3>
+                          <p className="text-sm text-blue-600">
+                            Sharing your previous medical records helps your doctor provide better care by understanding your medical history.
+                            All records are kept confidential and secure.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-6">
+                      <div className="space-y-4">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Upload Previous Medical Records
+                        </label>
+
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors">
+                          <input
+                            type="file"
+                            id="medical-records-upload"
+                            className="hidden"
+                            onChange={handleFileSelection}
+                            multiple
+                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                          />
+                          <label htmlFor="medical-records-upload" className="cursor-pointer">
+                            <div className="space-y-2">
+                              <div className="mx-auto h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                                <Upload className="h-6 w-6 text-blue-600" />
+                              </div>
+                              <div className="text-gray-700">
+                                <span className="font-medium text-blue-600">Click to upload</span>{" "}
+                                <span className="text-gray-500">or drag and drop</span>
+                              </div>
+                              <p className="text-xs text-gray-500">
+                                Support for PDF, DOCX, JPG, PNG (up to 10MB each)
+                              </p>
+                            </div>
+                          </label>
+                        </div>
+
+                        {isUploading && (
+                          <div className="flex items-center justify-center py-4">
+                            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                            <span className="ml-2 text-sm text-blue-600">Uploading files...</span>
+                          </div>
+                        )}
+
+                        {uploadedFiles.length > 0 && (
+                          <div className="bg-gray-50 rounded-lg p-4">
+                            <h4 className="text-sm font-medium text-gray-700 mb-2">Uploaded Files:</h4>
+                            <div className="space-y-2">
+                              {uploadedFiles.map((file, index) => (
+                                <div key={index} className="flex items-center justify-between text-sm text-gray-700 p-2 bg-white rounded-md">
+                                  <div className="flex items-center gap-2">
+                                    <Check className="h-4 w-4 text-green-600" />
+                                    <span className="truncate max-w-xs">{file.name}</span>
+                                    <span className="text-gray-500 text-xs">({Math.round(file.size / 1024)} KB)</span>
+                                  </div>
+                                  <button
+                                    onClick={() => removeFile(index)}
+                                    className="text-red-500 hover:text-red-700"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {uploadError && (
+                          <div className="bg-red-50 text-red-800 p-3 rounded-md flex items-start gap-2">
+                            <AlertCircle className="h-5 w-5 mt-0.5" />
+                            <div>
+                              <p className="font-medium">Error uploading files</p>
+                              <p className="text-sm">{uploadError}</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Pulse Rate */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Pulse Rate (BPM)</label>
-                        <Input
-                          value={data.pulse_rate}
-                          onChange={(e) => setData('pulse_rate', e.target.value)}
-                          placeholder="60 - 100"
-                          type="number"
-                          min="40"
-                          max="220"
-                          required
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="no-records"
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          checked={!data.has_previous_records}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setNoRecordsChecked(checked);
+                            setData('has_previous_records', !checked);
+                            if (checked) {
+                              setUploadedFiles([]);
+                            }
+                          }}
                         />
-                        {errors.pulse_rate && <p className="text-sm text-red-500">{errors.pulse_rate}</p>}
-                      </div>
-
-                      {/* Respiratory Rate */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Respiratory Rate (breaths/min)</label>
-                        <Input
-                          value={data.respiratory_rate}
-                          onChange={(e) => setData('respiratory_rate', e.target.value)}
-                          placeholder="12 - 20"
-                          type="number"
-                          min="8"
-                          max="30"
-                          required
-                        />
-                        {errors.respiratory_rate && <p className="text-sm text-red-500">{errors.respiratory_rate}</p>}
-                      </div>
-
-                      {/* Blood Pressure */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Blood Pressure (mmHg)</label>
-                        <Input
-                          value={data.blood_pressure}
-                          onChange={(e) => setData('blood_pressure', e.target.value)}
-                          placeholder="e.g., 120/80"
-                          pattern="\d{2,3}\/\d{2,3}"
-                          required
-                        />
-                        <p className="text-xs text-gray-500">Format: Systolic/Diastolic (e.g., 120/80)</p>
-                        {errors.blood_pressure && <p className="text-sm text-red-500">{errors.blood_pressure}</p>}
-                      </div>
-
-                      {/* Oxygen Saturation */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Oxygen Saturation (%)</label>
-                        <Input
-                          value={data.oxygen_saturation}
-                          onChange={(e) => setData('oxygen_saturation', e.target.value)}
-                          placeholder="95 - 100"
-                          type="number"
-                          min="80"
-                          max="100"
-                          required
-                        />
-                        {errors.oxygen_saturation && <p className="text-sm text-red-500">{errors.oxygen_saturation}</p>}
+                        <label htmlFor="no-records" className="text-sm text-gray-700">
+                          I don't have any previous medical records to share
+                        </label>
                       </div>
                     </div>
                   </CardContent>
@@ -878,8 +1046,8 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
                     </Button>
                     <Button
                       type="button"
-                      onClick={() => nextStep('vital-signs')}
-                      disabled={!areVitalSignsComplete()}
+                      onClick={() => nextStep('medical-records')}
+                      disabled={!hasMedicalRecordsInfo()}
                     >
                       Next
                     </Button>
@@ -1000,9 +1168,6 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
                                     // Disable dates in the past
                                     if (date < new Date(new Date().setHours(0, 0, 0, 0))) return true;
 
-                                    // Disable weekends
-                                    if (date.getDay() === 0 || date.getDay() === 6) return true;
-
                                     // Disable dates that aren't in the available dates list
                                     if (availableDates.length > 0) {
                                       return !availableDates.some(
@@ -1010,7 +1175,8 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
                                       );
                                     }
 
-                                    return false;
+                                    // If no available dates list is provided, disable all dates
+                                    return true;
                                   }}
 
                                   fromYear={new Date().getFullYear()}
@@ -1098,7 +1264,7 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={() => setActiveTab('vital-signs')}
+                          onClick={() => setActiveTab('medical-records')}
                         >
                           Previous
                         </Button>

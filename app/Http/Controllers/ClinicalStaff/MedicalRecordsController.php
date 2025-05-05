@@ -19,7 +19,6 @@ class MedicalRecordsController extends Controller
         $user = Auth::user();
 
         $medicalRecords = PatientRecord::with(['patient', 'assignedDoctor'])
-            ->whereIn('record_type', ['medical_record', 'medical_checkup'])
             ->latest('updated_at')
             ->paginate(10);
 
@@ -61,7 +60,7 @@ class MedicalRecordsController extends Controller
         $validated = $request->validate([
             'patient_id' => 'required|exists:users,id',
             'assigned_doctor_id' => 'required|exists:users,id',
-            'record_type' => 'required|in:medical_record,medical_checkup',
+            'record_type' => 'required|string',
             'appointment_date' => 'required|date',
             'status' => 'required|string',
             'details' => 'nullable|string',
@@ -74,13 +73,20 @@ class MedicalRecordsController extends Controller
         $record->appointment_date = $validated['appointment_date'];
         $record->status = $validated['status'];
 
+        // Store vital signs and prescriptions in their dedicated columns
+        if ($request->has('vital_signs')) {
+            $record->vital_signs = $request->input('vital_signs');
+        }
+
+        if ($request->has('prescriptions')) {
+            $record->prescriptions = $request->input('prescriptions');
+        }
+
         // Handle medical record details
-        if ($request->has('vital_signs') || $request->has('diagnosis') || $request->has('prescriptions') || $request->has('notes')) {
+        if ($request->has('diagnosis') || $request->has('notes')) {
             $details = [
                 'appointment_time' => $request->input('appointment_time'),
-                'vital_signs' => $request->input('vital_signs', []),
                 'diagnosis' => $request->input('diagnosis'),
-                'prescriptions' => $request->input('prescriptions', []),
                 'notes' => $request->input('notes'),
                 'followup_date' => $request->input('followup_date'),
             ];
@@ -104,7 +110,6 @@ class MedicalRecordsController extends Controller
         $user = Auth::user();
         $record = PatientRecord::with(['patient', 'assignedDoctor'])
             ->where('id', $id)
-            ->whereIn('record_type', ['medical_record', 'medical_checkup'])
             ->firstOrFail();
 
         return Inertia::render('ClinicalStaff/MedicalRecordsView', [
@@ -125,7 +130,6 @@ class MedicalRecordsController extends Controller
         $user = Auth::user();
         $record = PatientRecord::with(['patient', 'assignedDoctor'])
             ->where('id', $id)
-            ->whereIn('record_type', ['medical_record', 'medical_checkup'])
             ->firstOrFail();
 
         $patients = User::where('user_role', User::ROLE_PATIENT)->get();
@@ -151,13 +155,12 @@ class MedicalRecordsController extends Controller
         $validated = $request->validate([
             'patient_id' => 'required|exists:users,id',
             'assigned_doctor_id' => 'required|exists:users,id',
-            'record_type' => 'required|in:medical_record,medical_checkup',
+            'record_type' => 'required|string',
             'appointment_date' => 'required|date',
             'status' => 'required|string',
         ]);
 
         $record = PatientRecord::where('id', $id)
-            ->whereIn('record_type', ['medical_record', 'medical_checkup'])
             ->firstOrFail();
 
         $record->patient_id = $validated['patient_id'];
@@ -166,14 +169,21 @@ class MedicalRecordsController extends Controller
         $record->appointment_date = $validated['appointment_date'];
         $record->status = $validated['status'];
 
+        // Update vital signs and prescriptions in their dedicated columns
+        if ($request->has('vital_signs')) {
+            $record->vital_signs = $request->input('vital_signs');
+        }
+
+        if ($request->has('prescriptions')) {
+            $record->prescriptions = $request->input('prescriptions');
+        }
+
         // Handle medical record details
-        if ($request->has('vital_signs') || $request->has('diagnosis') || $request->has('prescriptions') || $request->has('notes')) {
+        if ($request->has('diagnosis') || $request->has('notes') || $request->has('appointment_time') || $request->has('followup_date')) {
             $details = json_decode($record->details, true) ?: [];
 
-            $details['appointment_time'] = $request->input('appointment_time');
-            $details['vital_signs'] = $request->input('vital_signs', $details['vital_signs'] ?? []);
+            $details['appointment_time'] = $request->input('appointment_time', $details['appointment_time'] ?? null);
             $details['diagnosis'] = $request->input('diagnosis', $details['diagnosis'] ?? '');
-            $details['prescriptions'] = $request->input('prescriptions', $details['prescriptions'] ?? []);
             $details['notes'] = $request->input('notes', $details['notes'] ?? '');
             $details['followup_date'] = $request->input('followup_date', $details['followup_date'] ?? null);
 
@@ -194,7 +204,6 @@ class MedicalRecordsController extends Controller
     public function destroy($id)
     {
         $record = PatientRecord::where('id', $id)
-            ->whereIn('record_type', ['medical_record', 'medical_checkup'])
             ->firstOrFail();
 
         $record->delete();

@@ -66,7 +66,8 @@ class PatientDashboardController extends Controller
         $medicalRecords = PatientRecord::where('patient_id', $user->id)
             ->where(function($query) {
                 $query->where('record_type', 'medical_checkup')
-                      ->orWhere('record_type', 'prescription');
+                      ->orWhere('record_type', 'prescription')
+                      ->orWhere('record_type', 'medical_record');
             })
             ->with('assignedDoctor')
             ->orderBy('updated_at', 'desc')
@@ -144,12 +145,16 @@ class PatientDashboardController extends Controller
             'height' => 'required|numeric|min:1',
             'weight' => 'required|numeric|min:1',
             'bmi' => 'required|numeric',
-            // Vital signs - make these optional to allow direct booking
-            'temperature' => 'required|numeric|min:35|max:42',
-            'pulse_rate' => 'required|numeric|min:40|max:220',
-            'respiratory_rate' => 'required|numeric|min:8|max:30',
-            'blood_pressure' => 'required|string|regex:/^\d{2,3}\/\d{2,3}$/',
-            'oxygen_saturation' => 'required|numeric|min:80|max:100',
+            'address' => 'required|string',
+            // Make vital signs optional
+            'temperature' => 'nullable|numeric|min:35|max:42',
+            'pulse_rate' => 'nullable|numeric|min:40|max:220',
+            'respiratory_rate' => 'nullable|numeric|min:8|max:30',
+            'blood_pressure' => 'nullable|string|regex:/^\d{2,3}\/\d{2,3}$/',
+            'oxygen_saturation' => 'nullable|numeric|min:80|max:100',
+            // Add validation for uploaded files
+            'uploaded_files' => 'nullable|string',
+            'has_previous_records' => 'nullable|boolean',
         ]);
 
         $user = Auth::user();
@@ -191,17 +196,64 @@ class PatientDashboardController extends Controller
                 'height' => $request->height,
                 'weight' => $request->weight,
                 'bmi' => $request->bmi,
+                'address' => $request->address,
             ],
-            // Vital signs
-            'vital_signs' => [
+        ];
+
+        // Add uploaded files information if provided
+        if ($request->has('uploaded_files') && !empty($request->uploaded_files)) {
+            try {
+                $uploadedFiles = json_decode($request->uploaded_files, true);
+
+                // Log the decoded data to help with debugging
+                Log::info('Processing uploaded files for appointment', [
+                    'json_decode_result' => $uploadedFiles,
+                    'json_last_error' => json_last_error(),
+                    'json_last_error_msg' => json_last_error_msg(),
+                    'raw_input' => $request->uploaded_files
+                ]);
+
+                if (json_last_error() === JSON_ERROR_NONE && is_array($uploadedFiles) && count($uploadedFiles) > 0) {
+                    $details['uploaded_files'] = $uploadedFiles;
+
+                    Log::info('Added uploaded files to appointment details', [
+                        'files_count' => count($uploadedFiles),
+                        'appointment_id' => $appointment->id ?? 'not_saved_yet',
+                        'files_data' => $uploadedFiles
+                    ]);
+                } else {
+                    Log::warning('Failed to parse uploaded files JSON properly', [
+                        'uploaded_files' => $request->uploaded_files,
+                        'json_last_error' => json_last_error(),
+                        'json_last_error_msg' => json_last_error_msg()
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error('Error parsing uploaded files JSON', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'uploaded_files' => $request->uploaded_files
+                ]);
+            }
+        } else {
+            Log::info('No uploaded files information provided in the request', [
+                'request_has_uploaded_files' => $request->has('uploaded_files'),
+                'uploaded_files_value' => $request->uploaded_files ?? 'null'
+            ]);
+        }
+
+        // Add vital signs if provided
+        if ($request->temperature || $request->pulse_rate || $request->respiratory_rate ||
+            $request->blood_pressure || $request->oxygen_saturation) {
+            $details['vital_signs'] = [
                 'temperature' => $request->temperature,
                 'pulse_rate' => $request->pulse_rate,
                 'respiratory_rate' => $request->respiratory_rate,
                 'blood_pressure' => $request->blood_pressure,
                 'oxygen_saturation' => $request->oxygen_saturation,
                 'recorded_at' => now()->format('Y-m-d H:i:s'),
-            ],
-        ];
+            ];
+        }
 
         // Add service if selected
         if ($request->service_id) {
@@ -341,12 +393,22 @@ class PatientDashboardController extends Controller
 
         $records = PatientRecord::where('patient_id', $user->id)
             ->where(function($query) {
-                $query->where('record_type', 'medical_checkup')
-                      ->orWhere('record_type', 'prescription');
+                $query->where('record_type', PatientRecord::TYPE_MEDICAL_CHECKUP)
+                      ->orWhere('record_type', PatientRecord::TYPE_MEDICAL_RECORD)
+                      ->orWhere('record_type', 'medical_record') // Include both forms to ensure compatibility
+                      ->orWhere('record_type', 'prescription')
+                      ->orWhere('record_type', 'medical_checkup'); // Include both forms to ensure compatibility
             })
             ->with('assignedDoctor')
             ->orderBy('updated_at', 'desc')
             ->get();
+
+        // Log for debugging
+        Log::info('Patient records', [
+            'patient_id' => $user->id,
+            'count' => $records->count(),
+            'types' => $records->pluck('record_type')->toArray()
+        ]);
 
         return Inertia::render('Patient/Records', [
             'user' => [

@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 class AppointmentController extends Controller
 {
@@ -67,6 +68,70 @@ class AppointmentController extends Controller
             ->with('patient')
             ->findOrFail($id);
 
+        // Get patient uploaded files if they exist
+        $patientId = $appointment->patient_id;
+        $uploadedFiles = [];
+
+        // First check for files in the appointment details
+        if ($appointment->details) {
+            $details = is_string($appointment->details) ? json_decode($appointment->details, true) : $appointment->details;
+
+            if (is_array($details) && isset($details['uploaded_files']) && is_array($details['uploaded_files'])) {
+                Log::info('Found uploaded files in appointment details', [
+                    'appointment_id' => $appointment->id,
+                    'files_count' => count($details['uploaded_files']),
+                    'files_data' => $details['uploaded_files']
+                ]);
+                $uploadedFiles = $details['uploaded_files'];
+            } else {
+                Log::info('No uploaded files found in appointment details or invalid format', [
+                    'appointment_id' => $appointment->id,
+                    'details_type' => gettype($details),
+                    'has_uploaded_files_key' => is_array($details) && isset($details['uploaded_files']),
+                    'uploaded_files_type' => is_array($details) && isset($details['uploaded_files']) ? gettype($details['uploaded_files']) : 'not_set'
+                ]);
+            }
+        }
+
+        // Only use physical files as fallback if no files are found in the appointment details
+        if (empty($uploadedFiles)) {
+            // Don't check all patient files - this was causing incorrect files to be shown
+            // Only add fallback logic if we're reasonably sure these files belong to this appointment
+            // For example, check for files created around the same time as the appointment
+            $appointmentDate = new \DateTime($appointment->created_at);
+            $uploadPath = 'medical-records/' . $patientId;
+
+            if (Storage::disk('public')->exists($uploadPath)) {
+                $files = Storage::disk('public')->files($uploadPath);
+
+                foreach ($files as $file) {
+                    $filename = basename($file);
+                    // Check if file was created within 1 hour of the appointment creation
+                    $fileLastModified = Storage::disk('public')->lastModified($file);
+                    $fileDate = new \DateTime();
+                    $fileDate->setTimestamp($fileLastModified);
+
+                    $interval = $appointmentDate->diff($fileDate);
+                    $hoursDiff = $interval->h + ($interval->days * 24);
+
+                    // Only include files created within a reasonable timeframe of this appointment
+                    if ($hoursDiff <= 1) {
+                        $extension = pathinfo($filename, PATHINFO_EXTENSION);
+                        $size = Storage::disk('public')->size($file);
+                        $url = url('storage/' . $file);
+
+                        $uploadedFiles[] = [
+                            'name' => $filename,
+                            'path' => $file,
+                            'url' => $url,
+                            'size' => $size,
+                            'type' => $this->getMimeTypeFromExtension($extension),
+                        ];
+                    }
+                }
+            }
+        }
+
         return Inertia::render('Doctor/AppointmentDetails', [
             'user' => [
                 'name' => $user->name,
@@ -74,7 +139,25 @@ class AppointmentController extends Controller
                 'role' => $user->user_role,
             ],
             'appointment' => $appointment,
+            'patientFiles' => $uploadedFiles
         ]);
+    }
+
+    /**
+     * Helper function to get mime type from file extension
+     */
+    private function getMimeTypeFromExtension($extension)
+    {
+        $mimeTypes = [
+            'pdf' => 'application/pdf',
+            'doc' => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+        ];
+
+        return $mimeTypes[strtolower($extension)] ?? 'application/octet-stream';
     }
 
     /**
@@ -186,6 +269,31 @@ class AppointmentController extends Controller
                 ->with('patient')
                 ->first();
 
+            // Get patient uploaded files if they exist
+            $patientId = $appointment->patient_id;
+            $uploadedFiles = [];
+
+            // Check if the patient has uploaded any files
+            $uploadPath = 'medical-records/' . $patientId;
+            if (Storage::disk('public')->exists($uploadPath)) {
+                $files = Storage::disk('public')->files($uploadPath);
+
+                foreach ($files as $file) {
+                    $filename = basename($file);
+                    $extension = pathinfo($filename, PATHINFO_EXTENSION);
+                    $size = Storage::disk('public')->size($file);
+                    $url = asset('storage/' . $file);
+
+                    $uploadedFiles[] = [
+                        'name' => $filename,
+                        'path' => $file,
+                        'url' => $url,
+                        'size' => $size,
+                        'type' => $this->getMimeTypeFromExtension($extension),
+                    ];
+                }
+            }
+
             return Inertia::render('Doctor/AppointmentDetails', [
                 'user' => [
                     'name' => $user->name,
@@ -193,6 +301,7 @@ class AppointmentController extends Controller
                     'role' => $user->user_role,
                 ],
                 'appointment' => $appointment,
+                'patientFiles' => $uploadedFiles,
                 'success' => 'Appointment status updated successfully'
             ]);
         }

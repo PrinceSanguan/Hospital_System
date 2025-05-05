@@ -85,4 +85,20 @@ class NotificationController extends Controller
                 ->count()
         ]);
     }
+
+    /**
+     * Mark all appointment-related notifications as read
+     */
+    public function markAllAppointmentNotificationsAsRead()
+    {
+        Notification::where('user_id', Auth::id())
+            ->whereNull('read_at')
+            ->where(function($query) {
+                $query->where('related_type', 'appointment')
+                      ->orWhere('type', 'LIKE', '%appointment%');
+            })
+            ->update(['read_at' => now()]);
+
+        return response()->json(['success' => true]);
+    }
 }

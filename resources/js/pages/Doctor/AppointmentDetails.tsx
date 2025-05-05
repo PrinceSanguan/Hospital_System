@@ -12,10 +12,13 @@ import {
     FileText,
     ArrowLeft,
     CheckCircle,
-    XCircle
+    XCircle,
+    Download,
+    FilePlus
 } from "lucide-react";
 import { UserData } from '@/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import axios from 'axios';
 
 interface Patient {
     id: number;
@@ -27,6 +30,14 @@ interface AppointmentNote {
     date: string;
     note: string;
     by: string;
+}
+
+interface PatientFile {
+    name: string;
+    path: string;
+    url: string;
+    size: number;
+    type: string;
 }
 
 interface Appointment {
@@ -43,9 +54,10 @@ interface Appointment {
 interface AppointmentDetailsProps {
     user: UserData;
     appointment: Appointment;
+    patientFiles: PatientFile[];
 }
 
-export default function AppointmentDetails({ user, appointment }: AppointmentDetailsProps) {
+export default function AppointmentDetails({ user, appointment, patientFiles = [] }: AppointmentDetailsProps) {
     const [showConfirmComplete, setShowConfirmComplete] = useState(false);
     const [showConfirmCancel, setShowConfirmCancel] = useState(false);
 
@@ -86,6 +98,21 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
             minute: '2-digit',
             hour12: true
         });
+    };
+
+    // Helper to format file size
+    const formatFileSize = (bytes: number) => {
+        if (bytes < 1024) return bytes + ' bytes';
+        else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        else return (bytes / 1048576).toFixed(1) + ' MB';
+    };
+
+    // Helper to get icon based on file type
+    const getFileIcon = (fileType: string) => {
+        if (fileType.includes('image')) return '🖼️';
+        if (fileType.includes('pdf')) return '📄';
+        if (fileType.includes('word') || fileType.includes('doc')) return '📝';
+        return '📎';
     };
 
     // Format details based on its type
@@ -176,6 +203,12 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                                                 <p className="text-gray-700">{detailsObj.patient_info.bmi}</p>
                                             </div>
                                         )}
+                                        {detailsObj.patient_info.address && (
+                                            <div className="md:col-span-2">
+                                                <h4 className="text-sm font-medium text-gray-700">Address:</h4>
+                                                <p className="text-gray-700">{detailsObj.patient_info.address}</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -256,21 +289,21 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
     const handleSubmit = (status: string) => {
         setData('status', status);
 
-        post(route('doctor.appointments.updateStatus', {
+        // Use axios directly instead of Inertia's post
+        axios.post(route('doctor.appointments.updateStatus'), {
             appointment_id: appointment.id,
             status: status === 'completed' ? 'confirmed' : (status === 'cancelled' ? 'cancelled' : 'confirmed'),
             notes: data.notes
-        }), {
-            onSuccess: () => {
+        })
+        .then(() => {
                 setShowConfirmComplete(false);
                 setShowConfirmCancel(false);
                 setData('notes', '');
-                // Redirect to appointments list after successful confirmation
-                window.location.href = route('doctor.appointments.index');
-            },
-            preserveState: true,
-            preserveScroll: true,
-            only: ['appointment']
+            // Redirect to dashboard after successful confirmation
+            window.location.href = route('doctor.dashboard');
+        })
+        .catch(error => {
+            console.error('Error updating appointment:', error);
         });
     };
 
@@ -355,6 +388,42 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                                     {renderDetails()}
                                 </div>
                             </div>
+
+                            {/* Patient Uploaded Files Section */}
+                            {patientFiles.length > 0 && (
+                                <div>
+                                    <h3 className="font-medium text-gray-900 flex items-center mb-2">
+                                        <FilePlus className="mr-2 h-4 w-4" />
+                                        Patient Uploaded Files
+                                    </h3>
+                                    <div className="bg-gray-50 p-4 rounded-md">
+                                        <div className="space-y-3">
+                                            {patientFiles.map((file, index) => (
+                                                <div key={index} className="flex items-center justify-between bg-white px-4 py-3 rounded-lg border border-gray-100">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-xl" aria-hidden="true">
+                                                            {getFileIcon(file.type)}
+                                                        </span>
+                                                        <div>
+                                                            <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                                                            <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                                                        </div>
+                                                    </div>
+                                                    <a
+                                                        href={file.url}
+                                                        target="_blank"
+                                                        className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+                                                        download
+                                                    >
+                                                        <Download className="h-4 w-4" />
+                                                        Download
+                                                    </a>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                         <CardFooter className="border-t pt-6 flex justify-between">
                             <div className="text-sm text-gray-500">
@@ -375,10 +444,29 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                                             Cancel Appointment
                                         </Button>
                                         <Button
+                                            variant="outline"
                                             onClick={() => setShowConfirmComplete(true)}
                                         >
                                             <CheckCircle className="mr-2 h-4 w-4" />
-                                            Confirm Appointment
+                                            Confirm with Notes
+                                        </Button>
+                                        <Button
+                                            onClick={() => {
+                                                // Use axios directly instead of Inertia's post
+                                                axios.post(route('doctor.appointments.updateStatus'), {
+                                                    appointment_id: appointment.id,
+                                                    status: 'confirmed'
+                                                })
+                                                .then(() => {
+                                                    window.location.href = route('doctor.dashboard');
+                                                })
+                                                .catch(error => {
+                                                    console.error('Error confirming appointment:', error);
+                                                });
+                                            }}
+                                        >
+                                            <CheckCircle className="mr-2 h-4 w-4" />
+                                            Confirm & Go to Dashboard
                                         </Button>
                                     </>
                                 )}

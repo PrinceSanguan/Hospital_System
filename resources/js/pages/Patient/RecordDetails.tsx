@@ -27,7 +27,7 @@ interface MedicalRecordDetails {
   appointment_time?: string;
   vital_signs?: Record<string, string | number>;
   diagnosis?: string;
-  prescriptions?: string[];
+  prescriptions?: string[] | Record<string, string> | string;
   notes?: string;
   followup_date?: string;
   treatments?: string;
@@ -35,7 +35,20 @@ interface MedicalRecordDetails {
   result_date?: string;
   results?: Record<string, {value: string|number, status?: string, range?: string}>;
   instructions?: string;
+  temperature?: string | number;
+  blood_pressure?: string | number;
+  pulse_rate?: string | number;
+  heart_rate?: string | number;
+  respiratory_rate?: string | number;
+  oxygen_saturation?: string | number;
   [key: string]: string | number | string[] | Record<string, string | number | {value: string|number, status?: string, range?: string}> | undefined;
+}
+
+interface LabTestResult {
+  value: string | number;
+  range?: string;
+  status?: string;
+  remarks?: string;
 }
 
 interface MedicalRecord {
@@ -48,6 +61,19 @@ interface MedicalRecord {
   details: string | MedicalRecordDetails;
   created_at: string;
   updated_at: string;
+  vital_signs?: Record<string, string | number>;
+  lab_results?: Record<string, LabTestResult>;
+  prescriptions?: string[] | Record<string, string>;
+}
+
+// Type definitions for prescription arrays
+interface PrescriptionItem {
+  medication?: string;
+  dosage?: string;
+  frequency?: string;
+  duration?: string;
+  instructions?: string;
+  [key: string]: string | undefined;
 }
 
 interface RecordDetailsProps {
@@ -102,14 +128,69 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
   };
 
   const parseDetails = (): MedicalRecordDetails => {
+    let parsedDetails: MedicalRecordDetails = {};
+
+    // First try to parse the details field if it's a string
     if (typeof record.details === 'string') {
       try {
-        return JSON.parse(record.details) as MedicalRecordDetails;
-      } catch {
-        return {};
+        parsedDetails = JSON.parse(record.details) as MedicalRecordDetails;
+        console.log("Parsed record details:", parsedDetails);
+      } catch (e) {
+        console.error("Failed to parse record details as JSON:", e);
+        // If parsing fails, create a simple object with the string as diagnosis
+        parsedDetails = {
+          diagnosis: record.details
+        };
       }
+    } else if (record.details) {
+      // If details is already an object, use it
+      parsedDetails = record.details;
     }
-    return record.details;
+
+    // Now overlay any direct properties from the record
+    // These take precedence over anything in the details field
+    if (record.vital_signs) {
+      parsedDetails.vital_signs = record.vital_signs;
+    }
+
+    if (record.prescriptions) {
+      parsedDetails.prescriptions = record.prescriptions;
+    }
+
+    if (record.lab_results) {
+      parsedDetails.results = record.lab_results;
+    }
+
+    return parsedDetails;
+  };
+
+  // Helper function to safely render any value as string
+  const renderValue = (value: unknown, unit?: string): string => {
+    if (value === null || value === undefined) {
+      return 'N/A';
+    }
+
+    if (typeof value === 'object') {
+      // Handle object with value/unit structure
+      if (value !== null && 'value' in value && value.value !== undefined) {
+        const valueObj = value as {value: string | number, unit?: string};
+        return `${valueObj.value}${valueObj.unit ? ' ' + valueObj.unit : unit ? ' ' + unit : ''}`;
+      }
+      // For other objects, convert to JSON string
+      return JSON.stringify(value);
+    }
+
+    return `${String(value)}${unit ? ' ' + unit : ''}`;
+  };
+
+  // Helper to try parsing JSON or return a default on error
+  const tryParseJson = <T,>(jsonString: string, defaultValue: T | null = null): T | null => {
+    try {
+      return JSON.parse(jsonString) as T;
+    } catch {
+      // Intentionally ignore the error
+      return defaultValue;
+    }
   };
 
   const details = parseDetails();
@@ -370,38 +451,40 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
                     <Separator />
 
                     {/* Vital Signs (for medical records) */}
-                    {details.vital_signs && Object.keys(details.vital_signs).length > 0 && (
+                    {details.vital_signs && Object.keys(details.vital_signs).some(key =>
+                      details.vital_signs![key] !== null && details.vital_signs![key] !== undefined && details.vital_signs![key] !== ''
+                    ) && (
                       <div>
                         <h2 className="text-xl font-bold mb-4">VITAL SIGNS</h2>
                         <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md grid grid-cols-2 md:grid-cols-5 gap-4">
                           {details.vital_signs.temperature && (
                             <div>
                               <h3 className="font-semibold text-sm text-gray-500">Temperature</h3>
-                              <p className="font-medium">{details.vital_signs.temperature} °C</p>
+                              <p className="font-medium">{renderValue(details.vital_signs.temperature, '°C')}</p>
                             </div>
                           )}
                           {details.vital_signs.blood_pressure && (
                             <div>
                               <h3 className="font-semibold text-sm text-gray-500">Blood Pressure</h3>
-                              <p className="font-medium">{details.vital_signs.blood_pressure} mmHg</p>
+                              <p className="font-medium">{renderValue(details.vital_signs.blood_pressure, 'mmHg')}</p>
                             </div>
                           )}
-                          {details.vital_signs.pulse_rate && (
+                          {(details.vital_signs.pulse_rate || details.vital_signs.heart_rate) && (
                             <div>
-                              <h3 className="font-semibold text-sm text-gray-500">Pulse Rate</h3>
-                              <p className="font-medium">{details.vital_signs.pulse_rate} bpm</p>
+                              <h3 className="font-semibold text-sm text-gray-500">Heart Rate</h3>
+                              <p className="font-medium">{renderValue(details.vital_signs.pulse_rate || details.vital_signs.heart_rate, 'bpm')}</p>
                             </div>
                           )}
                           {details.vital_signs.respiratory_rate && (
                             <div>
                               <h3 className="font-semibold text-sm text-gray-500">Respiratory Rate</h3>
-                              <p className="font-medium">{details.vital_signs.respiratory_rate} bpm</p>
+                              <p className="font-medium">{renderValue(details.vital_signs.respiratory_rate, 'breaths/min')}</p>
                             </div>
                           )}
                           {details.vital_signs.oxygen_saturation && (
                             <div>
                               <h3 className="font-semibold text-sm text-gray-500">Oxygen Saturation</h3>
-                              <p className="font-medium">{details.vital_signs.oxygen_saturation} %</p>
+                              <p className="font-medium">{renderValue(details.vital_signs.oxygen_saturation, '%')}</p>
                             </div>
                           )}
                         </div>
@@ -417,21 +500,194 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
                         {details.diagnosis && (
                           <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
                             <h3 className="font-semibold text-sm text-gray-500 mb-2">Diagnosis</h3>
-                            <p className="whitespace-pre-line">{details.diagnosis}</p>
+                            <p className="whitespace-pre-line">{renderValue(details.diagnosis)}</p>
                           </div>
                         )}
 
-                        {details.prescriptions && details.prescriptions.length > 0 && (
+                        {/* If there's no structured diagnosis but the record details might be plain text */}
+                        {!details.diagnosis && typeof record.details === 'string' && record.details && (
+                          <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
+                            <h3 className="font-semibold text-sm text-gray-500 mb-2">Diagnosis</h3>
+                            <p className="whitespace-pre-line">{renderValue(record.details)}</p>
+                          </div>
+                        )}
+
+                        {details.prescriptions && (
                           <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
                             <h3 className="font-semibold text-sm text-gray-500 mb-2">Prescriptions</h3>
                             <ul className="list-disc list-inside">
-                              {Array.isArray(details.prescriptions) ? (
-                                details.prescriptions.map((prescription, index) => (
-                                  <li key={index} className="mb-1">{prescription}</li>
-                                ))
-                              ) : (
-                                <li>{String(details.prescriptions)}</li>
-                              )}
+                              {(() => {
+                                // Handle array of prescriptions
+                                if (Array.isArray(details.prescriptions)) {
+                                  return details.prescriptions.map((prescription, index) => {
+                                    // Case 1: Prescription is already a string that looks like JSON
+                                    if (typeof prescription === 'string') {
+                                      // First try parsing as JSON
+                                      const parsedPrescription = tryParseJson<PrescriptionItem>(prescription);
+                                      if (parsedPrescription) {
+                                        return (
+                                          <li key={index} className="mb-3">
+                                            <div className="ml-2 mt-1">
+                                              <p className="font-medium">
+                                                {parsedPrescription.medication || ''}
+                                                {parsedPrescription.dosage ? ` - ${parsedPrescription.dosage}` : ''}
+                                              </p>
+                                              <div className="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-1 mt-1">
+                                                {parsedPrescription.frequency && (
+                                                  <span>Frequency: {parsedPrescription.frequency}</span>
+                                                )}
+                                                {parsedPrescription.duration && (
+                                                  <span>Duration: {parsedPrescription.duration} {parsedPrescription.duration === '1' ? 'day' : 'days'}</span>
+                                                )}
+                                                {parsedPrescription.instructions && (
+                                                  <span className="md:col-span-2">Instructions: {parsedPrescription.instructions}</span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </li>
+                                        );
+                                      }
+                                      // If parsing failed, just render as text
+                                      return <li key={index} className="mb-1">{renderValue(prescription)}</li>;
+                                    }
+
+                                    // Case 2: Prescription is already an object
+                                    if (typeof prescription === 'object' && prescription !== null) {
+                                      const prescObj = prescription as Record<string, string>;
+                                      return (
+                                        <li key={index} className="mb-3">
+                                          <div className="ml-2 mt-1">
+                                            <p className="font-medium">
+                                              {prescObj.medication || ''}
+                                              {prescObj.dosage ? ` - ${prescObj.dosage}` : ''}
+                                            </p>
+                                            <div className="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-1 mt-1">
+                                              {prescObj.frequency && (
+                                                <span>Frequency: {prescObj.frequency}</span>
+                                              )}
+                                              {prescObj.duration && (
+                                                <span>Duration: {prescObj.duration} {prescObj.duration === '1' ? 'day' : 'days'}</span>
+                                              )}
+                                              {prescObj.instructions && (
+                                                <span className="md:col-span-2">Instructions: {prescObj.instructions}</span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </li>
+                                      );
+                                    }
+
+                                    // Default case: Just render as text
+                                    return <li key={index} className="mb-1">{renderValue(prescription)}</li>;
+                                  });
+                                }
+
+                                // Handle object style prescriptions
+                                if (typeof details.prescriptions === 'object' && details.prescriptions !== null) {
+                                  return Object.entries(details.prescriptions as Record<string, string>).map(([key, value], index) => {
+                                    // Try to parse JSON string value
+                                    if (typeof value === 'string') {
+                                      const parsedValue = tryParseJson<PrescriptionItem>(value);
+                                      if (parsedValue) {
+                                        return (
+                                          <li key={index} className="mb-3">
+                                            <div className="ml-2 mt-1">
+                                              <p className="font-medium">
+                                                {parsedValue.medication || key}
+                                                {parsedValue.dosage ? ` - ${parsedValue.dosage}` : ''}
+                                              </p>
+                                              <div className="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-1 mt-1">
+                                                {Object.entries(parsedValue).map(([subKey, subValue]) =>
+                                                  subKey !== 'medication' && subKey !== 'dosage' ? (
+                                                    <span key={subKey} className={subKey === 'instructions' ? 'md:col-span-2' : ''}>
+                                                      {subKey.charAt(0).toUpperCase() + subKey.slice(1)}: {subValue}
+                                                    </span>
+                                                  ) : null
+                                                )}
+                                              </div>
+                                            </div>
+                                          </li>
+                                        );
+                                      }
+                                    }
+
+                                    return (
+                                      <li key={index} className="mb-1">
+                                        <span className="font-semibold">{key}:</span> {renderValue(value)}
+                                      </li>
+                                    );
+                                  });
+                                }
+
+                                // Handle string prescription that might be JSON
+                                if (typeof details.prescriptions === 'string') {
+                                  // Try parsing as a JSON array first
+                                  if (details.prescriptions.startsWith('[')) {
+                                    const parsedArray = tryParseJson<PrescriptionItem[]>(details.prescriptions);
+                                    if (parsedArray && Array.isArray(parsedArray)) {
+                                      return parsedArray.map((item, index) => {
+                                        if (typeof item === 'object' && item !== null) {
+                                          const prescObj = item as PrescriptionItem;
+                                          return (
+                                            <li key={index} className="mb-3">
+                                              <div className="ml-2 mt-1">
+                                                <p className="font-medium">
+                                                  {prescObj.medication || ''}
+                                                  {prescObj.dosage ? ` - ${prescObj.dosage}` : ''}
+                                                </p>
+                                                <div className="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-1 mt-1">
+                                                  {prescObj.frequency && (
+                                                    <span>Frequency: {prescObj.frequency}</span>
+                                                  )}
+                                                  {prescObj.duration && (
+                                                    <span>Duration: {prescObj.duration} {prescObj.duration === '1' ? 'day' : 'days'}</span>
+                                                  )}
+                                                  {prescObj.instructions && (
+                                                    <span className="md:col-span-2">Instructions: {prescObj.instructions}</span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </li>
+                                          );
+                                        }
+                                        return <li key={index} className="mb-1">{renderValue(item)}</li>;
+                                      });
+                                    }
+                                  }
+
+                                  // Try parsing as a JSON object
+                                  if (details.prescriptions.startsWith('{')) {
+                                    const parsedPrescription = tryParseJson<PrescriptionItem>(details.prescriptions);
+                                    if (parsedPrescription) {
+                                      return (
+                                        <li className="mb-3">
+                                          <div className="ml-2 mt-1">
+                                            <p className="font-medium">
+                                              {parsedPrescription.medication || ''}
+                                              {parsedPrescription.dosage ? ` - ${parsedPrescription.dosage}` : ''}
+                                            </p>
+                                            <div className="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-1 mt-1">
+                                              {Object.entries(parsedPrescription).map(([key, value]) =>
+                                                key !== 'medication' && key !== 'dosage' ? (
+                                                  <span key={key} className={key === 'instructions' ? 'md:col-span-2' : ''}>
+                                                    {key.charAt(0).toUpperCase() + key.slice(1)}: {value}
+                                                  </span>
+                                                ) : null
+                                              )}
+                                            </div>
+                                          </div>
+                                        </li>
+                                      );
+                                    }
+                                  }
+
+                                  // Default: render as plain text
+                                  return <li>{renderValue(details.prescriptions)}</li>;
+                                }
+
+                                // Fallback
+                                return <li>No prescription information available</li>;
+                              })()}
                             </ul>
                           </div>
                         )}
@@ -439,7 +695,7 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
                         {details.treatments && (
                           <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
                             <h3 className="font-semibold text-sm text-gray-500 mb-2">Treatments</h3>
-                            <p className="whitespace-pre-line">{String(details.treatments)}</p>
+                            <p className="whitespace-pre-line">{renderValue(details.treatments)}</p>
                           </div>
                         )}
                       </div>
@@ -484,15 +740,15 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
                             {Object.entries(details.results || {}).map(([test, result]) => (
                               <tr key={test} className="border-b">
                                 <td className="py-2 font-medium">{test}</td>
-                                <td className="py-2">{result.value}</td>
-                                <td className="py-2">{result.range || 'N/A'}</td>
+                                <td className="py-2">{renderValue(result.value)}</td>
+                                <td className="py-2">{renderValue(result.range || 'N/A')}</td>
                                 <td className="py-2">
                                   <Badge className={
                                     result.status === 'normal' ? 'bg-green-100 text-green-800' :
                                     result.status === 'abnormal' ? 'bg-red-100 text-red-800' :
                                     'bg-gray-100 text-gray-800'
                                   }>
-                                    {result.status || 'Not specified'}
+                                    {renderValue(result.status || 'Not specified')}
                                   </Badge>
                                 </td>
                               </tr>
@@ -510,7 +766,11 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
                 <div>
                   <h2 className="text-xl font-bold mb-4">NOTES</h2>
                   <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
-                    <p className="whitespace-pre-line">{details.notes || 'No additional notes'}</p>
+                    {details.notes ? (
+                      <p className="whitespace-pre-line">{renderValue(details.notes)}</p>
+                    ) : (
+                      <p className="text-gray-500">No additional notes</p>
+                    )}
                   </div>
                 </div>
 
@@ -521,7 +781,7 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
                     <div>
                       <h2 className="text-xl font-bold mb-4">INSTRUCTIONS</h2>
                       <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
-                        <p className="whitespace-pre-line">{String(details.instructions)}</p>
+                        <p className="whitespace-pre-line">{renderValue(details.instructions)}</p>
                       </div>
                     </div>
                   </>

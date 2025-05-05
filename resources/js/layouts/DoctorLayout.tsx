@@ -27,11 +27,21 @@ const DoctorLayout: React.FC<Props> = ({ user, children }) => {
     // Fetch initially
     fetchNotifications();
 
+    // Listen for custom event to refresh notifications
+    const handleNotificationsUpdated = () => {
+      fetchNotifications();
+    };
+
+    window.addEventListener('notifications-updated', handleNotificationsUpdated);
+
     // Set up interval to check periodically (every minute)
     const interval = setInterval(fetchNotifications, 60000);
 
-    // Clean up interval on unmount
-    return () => clearInterval(interval);
+    // Clean up interval and event listener on unmount
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notifications-updated', handleNotificationsUpdated);
+    };
   }, []);
 
   return (

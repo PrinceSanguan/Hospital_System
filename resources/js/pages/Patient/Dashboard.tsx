@@ -11,8 +11,7 @@ import {
   LogOut,
   Search,
   Menu,
-  UserIcon,
-  ClipboardList
+  UserIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -207,13 +206,13 @@ export default function PatientDashboard({
     },
     {
       name: "Book Appointment",
-      icon: <CalendarIcon size={18} />,
+      icon: <Calendar size={18} />,
       path: "/patient/appointments/book",
       active: activeTab === "book-appointment"
     },
     {
       name: "My Appointments",
-      icon: <Clock size={18} />,
+      icon: <Calendar size={18} />,
       path: "/patient/appointments",
       active: activeTab === "appointments"
     },
@@ -228,12 +227,6 @@ export default function PatientDashboard({
       icon: <Microscope size={18} />,
       path: "/patient/records/lab-results",
       active: activeTab === "lab-results"
-    },
-    {
-      name: "Record Requests",
-      icon: <ClipboardList size={18} />,
-      path: "/patient/record-requests",
-      active: activeTab === "record-requests"
     },
     {
       name: "Doctors",

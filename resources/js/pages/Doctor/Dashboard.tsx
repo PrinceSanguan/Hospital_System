@@ -299,6 +299,23 @@ export default function Dashboard({
         setSelectedAppointment(null);
         setResponseAction(null);
         setResponseNotes('');
+        // Redirect to dashboard to refresh the data
+        window.location.href = route('doctor.dashboard');
+      }
+    });
+  };
+
+  // Direct approve/deny without dialog
+  const directAppointmentResponse = (appointment: Appointment, action: 'approve' | 'deny') => {
+    const status = action === 'approve' ? 'confirmed' : 'cancelled';
+
+    router.post(route('doctor.appointments.updateStatus'), {
+      appointment_id: appointment.id,
+      status: status
+    }, {
+      onSuccess: () => {
+        // Redirect to dashboard to refresh the data
+        window.location.href = route('doctor.dashboard');
       }
     });
   };
@@ -380,7 +397,7 @@ export default function Dashboard({
                                 size="sm"
                                 variant="outline"
                                 className="h-8 gap-1 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                onClick={() => handleAppointmentResponse(appointment, 'approve')}
+                                onClick={() => directAppointmentResponse(appointment, 'approve')}
                               >
                                 <CheckCircle size={16} />
                                 Approve
@@ -389,7 +406,7 @@ export default function Dashboard({
                                 size="sm"
                                 variant="outline"
                                 className="h-8 gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => handleAppointmentResponse(appointment, 'deny')}
+                                onClick={() => directAppointmentResponse(appointment, 'deny')}
                               >
                                 <XCircle size={16} />
                                 Deny
@@ -566,7 +583,7 @@ export default function Dashboard({
                             size="sm"
                             variant="outline"
                             className="h-8 gap-1 text-green-600 hover:text-green-700 hover:bg-green-50"
-                            onClick={() => handleAppointmentResponse(appointment, 'approve')}
+                            onClick={() => directAppointmentResponse(appointment, 'approve')}
                           >
                             <CheckCircle size={16} />
                             Approve
@@ -575,7 +592,7 @@ export default function Dashboard({
                             size="sm"
                             variant="outline"
                             className="h-8 gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => handleAppointmentResponse(appointment, 'deny')}
+                            onClick={() => directAppointmentResponse(appointment, 'deny')}
                           >
                             <XCircle size={16} />
                             Deny
