@@ -315,14 +315,14 @@ export default function Records({ user, medicalRecords, patients = [] }: Records
                                                                 </Link>
                                                             </Button>
                                                             {record.prescriptions && record.prescriptions.length > 0 && (
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
                                                                     onClick={() => window.open(route('doctor.records.print-prescriptions', record.id), '_blank')}
-                                                                >
-                                                                    <Printer className="h-4 w-4 mr-1" />
+                                                            >
+                                                                <Printer className="h-4 w-4 mr-1" />
                                                                     Print Rx
-                                                                </Button>
+                                                            </Button>
                                                             )}
                                                         </div>
                                                     </td>

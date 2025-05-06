@@ -90,12 +90,12 @@ const PatientView = ({ user, patient }: PatientViewProps) => {
                       View Records
                     </Link>
                   </Button>
-                  <Button asChild>
-                    <Link href="#">
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit Patient
-                    </Link>
-                  </Button>
+                <Button asChild>
+                  <Link href="#">
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Patient
+                  </Link>
+                </Button>
                 </div>
               </div>
             </div>

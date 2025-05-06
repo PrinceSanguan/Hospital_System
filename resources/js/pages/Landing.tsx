@@ -384,9 +384,9 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
                                (e.target as HTMLImageElement).src = "https://ui.shadcn.com/avatars/01.png";
                              }}
                         />
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{doctor.name}</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{doctor.name}</p>
                         <p className="text-sm text-blue-600">{doctor.specialty}</p>
                       </div>
                     </div>
@@ -441,12 +441,12 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
                                      (e.target as HTMLImageElement).src = "https://ui.shadcn.com/avatars/01.png";
                                    }}
                               />
-                            </div>
+                        </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-900">{doctor.name}</div>
                               <div className="text-sm text-gray-500">{doctor.specialty}</div>
-                            </div>
-                          </div>
+                    </div>
+                  </div>
                         </td>
                         {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
                           <td key={`${doctor.id}-${day}`} className="px-4 py-4 whitespace-nowrap text-center">
@@ -466,7 +466,7 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
                   </tbody>
                 </table>
               </div>
-            </div>
+              </div>
 
             {/* Booking CTA */}
             <div className="bg-blue-50 border border-blue-100 rounded-lg p-6 text-center">
@@ -483,8 +483,8 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
                   </Button>
                   <Button asChild>
                     <Link href={route('auth.register')}>Register Now</Link>
-                  </Button>
-                </div>
+                </Button>
+              </div>
               )}
             </div>
           </div>
