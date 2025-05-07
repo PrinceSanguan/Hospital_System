@@ -14,7 +14,7 @@ return new class extends Migration
     {
         // Add phone_number column if it doesn't exist
         if (!Schema::hasColumn('doctor_profiles', 'phone_number')) {
-        Schema::table('doctor_profiles', function (Blueprint $table) {
+            Schema::table('doctor_profiles', function (Blueprint $table) {
                 $table->string('phone_number')->nullable()->after('doctor_id');
             });
         }
@@ -23,7 +23,7 @@ return new class extends Migration
         if (Schema::hasColumn('doctor_profiles', 'phone') && !Schema::hasColumn('doctor_profiles', 'phone_number')) {
             Schema::table('doctor_profiles', function (Blueprint $table) {
                 $table->renameColumn('phone', 'phone_number');
-        });
+            });
         }
     }
 

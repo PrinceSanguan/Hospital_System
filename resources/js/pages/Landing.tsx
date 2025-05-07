@@ -2,6 +2,7 @@ import { Link } from "@inertiajs/react";
 import { motion } from "framer-motion";
 import { LucideIcon, Microscope, Stethoscope, Calendar, ClipboardList, UserRound, UserCog, Clock, MapPin, Phone, Mail, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState, useRef } from "react";
 
 interface Service {
   id: string;
@@ -47,6 +48,59 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 export default function Landing({ services, hospitalServices = [], doctors = [], isAuthenticated }: LandingProps) {
+  const [isLoading, setIsLoading] = useState(true);
+  const reloadAttempts = useRef(0);
+  const maxReloadAttempts = 3;
+  
+  useEffect(() => {
+    // Immediately set loading to false when component is mounted
+    // This ensures we don't get stuck in an infinite loading state
+    setIsLoading(false);
+    
+    const checkLoadingState = () => {
+      if (document.readyState === 'complete') {
+        console.log('Page loaded successfully');
+        setIsLoading(false);
+      } else if (reloadAttempts.current < maxReloadAttempts) {
+        // Only reload if we haven't exceeded max attempts
+        console.log(`Page seems stuck, trying reload (attempt ${reloadAttempts.current + 1}/${maxReloadAttempts})`);
+        reloadAttempts.current += 1;
+        window.location.reload();
+      } else {
+        // If we've exceeded max reload attempts, force exit loading state
+        console.log('Max reload attempts reached, forcing load completion');
+        setIsLoading(false);
+      }
+    };
+    
+    // Add a safety timeout to handle cases where loading gets stuck
+    const loadingTimeout = setTimeout(() => {
+      if (isLoading) {
+        checkLoadingState();
+      }
+    }, 5000); // Only wait 5 seconds before trying a reload
+    
+    return () => clearTimeout(loadingTimeout);
+  }, [isLoading]);
+  
+  // Exit loading state as soon as the first render is complete
+  useEffect(() => {
+    setIsLoading(false);
+  }, []);
+  
+  // If loading timed out, show fallback content
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <Stethoscope className="h-16 w-16 text-blue-600 mx-auto animate-pulse" />
+          <h2 className="mt-4 text-xl font-semibold text-gray-800">Loading Famcare...</h2>
+          <p className="mt-2 text-sm text-gray-500">If loading persists, please try refreshing the page.</p>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="min-h-screen bg-white">
       {/* Navbar */}

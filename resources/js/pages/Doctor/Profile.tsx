@@ -73,19 +73,19 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
-
+        
         const formDataToSend = new FormData();
-
+        
         // Append form data
         Object.entries(formData).forEach(([key, value]) => {
             formDataToSend.append(key, value.toString());
         });
-
+        
         // Append file if selected
         if (profileImage) {
             formDataToSend.append('profile_image', profileImage);
         }
-
+        
         router.put('/doctor/profile', formDataToSend, {
             forceFormData: true,
             onSuccess: () => {
@@ -105,7 +105,7 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
                             {flash.success}
                         </div>
                     )}
-
+                    
                     {flash?.error && (
                         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                             {flash.error}
@@ -200,10 +200,10 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
                                         <div className="mb-4">
                                             <div className="flex items-center mb-2">
                                                 {user.profile_image ? (
-                                                    <img
-                                                        src={user.profile_image}
-                                                        alt={user.name}
-                                                        className="w-32 h-32 object-cover rounded-full"
+                                                    <img 
+                                                        src={user.profile_image} 
+                                                        alt={user.name} 
+                                                        className="w-32 h-32 object-cover rounded-full" 
                                                     />
                                                 ) : (
                                                     <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center">
@@ -296,7 +296,7 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
                                 <h2 className="text-2xl font-bold">Services Offered</h2>
                                 <p className="text-gray-600">Manage the services you offer to patients</p>
                             </div>
-                            <Button
+                            <Button 
                                 onClick={() => router.visit('/doctor/services/create')}
                                 className="bg-green-600 hover:bg-green-700 text-white"
                             >
@@ -311,8 +311,8 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
                                         <div>
                                             <h3 className="font-semibold">{service.name}</h3>
                                             <p className="text-sm text-gray-600">
-                                                {service.description.length > 100
-                                                    ? `${service.description.substring(0, 100)}...`
+                                                {service.description.length > 100 
+                                                    ? `${service.description.substring(0, 100)}...` 
                                                     : service.description}
                                             </p>
                                             <div className="mt-2 flex items-center">
@@ -326,7 +326,7 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
                                             </div>
                                         </div>
                                         <div className="flex items-start">
-                                            <button
+                                            <button 
                                                 onClick={() => router.visit(`/doctor/services/${service.id}/edit`)}
                                                 className="text-blue-600 hover:text-blue-800"
                                             >
@@ -355,4 +355,3 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
         </DoctorLayout>
     );
 }
-

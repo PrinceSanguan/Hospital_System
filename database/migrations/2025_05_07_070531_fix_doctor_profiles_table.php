@@ -18,11 +18,11 @@ return new class extends Migration
                 $table->foreignId('doctor_id')->after('id')->constrained('users')->onDelete('cascade');
             });
         }
-
+        
         // If we have both PostgreSQL and MySQL environments, we might need to fix column names
         // This is a defensive approach to handle discrepancies between environments
         if (Schema::hasColumn('doctor_profiles', 'doctor_profiles.doctor_id')) {
-            // Rename the incorrectly named column
+            // Rename the incorrectly named column 
             Schema::table('doctor_profiles', function (Blueprint $table) {
                 $table->renameColumn('doctor_profiles.doctor_id', 'doctor_id');
             });

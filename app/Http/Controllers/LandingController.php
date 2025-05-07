@@ -6,6 +6,7 @@ use App\Models\HospitalService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class LandingController extends Controller
 {
@@ -60,8 +61,14 @@ class LandingController extends Controller
             ],
         ];
 
-        // Get hospital services from database
-        $hospitalServices = HospitalService::where('is_active', true)->get();
+        // Get hospital services from database with error handling
+        try {
+            $hospitalServices = HospitalService::where('is_active', true)->get();
+        } catch (\Exception $e) {
+            Log::error('Error loading hospital services: ' . $e->getMessage());
+            // Provide empty array if database query fails
+            $hospitalServices = [];
+        }
 
         // Define the featured doctors for the landing page
         $doctors = [

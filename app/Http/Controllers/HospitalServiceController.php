@@ -6,6 +6,7 @@ use App\Models\HospitalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class HospitalServiceController extends Controller
@@ -151,10 +152,17 @@ class HospitalServiceController extends Controller
      */
     public function getActiveServices()
     {
-        $services = HospitalService::where('is_active', true)->get();
-
-        return response()->json([
-            'services' => $services
-        ]);
+        try {
+            $services = HospitalService::where('is_active', true)->get();
+            return response()->json([
+                'services' => $services
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching active services: ' . $e->getMessage());
+            return response()->json([
+                'services' => [],
+                'error' => 'Could not load services at this time.'
+            ]);
+        }
     }
 }
