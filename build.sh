@@ -2,14 +2,20 @@
 
 # Custom build script for Laravel Cloud
 
-# Install dependencies with legacy peer deps to handle React 19 compatibility
-npm ci --legacy-peer-deps
+# Use the production version of package.json
+cp package.production.json package.json
 
-# Explicitly install the missing @radix-ui/react-switch package
-npm install @radix-ui/react-switch --legacy-peer-deps
+# Make fix-npm.js script executable
+chmod +x fix-npm.js
 
-# Build assets
-npm run build
+# Install dependencies with force flag to handle React 19 compatibility
+npm ci --force
+
+# Run our custom dependency fixer for React 19
+node fix-npm.js
+
+# Build assets with increased memory
+NODE_OPTIONS=--max_old_space_size=4096 npm run build
 
 # Run Laravel migrations
 php artisan migrate --force
