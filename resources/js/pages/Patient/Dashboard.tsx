@@ -397,15 +397,15 @@ export default function PatientDashboard({
                 setShowNotifications(!showNotifications);
               }}
             >
-              <Bell size={20} />
-              {unreadNotificationsCount > 0 && (
-                <Badge
-                  className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white"
-                >
-                  {unreadNotificationsCount}
-                </Badge>
-              )}
-            </Button>
+                  <Bell size={20} />
+                  {unreadNotificationsCount > 0 && (
+                    <Badge
+                      className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white"
+                    >
+                      {unreadNotificationsCount}
+                    </Badge>
+                  )}
+                </Button>
 
             {/* Notifications Dropdown */}
             {showNotifications && (
@@ -444,12 +444,12 @@ export default function PatientDashboard({
 
                             // Use direct navigation to avoid framework errors
                             try {
-                              if (notification.related_id) {
-                                if (notification.related_type === 'appointment') {
+                            if (notification.related_id) {
+                              if (notification.related_type === 'appointment') {
                                   window.location.href = `/patient/appointments/${notification.related_id}`;
-                                } else if (notification.related_type === 'record') {
+                              } else if (notification.related_type === 'record') {
                                   window.location.href = `/patient/records/${notification.related_id}`;
-                                }
+                              }
                               }
                             } catch (e) {
                               console.error('Navigation error:', e);
@@ -500,7 +500,7 @@ export default function PatientDashboard({
         <main className="p-4 md:p-6 lg:p-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Welcome, {user.name}</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Welcome, {user.name}</h1>
               <p className="mt-1 text-gray-600">Here's an overview of your health</p>
             </div>
             <div className="mt-4 md:mt-0 flex gap-2">
@@ -522,67 +522,67 @@ export default function PatientDashboard({
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Today's Overview</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Card className="border-l-4 border-l-blue-500">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Upcoming Appointments</p>
-                      <p className="text-3xl font-bold text-gray-900">{upcomingAppointments.length}</p>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Upcoming Appointments</p>
+                    <p className="text-3xl font-bold text-gray-900">{upcomingAppointments.length}</p>
                       <p className="text-sm text-gray-500 mt-1">
                         {upcomingAppointments.length > 0 ? "View schedule" : "No appointments"}
                       </p>
-                    </div>
-                    <div className="rounded-full bg-blue-100 p-3 text-blue-600">
-                      <CalendarIcon size={20} />
-                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="rounded-full bg-blue-100 p-3 text-blue-600">
+                    <CalendarIcon size={20} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
               <Card className="border-l-4 border-l-green-500">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Today's Appointments</p>
-                      <p className="text-3xl font-bold text-gray-900">{appointmentsTodayCount}</p>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Today's Appointments</p>
+                    <p className="text-3xl font-bold text-gray-900">{appointmentsTodayCount}</p>
                       <p className="text-sm text-gray-500 mt-1">
                         {appointmentsTodayCount > 0
                           ? `${appointmentsTodayCount} appointment${appointmentsTodayCount > 1 ? 's' : ''} today`
                           : 'Your schedule is clear'}
                       </p>
-                    </div>
-                    <div className="rounded-full bg-green-100 p-3 text-green-600">
-                      <Clock size={20} />
-                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="rounded-full bg-green-100 p-3 text-green-600">
+                    <Clock size={20} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
               <Card className="border-l-4 border-l-amber-500">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Medical Records</p>
-                      <p className="text-3xl font-bold text-gray-900">{medicalRecords.length}</p>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Medical Records</p>
+                    <p className="text-3xl font-bold text-gray-900">{medicalRecords.length}</p>
                       <p className="text-sm text-gray-500 mt-1">
                         {medicalRecords.length > 0 ? "View your history" : "No records yet"}
                       </p>
-                    </div>
-                    <div className="rounded-full bg-amber-100 p-3 text-amber-600">
-                      <FileText size={20} />
-                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+                  <div className="rounded-full bg-amber-100 p-3 text-amber-600">
+                    <FileText size={20} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
+                </div>
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {/* Upcoming Appointments */}
             <Card className="lg:col-span-2">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div>
-                  <CardTitle>Upcoming Appointments</CardTitle>
-                  <CardDescription>Your scheduled appointments</CardDescription>
+                <CardTitle>Upcoming Appointments</CardTitle>
+                <CardDescription>Your scheduled appointments</CardDescription>
                 </div>
                 <Button asChild variant="ghost" size="sm" className="text-blue-600">
                   <Link href={route('patient.appointments.index')}>View All</Link>
@@ -692,8 +692,8 @@ export default function PatientDashboard({
             <Card className="lg:col-span-3">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div>
-                  <CardTitle>Available Doctors</CardTitle>
-                  <CardDescription>Our specialists ready to help you</CardDescription>
+                <CardTitle>Available Doctors</CardTitle>
+                <CardDescription>Our specialists ready to help you</CardDescription>
                 </div>
                 <Button asChild variant="ghost" size="sm" className="text-blue-600">
                   <Link href="/patient/doctors">View All</Link>
@@ -704,27 +704,27 @@ export default function PatientDashboard({
                   {doctors.slice(0, 3).map((doctor) => (
                     <div key={doctor.id} className="flex flex-col overflow-hidden rounded-lg border hover:shadow-md transition-shadow">
                       <div className="flex overflow-hidden">
-                        <div className="w-1/3">
-                          <img
-                            src={doctor.image || "https://ui.shadcn.com/avatars/01.png"}
-                            alt={doctor.name}
-                            className="h-full w-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = "https://ui.shadcn.com/avatars/01.png";
-                            }}
-                          />
-                        </div>
-                        <div className="w-2/3 p-4">
-                          <h3 className="font-medium">{doctor.name}</h3>
-                          <p className="text-sm text-blue-600">{doctor.specialty}</p>
-                          <div className="mt-2">
-                            <p className="text-xs text-gray-500">Available on:</p>
-                            <div className="mt-1 flex flex-wrap gap-1">
+                      <div className="w-1/3">
+                        <img
+                          src={doctor.image || "https://ui.shadcn.com/avatars/01.png"}
+                          alt={doctor.name}
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "https://ui.shadcn.com/avatars/01.png";
+                          }}
+                        />
+                      </div>
+                      <div className="w-2/3 p-4">
+                        <h3 className="font-medium">{doctor.name}</h3>
+                        <p className="text-sm text-blue-600">{doctor.specialty}</p>
+                        <div className="mt-2">
+                          <p className="text-xs text-gray-500">Available on:</p>
+                          <div className="mt-1 flex flex-wrap gap-1">
                               {doctor.schedules?.slice(0, 2).map(schedule => (
                                 <Badge key={schedule.id} variant="outline" className="text-xs">
                                   {getDayName(schedule.day_of_week).substring(0, 3)}: {formatTime(schedule.start_time).substring(0, 5)}
                                 </Badge>
-                              ))}
+                            ))}
                               {doctor.schedules && doctor.schedules.length > 2 && (
                                 <Badge variant="outline" className="text-xs">+{doctor.schedules.length - 2} more</Badge>
                               )}

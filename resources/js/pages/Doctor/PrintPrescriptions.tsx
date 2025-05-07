@@ -216,3 +216,4 @@ export default function PrintPrescriptions({ user, record }: PrintPrescriptionsP
         </div>
     );
 }
+ 

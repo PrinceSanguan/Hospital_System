@@ -7,7 +7,8 @@ import {
     Calendar,
     Settings,
     Stethoscope,
-    Clock
+    Clock,
+    UserCircle
 } from 'lucide-react';
 
 interface User {
@@ -72,9 +73,15 @@ export function Sidebar({ user, unreadNotifications = 0 }: SidebarProps) {
             icon: <FileText size={18} />
         },
         {
-            name: 'Settings',
+            name: 'Professional Profile',
             route: 'doctor.profile',
             path: '/doctor/profile',
+            icon: <UserCircle size={18} />
+        },
+        {
+            name: 'Settings',
+            route: 'doctor.settings',
+            path: '/doctor/settings',
             icon: <Settings size={18} />
         }
     ];

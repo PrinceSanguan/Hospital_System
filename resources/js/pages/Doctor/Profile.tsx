@@ -1,281 +1,358 @@
-import { Header } from '@/components/doctor/header';
-import { Sidebar } from '@/components/doctor/sidebar';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-    Form,
-    FormControl,
-    FormDescription,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from "@/components/ui/form";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import { User, Settings, Lock, Calendar, ClipboardList } from "lucide-react";
+import { router } from '@inertiajs/react';
+import { FormEvent, useState } from "react";
+import { Textarea } from "@/components/ui/textarea";
+import DoctorLayout from '@/layouts/DoctorLayout';
+import { Head } from '@inertiajs/react';
+import { UserData } from '@/types';
 
-interface UserProfile {
-    name: string;
-    email: string;
-    role?: string;
+interface UserProfile extends UserData {
     specialization?: string;
     qualifications?: string;
     about?: string;
-    phone?: string;
+    phone_number?: string;
     address?: string;
-    profileImage?: string;
+    profile_image?: string;
+    years_of_experience?: number;
+    languages_spoken?: string;
+    education?: string;
+    is_visible?: boolean;
+}
+
+interface ServiceItem {
+    id: number;
+    name: string;
+    description: string;
+    price: number;
+    duration_minutes: number;
+    is_active: boolean;
 }
 
 interface ProfileProps {
     user: UserProfile;
+    services: ServiceItem[];
+    flash?: {
+        success?: string;
+        error?: string;
+    };
 }
 
-export default function DoctorProfile({ user }: ProfileProps) {
+export default function DoctorProfile({ user, services, flash }: ProfileProps) {
+    const [formData, setFormData] = useState({
+        name: user.name || '',
+        phone_number: user.phone_number || '',
+        specialization: user.specialization || '',
+        qualifications: user.qualifications || '',
+        address: user.address || '',
+        about: user.about || '',
+        years_of_experience: user.years_of_experience || 0,
+        languages_spoken: user.languages_spoken || '',
+        education: user.education || '',
+        is_visible: user.is_visible || false,
+    });
+
+    const [profileImage, setProfileImage] = useState<File | null>(null);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { id, value } = e.target;
+        setFormData(prev => ({ ...prev, [id]: value }));
+    };
+
+    const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, checked } = e.target;
+        setFormData(prev => ({ ...prev, [id]: checked }));
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setProfileImage(e.target.files[0]);
+        }
+    };
+
+    const handleSubmit = (e: FormEvent) => {
+        e.preventDefault();
+
+        const formDataToSend = new FormData();
+
+        // Append form data
+        Object.entries(formData).forEach(([key, value]) => {
+            formDataToSend.append(key, value.toString());
+        });
+
+        // Append file if selected
+        if (profileImage) {
+            formDataToSend.append('profile_image', profileImage);
+        }
+
+        router.put('/doctor/profile', formDataToSend, {
+            forceFormData: true,
+            onSuccess: () => {
+                // Reset file input after successful submission
+                setProfileImage(null);
+            }
+        });
+    };
+
     return (
-        <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
-            {/* Sidebar */}
-            <Sidebar user={user} />
+        <DoctorLayout user={user}>
+            <Head title="Professional Profile" />
+            <div className="py-8">
+                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                    {flash?.success && (
+                        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                            {flash.success}
+                        </div>
+                    )}
 
-            {/* Main Content */}
-            <div className="flex flex-1 flex-col overflow-hidden">
-                {/* Header */}
-                <Header user={user} />
+                    {flash?.error && (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                            {flash.error}
+                        </div>
+                    )}
 
-                {/* Dashboard Content */}
-                <main className="flex-1 overflow-y-auto bg-gray-100 p-4 md:p-6 dark:bg-gray-900">
-                    <div className="flex flex-col gap-6">
-                        <div className="flex flex-col gap-2">
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">My Profile</h1>
-                            <p className="text-gray-500 dark:text-gray-400">
-                                Manage your account settings and profile information
-                            </p>
+                    <div className="bg-white rounded-lg shadow-md p-6">
+                        <h1 className="text-2xl font-bold mb-6">Professional Information</h1>
+                        <p className="text-gray-600 mb-6">Update your professional details and credentials that will be displayed to patients</p>
+
+                        <form onSubmit={handleSubmit}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Left Column */}
+                                <div>
+                                    <div className="mb-6">
+                                        <h2 className="text-lg font-semibold mb-2">Personal Information</h2>
+
+                                        <div className="mb-4">
+                                            <Label htmlFor="name" className="block mb-1">Full Name</Label>
+                                            <Input
+                                                id="name"
+                                                value={formData.name}
+                                                onChange={handleChange}
+                                                className="w-full"
+                                            />
+                                        </div>
+
+                                        <div className="mb-4">
+                                            <Label htmlFor="phone_number" className="block mb-1">Phone Number</Label>
+                                            <Input
+                                                id="phone_number"
+                                                value={formData.phone_number}
+                                                onChange={handleChange}
+                                                className="w-full"
+                                            />
+                                        </div>
+
+                                        <div className="mb-4">
+                                            <Label htmlFor="address" className="block mb-1">Address</Label>
+                                            <Textarea
+                                                id="address"
+                                                value={formData.address}
+                                                onChange={handleChange}
+                                                className="w-full"
+                                                rows={3}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="mb-6">
+                                        <h2 className="text-lg font-semibold mb-2">Professional Profile</h2>
+
+                                        <div className="mb-4">
+                                            <Label htmlFor="specialization" className="block mb-1">Specialization</Label>
+                                            <Input
+                                                id="specialization"
+                                                value={formData.specialization}
+                                                onChange={handleChange}
+                                                className="w-full"
+                                            />
+                                        </div>
+
+                                        <div className="mb-4">
+                                            <Label htmlFor="qualifications" className="block mb-1">Qualifications</Label>
+                                            <Textarea
+                                                id="qualifications"
+                                                value={formData.qualifications}
+                                                onChange={handleChange}
+                                                className="w-full"
+                                                rows={3}
+                                            />
+                                        </div>
+
+                                        <div className="mb-4">
+                                            <Label htmlFor="years_of_experience" className="block mb-1">Years of Experience</Label>
+                                            <Input
+                                                id="years_of_experience"
+                                                type="number"
+                                                min="0"
+                                                value={formData.years_of_experience}
+                                                onChange={handleChange}
+                                                className="w-full"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Right Column */}
+                                <div>
+                                    <div className="mb-6">
+                                        <h2 className="text-lg font-semibold mb-2">Profile Photo</h2>
+                                        <div className="mb-4">
+                                            <div className="flex items-center mb-2">
+                                                {user.profile_image ? (
+                                                    <img
+                                                        src={user.profile_image}
+                                                        alt={user.name}
+                                                        className="w-32 h-32 object-cover rounded-full"
+                                                    />
+                                                ) : (
+                                                    <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center">
+                                                        <span className="text-gray-400 text-5xl">{user.name?.charAt(0)}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <Label htmlFor="profile_image" className="block mb-1">Upload New Photo</Label>
+                                            <Input
+                                                id="profile_image"
+                                                type="file"
+                                                onChange={handleFileChange}
+                                                className="w-full"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">Recommended: Square image, at least 300x300 pixels</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="mb-6">
+                                        <h2 className="text-lg font-semibold mb-2">Additional Information</h2>
+
+                                        <div className="mb-4">
+                                            <Label htmlFor="languages_spoken" className="block mb-1">Languages Spoken</Label>
+                                            <Input
+                                                id="languages_spoken"
+                                                value={formData.languages_spoken}
+                                                onChange={handleChange}
+                                                className="w-full"
+                                                placeholder="English, Spanish, etc."
+                                            />
+                                        </div>
+
+                                        <div className="mb-4">
+                                            <Label htmlFor="education" className="block mb-1">Education</Label>
+                                            <Input
+                                                id="education"
+                                                value={formData.education}
+                                                onChange={handleChange}
+                                                className="w-full"
+                                                placeholder="University of California, San Francisco"
+                                            />
+                                        </div>
+
+                                        <div className="mb-4">
+                                            <Label htmlFor="about" className="block mb-1">About Me</Label>
+                                            <Textarea
+                                                id="about"
+                                                value={formData.about}
+                                                onChange={handleChange}
+                                                className="w-full"
+                                                rows={4}
+                                            />
+                                        </div>
+
+                                        <div className="mb-4">
+                                            <div className="flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    id="is_visible"
+                                                    checked={formData.is_visible}
+                                                    onChange={handleCheckboxChange}
+                                                    className="h-4 w-4 text-blue-600"
+                                                />
+                                                <Label htmlFor="is_visible" className="ml-2 block text-sm text-gray-700">
+                                                    Show my profile to patients
+                                                </Label>
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1">When enabled, patients can view your profile and book appointments</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end mt-6">
+                                <Button type="button" variant="outline" className="mr-2" onClick={() => router.visit('/doctor/dashboard')}>
+                                    Cancel
+                                </Button>
+                                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+                                    Save Changes
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {/* Services Section */}
+                    <div className="bg-white rounded-lg shadow-md p-6 mt-8">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold">Services Offered</h2>
+                                <p className="text-gray-600">Manage the services you offer to patients</p>
+                            </div>
+                            <Button
+                                onClick={() => router.visit('/doctor/services/create')}
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                                Add New Service
+                            </Button>
                         </div>
 
-                        <Tabs defaultValue="personal" className="w-full">
-                            <TabsList className="mb-6 grid w-full grid-cols-3 md:w-auto">
-                                <TabsTrigger value="personal" className="flex items-center gap-2">
-                                    <User className="h-4 w-4" />
-                                    Personal Info
-                                </TabsTrigger>
-                                <TabsTrigger value="account" className="flex items-center gap-2">
-                                    <Settings className="h-4 w-4" />
-                                    Account Settings
-                                </TabsTrigger>
-                                <TabsTrigger value="security" className="flex items-center gap-2">
-                                    <Lock className="h-4 w-4" />
-                                    Security
-                                </TabsTrigger>
-                            </TabsList>
-
-                            {/* Personal Information Tab */}
-                            <TabsContent value="personal">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Personal Information</CardTitle>
-                                        <CardDescription>
-                                            Update your personal details and professional information
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-6">
-                                        <div className="grid gap-6 md:grid-cols-2">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="fullName">Full Name</Label>
-                                                <Input id="fullName" defaultValue={user.name} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="email">Email</Label>
-                                                <Input id="email" type="email" defaultValue={user.email} disabled />
-                                                <p className="text-xs text-gray-500">Your email address cannot be changed</p>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="phone">Phone Number</Label>
-                                                <Input id="phone" defaultValue={user.phone || ''} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="specialization">Specialization</Label>
-                                                <Input id="specialization" defaultValue={user.specialization || 'General Medicine'} />
-                                            </div>
-                                            <div className="space-y-2 md:col-span-2">
-                                                <Label htmlFor="qualifications">Qualifications</Label>
-                                                <Input id="qualifications" defaultValue={user.qualifications || 'MD, PhD'} />
-                                            </div>
-                                            <div className="space-y-2 md:col-span-2">
-                                                <Label htmlFor="address">Address</Label>
-                                                <Input id="address" defaultValue={user.address || ''} />
-                                            </div>
-                                            <div className="space-y-2 md:col-span-2">
-                                                <Label htmlFor="about">About</Label>
-                                                <textarea
-                                                    id="about"
-                                                    className="flex min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                                    defaultValue={user.about || 'Experienced physician specializing in patient care with over 10 years of practice.'}
-                                                />
+                        {services.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {services.map((service) => (
+                                    <div key={service.id} className={`border rounded-lg p-4 flex justify-between ${service.is_active ? 'bg-white' : 'bg-gray-100'}`}>
+                                        <div>
+                                            <h3 className="font-semibold">{service.name}</h3>
+                                            <p className="text-sm text-gray-600">
+                                                {service.description.length > 100
+                                                    ? `${service.description.substring(0, 100)}...`
+                                                    : service.description}
+                                            </p>
+                                            <div className="mt-2 flex items-center">
+                                                <span className="text-sm font-medium">${service.price.toFixed(2)}</span>
+                                                <span className="mx-2 text-gray-400">•</span>
+                                                <span className="text-sm">{service.duration_minutes} minutes</span>
+                                                <span className="mx-2 text-gray-400">•</span>
+                                                <span className={`text-xs px-2 py-1 rounded-full ${service.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'}`}>
+                                                    {service.is_active ? 'Active' : 'Inactive'}
+                                                </span>
                                             </div>
                                         </div>
-
-                                        <div className="flex justify-end">
-                                            <Button type="submit">
-                                                Save Changes
-                                            </Button>
+                                        <div className="flex items-start">
+                                            <button
+                                                onClick={() => router.visit(`/doctor/services/${service.id}/edit`)}
+                                                className="text-blue-600 hover:text-blue-800"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
                                         </div>
-                                    </CardContent>
-                                </Card>
-
-                                <Card className="mt-6">
-                                    <CardHeader>
-                                        <CardTitle>Professional Details</CardTitle>
-                                        <CardDescription>
-                                            Information that will be displayed to patients
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-6">
-                                        <div className="grid gap-6 md:grid-cols-2">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="experience">Years of Experience</Label>
-                                                <Input id="experience" defaultValue="10" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="languages">Languages Spoken</Label>
-                                                <Input id="languages" defaultValue="English, Spanish" />
-                                            </div>
-                                            <div className="space-y-2 md:col-span-2">
-                                                <Label htmlFor="education">Education</Label>
-                                                <Input id="education" defaultValue="University of California, San Francisco" />
-                                            </div>
-                                        </div>
-
-                                        <div className="flex justify-end">
-                                            <Button type="submit">
-                                                Save Changes
-                                            </Button>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </TabsContent>
-
-                            {/* Account Settings Tab */}
-                            <TabsContent value="account">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Account Settings</CardTitle>
-                                        <CardDescription>
-                                            Manage your account preferences and settings
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-6">
-                                        <div className="space-y-2">
-                                            <h3 className="text-lg font-medium">Email Notifications</h3>
-                                            <div className="space-y-4">
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <p className="font-medium">New Appointments</p>
-                                                        <p className="text-sm text-gray-500">Receive email notifications for new appointments</p>
-                                                    </div>
-                                                    <div className="relative h-6 w-11 cursor-pointer rounded-full bg-gray-200">
-                                                        <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-200 dark:bg-white" />
-                                                    </div>
-                                                </div>
-                                                <Separator />
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <p className="font-medium">Appointment Reminders</p>
-                                                        <p className="text-sm text-gray-500">Receive reminders before scheduled appointments</p>
-                                                    </div>
-                                                    <div className="relative h-6 w-11 cursor-pointer rounded-full bg-blue-600">
-                                                        <span className="absolute left-6 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-200 dark:bg-white" />
-                                                    </div>
-                                                </div>
-                                                <Separator />
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <p className="font-medium">Medical Record Updates</p>
-                                                        <p className="text-sm text-gray-500">Receive notifications when patient records are updated</p>
-                                                    </div>
-                                                    <div className="relative h-6 w-11 cursor-pointer rounded-full bg-blue-600">
-                                                        <span className="absolute left-6 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-200 dark:bg-white" />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <h3 className="text-lg font-medium">Availability Settings</h3>
-                                            <div className="grid gap-6 md:grid-cols-2">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="workingHours">Working Hours</Label>
-                                                    <Input id="workingHours" defaultValue="9:00 AM - 5:00 PM" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="workingDays">Working Days</Label>
-                                                    <Input id="workingDays" defaultValue="Monday - Friday" />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex justify-end">
-                                            <Button type="submit">
-                                                Save Changes
-                                            </Button>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </TabsContent>
-
-                            {/* Security Tab */}
-                            <TabsContent value="security">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Security Settings</CardTitle>
-                                        <CardDescription>
-                                            Update your password and security preferences
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-6">
-                                        <div className="space-y-2">
-                                            <h3 className="text-lg font-medium">Change Password</h3>
-                                            <div className="grid gap-4">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="currentPassword">Current Password</Label>
-                                                    <Input id="currentPassword" type="password" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="newPassword">New Password</Label>
-                                                    <Input id="newPassword" type="password" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                                                    <Input id="confirmPassword" type="password" />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <h3 className="text-lg font-medium">Two-Factor Authentication</h3>
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <p className="text-sm text-gray-500">Enable two-factor authentication for additional security</p>
-                                                </div>
-                                                <div className="relative h-6 w-11 cursor-pointer rounded-full bg-gray-200">
-                                                    <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-200 dark:bg-white" />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex justify-end">
-                                            <Button type="submit">
-                                                Update Security Settings
-                                            </Button>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </TabsContent>
-                        </Tabs>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="bg-gray-100 rounded-lg p-6 text-center">
+                                <p className="text-gray-600">You haven't added any services yet. Add your first service to let patients know what you offer.</p>
+                                <Button
+                                    onClick={() => router.visit('/doctor/services/create')}
+                                    className="mt-3 bg-blue-600 hover:bg-blue-700 text-white"
+                                >
+                                    Add Your First Service
+                                </Button>
+                            </div>
+                        )}
                     </div>
-                </main>
+                </div>
             </div>
-        </div>
+        </DoctorLayout>
     );
 }
+

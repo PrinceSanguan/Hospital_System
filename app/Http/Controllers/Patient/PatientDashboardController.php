@@ -615,4 +615,39 @@ class PatientDashboardController extends Controller
             'record' => $record
         ]);
     }
+
+    /**
+     * Display a detailed view of a specific doctor's profile.
+     */
+    public function viewDoctor($id)
+    {
+        $doctor = \App\Models\User::where('user_role', \App\Models\User::ROLE_DOCTOR)
+            ->with(['doctorProfile', 'services' => function($query) {
+                $query->where('is_active', true);
+            }, 'schedules'])
+            ->findOrFail($id);
+
+        // Get available dates based on doctor schedules
+        $availableDates = [];
+        $availableTimeSlots = [];
+
+        if ($doctor->schedules) {
+            foreach ($doctor->schedules as $schedule) {
+                if ($schedule->is_available) {
+                    // Add available days from schedules
+                    $availableDates[] = [
+                        'day' => $schedule->day_of_week,
+                        'start_time' => $schedule->start_time,
+                        'end_time' => $schedule->end_time,
+                    ];
+                }
+            }
+        }
+
+        return inertia('Patient/DoctorProfile', [
+            'doctor' => $doctor,
+            'availableDates' => $availableDates,
+            'user' => auth()->user(),
+        ]);
+    }
 }

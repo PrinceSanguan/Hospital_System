@@ -156,11 +156,19 @@ Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')-
   Route::get('/dashboard', [DoctorDashboardController::class, 'index'])->name('dashboard');
 
   // Doctor Profile
-  Route::get('/profile', function() {
-    return Inertia::render('Doctor/Profile', [
-      'user' => Auth::user()
-    ]);
-  })->name('profile');
+  Route::get('/profile', [App\Http\Controllers\DoctorProfileController::class, 'edit'])->name('profile');
+  Route::put('/profile', [App\Http\Controllers\DoctorProfileController::class, 'update'])->name('profile.update');
+
+  // Doctor Settings
+  Route::get('/settings', [App\Http\Controllers\DoctorProfileController::class, 'settings'])->name('settings');
+
+  // Doctor Services Management
+  Route::get('/services/manage', [App\Http\Controllers\DoctorServiceController::class, 'index'])->name('services.manage');
+  Route::get('/services/create', [App\Http\Controllers\DoctorServiceController::class, 'create'])->name('services.create');
+  Route::post('/services/store', [App\Http\Controllers\DoctorServiceController::class, 'store'])->name('services.store');
+  Route::get('/services/{id}/edit', [App\Http\Controllers\DoctorServiceController::class, 'edit'])->name('services.edit');
+  Route::put('/services/{id}', [App\Http\Controllers\DoctorServiceController::class, 'update'])->name('services.update');
+  Route::delete('/services/{id}', [App\Http\Controllers\DoctorServiceController::class, 'destroy'])->name('services.destroy');
 
   // Schedule Management
   Route::get('/schedule', [DoctorScheduleController::class, 'index'])->name('schedule.index');
@@ -328,6 +336,12 @@ Route::middleware([PatientMiddleware::class])->prefix('patient')->name('patient.
 
   // Doctors
   Route::get('/doctors', [PatientDashboardController::class, 'listDoctors'])->name('doctors.index');
+  Route::get('/doctors/{id}', [PatientDashboardController::class, 'viewDoctor'])->name('doctors.show');
+
+  // API routes for doctor information
+  Route::get('/api/doctors', [\App\Http\Controllers\DoctorProfileController::class, 'listDoctors'])->name('api.doctors');
+  Route::get('/api/doctors/{id}', [\App\Http\Controllers\DoctorProfileController::class, 'show'])->name('api.doctors.show');
+  Route::get('/api/doctors/{id}/services', [\App\Http\Controllers\DoctorServiceController::class, 'getDoctorServices'])->name('api.doctors.services');
 
   // Profile
   Route::get('/profile', [PatientDashboardController::class, 'viewProfile'])->name('profile.edit');

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable
 {
@@ -142,5 +143,13 @@ class User extends Authenticatable
     public function approvedRequests(): HasMany
     {
         return $this->hasMany(RecordRequest::class, 'approved_by');
+    }
+
+    /**
+     * Get the doctor profile associated with this user.
+     */
+    public function doctorProfile(): HasOne
+    {
+        return $this->hasOne(DoctorProfile::class, 'doctor_id');
     }
 }
