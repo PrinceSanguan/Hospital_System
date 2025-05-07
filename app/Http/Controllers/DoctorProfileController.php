@@ -239,7 +239,7 @@ class DoctorProfileController extends Controller
                     'name' => $doctor->name,
                     'specialization' => $doctor->doctorProfile?->specialization,
                     'qualifications' => $doctor->doctorProfile?->qualifications,
-                    'about' => $doctor->doctorProfile?->about, 
+                    'about' => $doctor->doctorProfile?->about,
                     'years_of_experience' => $doctor->doctorProfile?->years_of_experience,
                     'profile_image' => $doctor->doctorProfile?->profile_image ? asset('storage/' . $doctor->doctorProfile->profile_image) : null,
                     'services' => $doctor->services
