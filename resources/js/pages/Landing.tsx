@@ -22,12 +22,44 @@ interface HospitalService {
   is_active: boolean;
 }
 
-interface Doctor {
-  id: number;
-  name: string;
-  specialty: string;
-  image: string;
-  availability: string[];
+interface DoctorsProps {
+  user: {
+    name: string;
+    email: string;
+    role: string;
+  };
+  doctors: Array<{
+    id: number;
+    name: string;
+    specialty: string;
+    availability: string[];
+    image: string;
+    schedules?: Array<{
+      id: number;
+      day_of_week: number;
+      start_time: string;
+      end_time: string;
+      is_available: boolean;
+      max_appointments: number;
+    }>;
+    services?: Array<{
+      id: number;
+      name: string;
+      description: string;
+      duration_minutes: number;
+      price: number;
+    }>;
+  }>;
+  
+  notifications: Array<{
+    id: number;
+    title: string;
+    message: string;
+    read: boolean;
+    created_at: string;
+    related_id?: number;
+    related_type?: string;
+  }>;
 }
 
 interface LandingProps {
@@ -370,48 +402,92 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
         </div>
       </section>
 
-      {/* Doctors Section */}
-      <section id="doctors" className="py-20">
+    {/* Doctors Section */}
+     <section id="doctors" className="py-20">
         <div className="container mx-auto px-6">
           <div className="mb-16 text-center">
             <h2 className="mb-4 text-3xl font-bold text-gray-900 md:text-4xl">Our Doctors</h2>
             <p className="mx-auto max-w-2xl text-gray-600">Meet our team of experienced and caring medical professionals</p>
           </div>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
-            {doctors.map((doctor: Doctor, index: number) => (
-              <motion.div
-                key={doctor.id}
-                className="bg-white rounded-lg overflow-hidden shadow-lg transition-all hover:shadow-xl"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-              >
-                <img
-                  src={doctor.image}
-                  alt={doctor.name}
-                  className="w-full h-56 object-cover object-center"
-                />
-                <div className="p-6">
-                  <h3 className="text-xl font-semibold text-gray-800 mb-1">{doctor.name}</h3>
-                  <p className="text-blue-600 mb-4 text-sm">{doctor.specialty}</p>
-                  <div className="mb-4">
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Available on:</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {doctor.availability.map((day: string) => (
-                        <span key={day} className="px-2 py-1 bg-blue-50 text-blue-600 rounded-md text-xs">
-                          {day}
-                        </span>
-                      ))}
-                    </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {doctors && doctors.length > 0 ? (
+              doctors.map((doctor) => (
+                <motion.div
+                  key={doctor.id}
+                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <div className="h-48 overflow-hidden">
+                    <img 
+                      src={doctor.image} 
+                      alt={doctor.name} 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "https://ui.shadcn.com/avatars/01.png";
+                      }}
+                    />
                   </div>
-                  <Button asChild variant="outline" size="sm" className="w-full mt-2">
-                    <Link href={isAuthenticated ? route('patient.appointments.book') : route('auth.login')} className="flex items-center justify-center">
-                      Book Appointment <ChevronRight className="ml-1 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-              </motion.div>
-            ))}
+                  <div className="p-5">
+                    <h3 className="font-bold text-lg text-gray-900">{doctor.name}</h3>
+                    <p className="text-sm text-gray-600 mb-3">{doctor.specialty}</p>
+                    
+                    {/* Availability Tags */}
+                    <div className="mb-3">
+                      <p className="text-sm font-medium text-gray-700 mb-2">Available on:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {doctor.availability.map((day) => (
+                          <span key={`${doctor.id}-${day}`} className="px-2 py-1 bg-blue-50 text-blue-600 rounded-md text-xs">
+                            {day}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Doctor Services */}
+                    {doctor.services && doctor.services.length > 0 && (
+                      <div className="mb-4">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Services:</p>
+                        <div className="text-sm text-gray-600">
+                          {doctor.services.slice(0, 2).map((service, idx) => (
+                            <div key={service.id} className="mb-1">
+                              • {service.name}
+                            </div>
+                          ))}
+                          {doctor.services.length > 2 && (
+                            <div className="text-blue-600 text-xs">+{doctor.services.length - 2} more</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <Button asChild variant="outline" size="sm" className="w-full">
+                      <Link href={isAuthenticated ? route('patient.appointments.book', {doctor_id: doctor.id}) : route('auth.login')} className="flex items-center justify-center">
+                        Book Appointment <ChevronRight className="ml-1 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                </motion.div>
+              ))
+            ) : (
+              // Fallback content if no doctors are available
+              <div className="col-span-full text-center py-10">
+                <Stethoscope className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900">No doctors available at the moment</h3>
+                <p className="text-gray-500 mt-2">Please check back later or contact us for more information</p>
+              </div>
+            )}
+          </div>
+          
+          {/* Call to Action */}
+          <div className="mt-16 text-center">
+            <h3 className="mb-4 text-xl font-semibold text-gray-900">Need specialized care?</h3>
+            <p className="mx-auto mb-6 max-w-2xl text-gray-600">Our team of specialists is ready to provide you with the best medical care</p>
+            <Button asChild className="bg-blue-600 hover:bg-blue-700">
+              <Link href="#contact">Contact Us Today</Link>
+            </Button>
           </div>
         </div>
       </section>
@@ -440,8 +516,8 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
                         />
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">{doctor.name}</p>
-                        <p className="text-sm text-blue-600">{doctor.specialty}</p>
+                      <h3 className="font-bold text-lg">{doctor.name}</h3>
+                      <p className="text-sm text-gray-600">{doctor.specialty}</p>
                       </div>
                     </div>
                     <div className="mt-2">
