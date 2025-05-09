@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\HospitalService;
+use App\Models\User; // Add this import
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
@@ -70,37 +71,26 @@ class LandingController extends Controller
             $hospitalServices = [];
         }
 
-        // Define the featured doctors for the landing page
-        $doctors = [
-            [
-                'id' => 1,
-                'name' => 'Dr. Sheila Mae Beltrano',
-                'specialty' => 'Certified Family Physician',
-                'image' => 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80',
-                'availability' => ['Monday', 'Wednesday', 'Friday']
-            ],
-            [
-                'id' => 2,
-                'name' => 'Dr. Kathy Narvaez-Garcia',
-                'specialty' => 'General Practitioner',
-                'image' => 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80',
-                'availability' => ['Tuesday', 'Thursday', 'Saturday']
-            ],
-            [
-                'id' => 3,
-                'name' => 'Dr. Rogelia Bantayon-Tubog',
-                'specialty' => 'Occupational Health Physician, BCOM Diplomate, Family Medicine',
-                'image' => 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80',
-                'availability' => ['Monday', 'Tuesday', 'Friday']
-            ],
-            [
-                'id' => 4,
-                'name' => 'Dr. Blas Bandian',
-                'specialty' => 'Diplomate, Family Medicine',
-                'image' => 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80',
-                'availability' => ['Wednesday', 'Thursday', 'Saturday']
-            ]
-        ];
+        // Get doctors from database
+        try {
+            $doctors = User::where('user_role', User::ROLE_DOCTOR)
+                ->with(['schedules', 'services'])
+                ->get()
+                ->map(function ($doctor) {
+                    return [
+                        'id' => $doctor->id,
+                        'name' => $doctor->name,
+                        'specialty' => $doctor->specialty ?? 'General Practitioner',
+                        'image' => $doctor->profile_photo ?? '/placeholder-avatar.jpg',
+                        'availability' => $doctor->availability ?? [],
+                        'schedules' => $doctor->schedules,
+                        'services' => $doctor->services,
+                    ];
+                });
+        } catch (\Exception $e) {
+            Log::error('Error loading doctors: ' . $e->getMessage());
+            $doctors = [];
+        }
 
         return Inertia::render('Landing', [
             'services' => $services,
