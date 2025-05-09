@@ -344,58 +344,59 @@ export default function Doctors({
                   </div>
 
                   <CardContent className="p-4">
-                    <h4 className="font-medium text-sm mb-2 flex items-center">
+                    {/* Simplified Available Days */}
+                    <div className="flex items-center mb-2">
                       <Calendar className="h-4 w-4 mr-2 text-blue-600" />
-                      Available Days
-                    </h4>
-                    <div className="flex flex-wrap gap-1 mb-4">
-                      {doctor.schedules?.map(schedule =>
-                        schedule.is_available && (
-                          <Badge key={schedule.id} variant="outline" className="bg-blue-50">
-                            {getDayName(schedule.day_of_week)}
-                          </Badge>
-                        )
-                      )}
+                      <span className="text-sm font-medium">Available:</span>
+                      <div className="flex flex-wrap gap-1 ml-2">
+                        {doctor.schedules?.map(schedule =>
+                          schedule.is_available && (
+                            <Badge key={schedule.id} variant="outline" className="text-xs py-0 px-1 bg-blue-50">
+                              {getDayName(schedule.day_of_week).substring(0, 3)}
+                            </Badge>
+                          )
+                        )}
+                      </div>
                     </div>
 
-                    {/* Schedule Details */}
-                    <div className="mt-4">
-                      <div className="flex items-center justify-between text-sm py-2 cursor-pointer border-t border-gray-100 pt-2">
-                        <span className="font-medium">View Full Schedule</span>
-                        <ChevronDown className="h-4 w-4" />
-                      </div>
-                      <div className="grid gap-2 mt-2">
+                    {/* Condensed Schedule Section */}
+                    <details className="text-xs">
+                      <summary className="flex items-center justify-between text-sm py-1 cursor-pointer border-t border-gray-100 pt-2">
+                        <span className="font-medium">Hours</span>
+                        <ChevronDown className="h-3 w-3" />
+                      </summary>
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-1">
                         {doctor.schedules?.map(schedule => schedule.is_available && (
-                          <div key={schedule.id} className="flex justify-between text-sm py-1 border-b border-gray-100">
-                            <span className="font-medium">{getDayName(schedule.day_of_week)}</span>
+                          <div key={schedule.id} className="flex justify-between text-xs py-0">
+                            <span>{getDayName(schedule.day_of_week).substring(0, 3)}:</span>
                             <span className="text-gray-600">
-                              {formatTime(schedule.start_time)} - {formatTime(schedule.end_time)}
+                              {formatTime(schedule.start_time)}-{formatTime(schedule.end_time)}
                             </span>
                           </div>
                         ))}
                       </div>
-                    </div>
+                    </details>
 
                     {/* Services Section */}
                     {doctor.services && doctor.services.length > 0 && (
-                      <div className="mt-4">
-                        <div className="flex items-center justify-between text-sm py-2 cursor-pointer border-t border-gray-100 pt-2">
-                          <span className="font-medium">Services Offered</span>
-                          <ChevronDown className="h-4 w-4" />
-                        </div>
-                        <div className="grid gap-2 mt-2">
+                      <details className="mt-2">
+                        <summary className="flex items-center justify-between text-sm py-1 cursor-pointer border-t border-gray-100 pt-2">
+                          <span className="font-medium">Services</span>
+                          <ChevronDown className="h-3 w-3" />
+                        </summary>
+                        <div className="grid gap-2 mt-1">
                           {doctor.services.map(service => (
-                            <div key={service.id} className="text-sm py-1 border-b border-gray-100">
+                            <div key={service.id} className="text-xs py-1 border-b border-gray-100">
                               <div className="font-medium">{service.name}</div>
                               <div className="text-xs text-gray-600">{service.description}</div>
                               <div className="mt-1 flex justify-between">
-                                <span className="text-xs">{service.duration_minutes} mins</span>
-                                <span className="text-xs font-medium">${service.price}</span>
+                                <span>{service.duration_minutes} mins</span>
+                                <span className="font-medium">${service.price}</span>
                               </div>
                             </div>
                           ))}
                         </div>
-                      </div>
+                      </details>
                     )}
                   </CardContent>
 
