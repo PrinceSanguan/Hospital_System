@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\HospitalService;
-use App\Models\User; // Add this import
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
@@ -89,6 +89,7 @@ class LandingController extends Controller
                 });
         } catch (\Exception $e) {
             Log::error('Error loading doctors: ' . $e->getMessage());
+
             $doctors = [];
         }
 
@@ -113,5 +114,39 @@ class LandingController extends Controller
 
         // Return the appropriate view based on the service
         return Inertia::render('Services/' . ucfirst($service));
+    }
+
+    /**
+     * Display the view for a specific doctor
+     */
+    public function viewDoctor($id)
+    {
+        $doctor = User::where('user_role', User::ROLE_DOCTOR)
+            ->with(['doctorProfile', 'services' => function($query) {
+                $query->where('is_active', true);
+            }, 'schedules'])
+            ->findOrFail($id);
+
+        // Get available dates based on doctor schedules
+        $availableDates = [];
+        $availableTimeSlots = [];
+        if ($doctor->schedules) {
+            foreach ($doctor->schedules as $schedule) {
+                if ($schedule->is_available) {
+                    // Add available days from schedules
+                    $availableDates[] = [
+                        'day' => $schedule->day_of_week,
+                        'start_time' => $schedule->start_time,
+                        'end_time' => $schedule->end_time,
+                    ];
+                }
+            }
+        }
+
+        return Inertia::render('Doctors/Show', [
+            'doctor' => $doctor,
+            'availableDates' => $availableDates,
+            'availableTimeSlots' => $availableTimeSlots
+        ]);
     }
 }

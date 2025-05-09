@@ -90,15 +90,15 @@ class PatientDashboardController extends Controller
                 ];
             });
 
-        // Get available doctors
-        $doctors = User::where('user_role', User::ROLE_DOCTOR)
-            ->with(['schedules', 'services'])
+                // Get available doctors
+            $doctors = User::where('user_role', User::ROLE_DOCTOR)
+            ->with(['doctorProfile', 'schedules', 'services'])
             ->get()
             ->map(function ($doctor) {
                 return [
                     'id' => $doctor->id,
                     'name' => $doctor->name,
-                    'specialty' => $doctor->specialty ?? 'General Practitioner',
+                    'specialty' => $doctor->doctorProfile?->specialty ?? '', // Changed from 'General Practitioner' to empty string
                     'image' => $doctor->profile_photo ?? '/placeholder-avatar.jpg',
                     'availability' => $doctor->availability ?? [],
                     'schedules' => $doctor->schedules,
@@ -362,7 +362,7 @@ class PatientDashboardController extends Controller
         $user = Auth::user();
 
         $doctors = User::where('user_role', User::ROLE_DOCTOR)
-            ->with(['schedules', 'services'])
+            ->with(['doctorProfile', 'schedules', 'services'])
             ->get();
 
         // Get notifications for the user
@@ -461,42 +461,42 @@ class PatientDashboardController extends Controller
         ]);
     }
 
-    // List all doctors
-    public function listDoctors()
-    {
-        $user = Auth::user();
+            // List all doctors
+        public function listDoctors()
+        {
+            $user = Auth::user();
 
-        $doctors = User::where('user_role', User::ROLE_DOCTOR)
-            ->with(['schedules', 'services'])
-            ->get()
-            ->map(function ($doctor) {
-                return [
-                    'id' => $doctor->id,
-                    'name' => $doctor->name,
-                    'specialty' => $doctor->specialty ?? 'General Practitioner',
-                    'image' => $doctor->profile_photo ?? '/placeholder-avatar.jpg',
-                    'availability' => $doctor->availability ?? [],
-                    'schedules' => $doctor->schedules,
-                    'services' => $doctor->services,
-                ];
-            });
+            $doctors = User::where('user_role', User::ROLE_DOCTOR)
+                ->with(['doctorProfile', 'schedules', 'services'])
+                ->get()
+                ->map(function ($doctor) {
+                    return [
+                        'id' => $doctor->id,
+                        'name' => $doctor->name,
+                        'specialty' => $doctor->doctorProfile?->specialty ?? '', // Changed from 'General Practitioner' to empty string
+                        'image' => $doctor->profile_photo ?? '/placeholder-avatar.jpg',
+                        'availability' => $doctor->availability ?? [],
+                        'schedules' => $doctor->schedules,
+                        'services' => $doctor->services,
+                    ];
+                });
 
-        // Get notifications for the user
-        $notifications = Notification::where('user_id', $user->id)
-            ->orderBy('created_at', 'desc')
-            ->take(5)
-            ->get();
+            // Get notifications for the user
+            $notifications = Notification::where('user_id', $user->id)
+                ->orderBy('created_at', 'desc')
+                ->take(5)
+                ->get();
 
-        return Inertia::render('Patient/Doctors', [
-            'user' => [
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->user_role,
-            ],
-            'doctors' => $doctors,
-            'notifications' => $notifications,
-        ]);
-    }
+            return Inertia::render('Patient/Doctors', [
+                'user' => [
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->user_role,
+                ],
+                'doctors' => $doctors,
+                'notifications' => $notifications,
+            ]);
+        }
 
     // View profile
     public function viewProfile()
@@ -545,7 +545,9 @@ class PatientDashboardController extends Controller
     {
         $user = Auth::user();
 
-        $doctors = User::where('user_role', User::ROLE_DOCTOR)->get();
+        $doctors = User::where('user_role', User::ROLE_DOCTOR)
+            ->with('doctorProfile')
+            ->get();
 
         return Inertia::render('Patient/BookLabAppointment', [
             'user' => [
