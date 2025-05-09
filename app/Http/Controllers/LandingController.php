@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\HospitalService;
-use App\Models\User; // Add this import
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
@@ -71,24 +71,31 @@ class LandingController extends Controller
             $hospitalServices = [];
         }
 
-        // Get doctors from database
+        // Fetch featured doctors from the database instead of hardcoding them
         try {
             $doctors = User::where('user_role', User::ROLE_DOCTOR)
-                ->with(['schedules', 'services'])
+                ->with(['doctorProfile', 'schedules'])
+                ->limit(4) // Limit to 4 featured doctors
                 ->get()
                 ->map(function ($doctor) {
+                    // Extract availability days from schedules
+                    $availability = $doctor->schedules
+                        ->where('is_available', true)
+                        ->pluck('day_of_week')
+                        ->toArray();
+
+                    // Format the doctor data for the frontend
                     return [
                         'id' => $doctor->id,
-                        'name' => $doctor->name,
-                        'specialty' => $doctor->specialty ?? 'General Practitioner',
-                        'image' => $doctor->profile_photo ?? '/placeholder-avatar.jpg',
-                        'availability' => $doctor->availability ?? [],
-                        'schedules' => $doctor->schedules,
-                        'services' => $doctor->services,
+                        'name' => 'Dr. ' . $doctor->name,
+                        'specialty' => $doctor->doctorProfile ? $doctor->doctorProfile->specialty : 'General Physician',
+                        'image' => $doctor->profile_image ?? 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80',
+                        'availability' => $availability
                     ];
                 });
         } catch (\Exception $e) {
-            Log::error('Error loading doctors: ' . $e->getMessage());
+            // Log error and provide fallback data
+            Log::error('Error loading doctor data: ' . $e->getMessage());
             $doctors = [];
         }
 
@@ -113,5 +120,39 @@ class LandingController extends Controller
 
         // Return the appropriate view based on the service
         return Inertia::render('Services/' . ucfirst($service));
+    }
+
+    /**
+     * Display the view for a specific doctor
+     */
+    public function viewDoctor($id)
+    {
+        $doctor = User::where('user_role', User::ROLE_DOCTOR)
+            ->with(['doctorProfile', 'services' => function($query) {
+                $query->where('is_active', true);
+            }, 'schedules'])
+            ->findOrFail($id);
+
+        // Get available dates based on doctor schedules
+        $availableDates = [];
+        $availableTimeSlots = [];
+        if ($doctor->schedules) {
+            foreach ($doctor->schedules as $schedule) {
+                if ($schedule->is_available) {
+                    // Add available days from schedules
+                    $availableDates[] = [
+                        'day' => $schedule->day_of_week,
+                        'start_time' => $schedule->start_time,
+                        'end_time' => $schedule->end_time,
+                    ];
+                }
+            }
+        }
+
+        return Inertia::render('Doctors/Show', [
+            'doctor' => $doctor,
+            'availableDates' => $availableDates,
+            'availableTimeSlots' => $availableTimeSlots
+        ]);
     }
 }
