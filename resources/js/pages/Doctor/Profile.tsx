@@ -2,14 +2,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { router } from '@inertiajs/react';
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import DoctorLayout from '@/layouts/DoctorLayout';
 import { Head } from '@inertiajs/react';
 import { UserData } from '@/types';
+import axios from 'axios';
 
 interface UserProfile extends UserData {
-    specialization?: string;
+    specialty?: string;
     qualifications?: string;
     about?: string;
     phone_number?: string;
@@ -37,13 +38,16 @@ interface ProfileProps {
         success?: string;
         error?: string;
     };
+    specialties?: string[]; // Optional list of predefined specialties
 }
 
-export default function DoctorProfile({ user, services, flash }: ProfileProps) {
+export default function DoctorProfile({ user, services, flash, specialties = [] }: ProfileProps) {
+    // Initialize state with user data
     const [formData, setFormData] = useState({
         name: user.name || '',
         phone_number: user.phone_number || '',
-        specialization: user.specialization || '',
+        specialty: user.specialty || '',
+        custom_specialty: '',  // Added explicit custom specialty field
         qualifications: user.qualifications || '',
         address: user.address || '',
         about: user.about || '',
@@ -52,12 +56,42 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
         education: user.education || '',
         is_visible: user.is_visible || false,
     });
+    
+    // Debug logging to verify incoming user data
+    useEffect(() => {
+        console.log('User data from props:', user);
+    }, [user]);
+    
+    // Update local state when props change
+    useEffect(() => {
+        setFormData({
+            name: user.name || '',
+            phone_number: user.phone_number || '',
+            specialty: user.specialty || '',
+            custom_specialty: '',  // Reset custom specialty on props change
+            qualifications: user.qualifications || '',
+            address: user.address || '',
+            about: user.about || '',
+            years_of_experience: user.years_of_experience || 0,
+            languages_spoken: user.languages_spoken || '',
+            education: user.education || '',
+            is_visible: user.is_visible || false,
+        });
+    }, [user]);
 
     const [profileImage, setProfileImage] = useState<File | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
+    const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { id, value } = e.target;
         setFormData(prev => ({ ...prev, [id]: value }));
+    };
+
+    const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value } = e.target;
+        setFormData(prev => ({ ...prev, [id]: value === '' ? 0 : parseInt(value) }));
     };
 
     const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,35 +105,116 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
         }
     };
 
-    const handleSubmit = (e: FormEvent) => {
+    const handleSpecialtyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const value = e.target.value;
+        setFormData(prev => ({
+            ...prev,
+            specialty: value,
+            // Reset custom specialty when a non-'other' option is selected
+            custom_specialty: value === 'other' ? prev.custom_specialty : ''
+        }));
+    };
+
+    const handleCustomSpecialtyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setFormData(prev => ({
+            ...prev,
+            custom_specialty: value
+        }));
+    };
+
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
+        setIsSubmitting(true);
+        setSubmitError(null);
+        setSubmitSuccess(null);
         
-        const formDataToSend = new FormData();
-        
-        // Append form data
-        Object.entries(formData).forEach(([key, value]) => {
-            formDataToSend.append(key, value.toString());
-        });
-        
-        // Append file if selected
-        if (profileImage) {
-            formDataToSend.append('profile_image', profileImage);
-        }
-        
-        router.put('/doctor/profile', formDataToSend, {
-            forceFormData: true,
-            onSuccess: () => {
-                // Reset file input after successful submission
-                setProfileImage(null);
+        try {
+            // Get CSRF token
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            
+            // Prepare form data
+            const formDataToSend = new FormData();
+            
+            // Add method spoofing for Laravel
+            formDataToSend.append('_method', 'PUT');
+            
+            // Handle specialty separately based on test case behavior
+            if (formData.specialty === 'other') {
+                // When "other" is selected, send both values
+                // This matches your test_doctor_can_update_custom_specialty test
+                formDataToSend.append('specialty', 'other');
+                formDataToSend.append('custom_specialty', formData.custom_specialty.trim());
+                console.log('Sending custom specialty:', formData.custom_specialty.trim());
+            } else {
+                // For predefined specialties, just send the value
+                formDataToSend.append('specialty', formData.specialty);
+                console.log('Sending predefined specialty:', formData.specialty);
             }
-        });
+            
+            // Add all other form fields with proper type conversion
+            Object.entries(formData).forEach(([key, value]) => {
+                // Skip fields we've already handled
+                if (key === 'specialty' || key === 'custom_specialty') return;
+                
+                if (key === 'is_visible') {
+                    // Convert boolean to a format Laravel can understand
+                    formDataToSend.append(key, value ? '1' : '0');
+                } else if (key === 'years_of_experience') {
+                    // Ensure it's treated as a number
+                    formDataToSend.append(key, String(Number(value) || 0));
+                } else {
+                    // Convert all other values to string
+                    formDataToSend.append(key, String(value || ''));
+                }
+            });
+            
+            // Add profile image if selected
+            if (profileImage) {
+                formDataToSend.append('profile_image', profileImage);
+            }
+            
+            // Log what's being sent (for debugging)
+            console.log('Submitting form data:', Object.fromEntries(formDataToSend.entries()));
+            
+            // Use axios for the request
+            const response = await axios.post('/doctor/profile', formDataToSend, {
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken || '',
+                    'Content-Type': 'multipart/form-data',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            console.log('Response:', response.data);
+            
+            // Handle success
+            setSubmitSuccess('Profile updated successfully!');
+            setProfileImage(null);
+            
+            // Reload the page after a short delay to show the success message
+            setTimeout(() => {
+                window.location.href = '/doctor/profile';
+            }, 1500);
+            
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            setSubmitError('Failed to update profile. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
         <DoctorLayout user={user}>
-            <Head title="Professional Profile" />
+            <Head title="Professional Profile">
+                {/* Ensure CSRF token is available */}
+                <meta name="csrf-token" content={document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''} />
+            </Head>
             <div className="py-8">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                    {/* Flash messages from props */}
                     {flash?.success && (
                         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
                             {flash.success}
@@ -111,18 +226,29 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
                             {flash.error}
                         </div>
                     )}
-
+                    
+                    {/* Local state flash messages */}
+                    {submitSuccess && (
+                        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                            {submitSuccess}
+                        </div>
+                    )}
+                    
+                    {submitError && (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                            {submitError}
+                        </div>
+                    )}
+                    
                     <div className="bg-white rounded-lg shadow-md p-6">
                         <h1 className="text-2xl font-bold mb-6">Professional Information</h1>
                         <p className="text-gray-600 mb-6">Update your professional details and credentials that will be displayed to patients</p>
-
                         <form onSubmit={handleSubmit}>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Left Column */}
                                 <div>
                                     <div className="mb-6">
                                         <h2 className="text-lg font-semibold mb-2">Personal Information</h2>
-
                                         <div className="mb-4">
                                             <Label htmlFor="name" className="block mb-1">Full Name</Label>
                                             <Input
@@ -132,7 +258,6 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
                                                 className="w-full"
                                             />
                                         </div>
-
                                         <div className="mb-4">
                                             <Label htmlFor="phone_number" className="block mb-1">Phone Number</Label>
                                             <Input
@@ -142,7 +267,6 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
                                                 className="w-full"
                                             />
                                         </div>
-
                                         <div className="mb-4">
                                             <Label htmlFor="address" className="block mb-1">Address</Label>
                                             <Textarea
@@ -154,20 +278,49 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
                                             />
                                         </div>
                                     </div>
-
                                     <div className="mb-6">
                                         <h2 className="text-lg font-semibold mb-2">Professional Profile</h2>
-
                                         <div className="mb-4">
-                                            <Label htmlFor="specialization" className="block mb-1">Specialization</Label>
-                                            <Input
-                                                id="specialization"
-                                                value={formData.specialization}
-                                                onChange={handleChange}
-                                                className="w-full"
-                                            />
+                                            <Label htmlFor="specialty" className="block mb-1">Specialty</Label>
+                                            {specialties && specialties.length > 0 ? (
+                                                <>
+                                                    <select
+                                                        id="specialty"
+                                                        value={formData.specialty}
+                                                        onChange={handleSpecialtyChange}
+                                                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    >
+                                                        <option value="">Select a specialty</option>
+                                                        {specialties.map(specialty => (
+                                                            <option key={specialty} value={specialty}>
+                                                                {specialty}
+                                                            </option>
+                                                        ))}
+                                                        <option value="other">Other (specify)</option>
+                                                    </select>
+                                                    {formData.specialty === 'other' && (
+                                                        <Input
+                                                            id="custom_specialty"
+                                                            value={formData.custom_specialty}
+                                                            onChange={handleCustomSpecialtyChange}
+                                                            className="w-full mt-2"
+                                                            placeholder="Enter your specialty"
+                                                        />
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <Input
+                                                    id="specialty"
+                                                    value={formData.specialty}
+                                                    onChange={handleChange}
+                                                    className="w-full"
+                                                    placeholder="e.g., Cardiology, Dermatology, etc."
+                                                />
+                                            )}
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                This field is required to display your profile to patients
+                                            </p>
                                         </div>
-
                                         <div className="mb-4">
                                             <Label htmlFor="qualifications" className="block mb-1">Qualifications</Label>
                                             <Textarea
@@ -178,7 +331,6 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
                                                 rows={3}
                                             />
                                         </div>
-
                                         <div className="mb-4">
                                             <Label htmlFor="years_of_experience" className="block mb-1">Years of Experience</Label>
                                             <Input
@@ -186,13 +338,12 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
                                                 type="number"
                                                 min="0"
                                                 value={formData.years_of_experience}
-                                                onChange={handleChange}
+                                                onChange={handleNumberChange}
                                                 className="w-full"
                                             />
                                         </div>
                                     </div>
                                 </div>
-
                                 {/* Right Column */}
                                 <div>
                                     <div className="mb-6">
@@ -211,21 +362,20 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
                                                     </div>
                                                 )}
                                             </div>
-
                                             <Label htmlFor="profile_image" className="block mb-1">Upload New Photo</Label>
                                             <Input
                                                 id="profile_image"
                                                 type="file"
+                                                accept="image/*"
                                                 onChange={handleFileChange}
                                                 className="w-full"
+                                                key={user.profile_image} // Reset when prop changes
                                             />
                                             <p className="text-xs text-gray-500 mt-1">Recommended: Square image, at least 300x300 pixels</p>
                                         </div>
                                     </div>
-
                                     <div className="mb-6">
                                         <h2 className="text-lg font-semibold mb-2">Additional Information</h2>
-
                                         <div className="mb-4">
                                             <Label htmlFor="languages_spoken" className="block mb-1">Languages Spoken</Label>
                                             <Input
@@ -236,7 +386,6 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
                                                 placeholder="English, Spanish, etc."
                                             />
                                         </div>
-
                                         <div className="mb-4">
                                             <Label htmlFor="education" className="block mb-1">Education</Label>
                                             <Input
@@ -247,7 +396,6 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
                                                 placeholder="University of California, San Francisco"
                                             />
                                         </div>
-
                                         <div className="mb-4">
                                             <Label htmlFor="about" className="block mb-1">About Me</Label>
                                             <Textarea
@@ -258,7 +406,6 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
                                                 rows={4}
                                             />
                                         </div>
-
                                         <div className="mb-4">
                                             <div className="flex items-center">
                                                 <input
@@ -277,18 +424,20 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
                                     </div>
                                 </div>
                             </div>
-
                             <div className="flex justify-end mt-6">
                                 <Button type="button" variant="outline" className="mr-2" onClick={() => router.visit('/doctor/dashboard')}>
                                     Cancel
                                 </Button>
-                                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
-                                    Save Changes
+                                <Button 
+                                    type="submit" 
+                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? 'Saving...' : 'Save Changes'}
                                 </Button>
                             </div>
                         </form>
                     </div>
-
                     {/* Services Section */}
                     <div className="bg-white rounded-lg shadow-md p-6 mt-8">
                         <div className="flex justify-between items-center mb-6">
@@ -303,7 +452,6 @@ export default function DoctorProfile({ user, services, flash }: ProfileProps) {
                                 Add New Service
                             </Button>
                         </div>
-
                         {services.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {services.map((service) => (
