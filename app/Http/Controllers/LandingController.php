@@ -71,31 +71,26 @@ class LandingController extends Controller
             $hospitalServices = [];
         }
 
-        // Fetch featured doctors from the database instead of hardcoding them
+        // Get doctors from database
         try {
             $doctors = User::where('user_role', User::ROLE_DOCTOR)
-                ->with(['doctorProfile', 'schedules'])
-                ->limit(4) // Limit to 4 featured doctors
+                ->with(['schedules', 'services'])
                 ->get()
                 ->map(function ($doctor) {
-                    // Extract availability days from schedules
-                    $availability = $doctor->schedules
-                        ->where('is_available', true)
-                        ->pluck('day_of_week')
-                        ->toArray();
 
-                    // Format the doctor data for the frontend
                     return [
                         'id' => $doctor->id,
-                        'name' => 'Dr. ' . $doctor->name,
-                        'specialty' => $doctor->doctorProfile ? $doctor->doctorProfile->specialty : 'General Physician',
-                        'image' => $doctor->profile_image ?? 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80',
-                        'availability' => $availability
+                        'name' => $doctor->name,
+                        'specialty' => $doctor->specialty ?? 'General Practitioner',
+                        'image' => $doctor->profile_photo ?? '/placeholder-avatar.jpg',
+                        'availability' => $doctor->availability ?? [],
+                        'schedules' => $doctor->schedules,
+                        'services' => $doctor->services,
                     ];
                 });
         } catch (\Exception $e) {
-            // Log error and provide fallback data
-            Log::error('Error loading doctor data: ' . $e->getMessage());
+            Log::error('Error loading doctors: ' . $e->getMessage());
+
             $doctors = [];
         }
 
