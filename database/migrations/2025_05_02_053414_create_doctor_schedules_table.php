@@ -9,27 +9,31 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
+    public function up()
     {
-        Schema::create('doctor_schedules', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('doctor_id')->constrained('users')->onDelete('cascade');
-            $table->integer('day_of_week'); // 0-6 for Sunday-Saturday
-            $table->time('start_time');
-            $table->time('end_time');
-            $table->boolean('is_available')->default(true);
-            $table->integer('max_appointments')->default(10);
-            $table->string('notes')->nullable();
-            $table->date('specific_date')->nullable();
-            $table->timestamps();
+        Schema::table('doctor_schedules', function (Blueprint $table) {
+            // Add doctor_id column if it doesn't exist
+            if (!Schema::hasColumn('doctor_schedules', 'doctor_id')) {
+                $table->unsignedBigInteger('doctor_id')->after('id');
+                
+                // Add foreign key constraint
+                $table->foreign('doctor_id')
+                      ->references('id')
+                      ->on('users') // Assuming users table
+                      ->onDelete('cascade');
+            }
         });
     }
 
     /**
      * Reverse the migrations.
      */
-    public function down(): void
+    public function down()
     {
-        Schema::dropIfExists('doctor_schedules');
+        Schema::table('doctor_schedules', function (Blueprint $table) {
+            // Drop foreign key and column
+            $table->dropForeignIfExists('doctor_schedules_doctor_id_foreign');
+            $table->dropColumn('doctor_id');
+        });
     }
 };

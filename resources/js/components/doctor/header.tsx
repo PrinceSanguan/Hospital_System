@@ -184,7 +184,7 @@ export function Header({ user, unreadNotifications = 0, onMenuClick }: HeaderPro
                                 <Link href={route('doctor.profile')} className="w-full">
                                     <DropdownMenuItem className="flex w-full cursor-pointer items-center gap-2">
                                         <Settings size={16} />
-                                        Profile Settings
+                                        Settings
                                     </DropdownMenuItem>
                                 </Link>
                             ) : (

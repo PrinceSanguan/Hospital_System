@@ -147,8 +147,8 @@ use App\Http\Controllers\Doctor\AppointmentController;
 use App\Http\Controllers\Doctor\NotificationController;
 use App\Http\Controllers\Doctor\PatientController;
 use App\Http\Controllers\Doctor\RecordsController;
-use App\Http\Controllers\Doctor\DoctorScheduleController;
 use App\Http\Controllers\Doctor\ServiceController;
+use App\Http\Controllers\Doctor\DoctorScheduleController;
 use App\Http\Middleware\DoctorMiddleware;
 
 Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')->group(function () {
@@ -169,13 +169,6 @@ Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')-
   Route::get('/services/{id}/edit', [App\Http\Controllers\DoctorServiceController::class, 'edit'])->name('services.edit');
   Route::put('/services/{id}', [App\Http\Controllers\DoctorServiceController::class, 'update'])->name('services.update');
   Route::delete('/services/{id}', [App\Http\Controllers\DoctorServiceController::class, 'destroy'])->name('services.destroy');
-
-  // Schedule Management
-  Route::get('/schedule', [DoctorScheduleController::class, 'index'])->name('schedule.index');
-  Route::post('/schedule', [DoctorScheduleController::class, 'store'])->name('schedule.store');
-  Route::post('/schedule/multiple', [DoctorScheduleController::class, 'storeMultiple'])->name('schedule.store.multiple');
-  Route::put('/schedule/{id}', [DoctorScheduleController::class, 'update'])->name('schedule.update');
-  Route::delete('/schedule/{id}', [DoctorScheduleController::class, 'destroy'])->name('schedule.destroy');
 
   // Services Management
   Route::get('/services', [ServiceController::class, 'index'])->name('services.index');
@@ -220,6 +213,17 @@ Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')-
   Route::get('/notifications/unread/count', [NotificationController::class, 'getUnreadCount'])->name('notifications.unread.count');
   Route::get('/notifications/recent', [NotificationController::class, 'getRecent'])->name('notifications.recent');
   Route::post('/notifications/mark-appointment-notifications-read', [NotificationController::class, 'markAllAppointmentNotificationsAsRead'])->name('notifications.mark.appointment.read');
+
+
+  // Schedule management routes
+  Route::get('/schedule', [DoctorScheduleController::class, 'index'])->name('schedule.index');
+  Route::post('/schedule', [DoctorScheduleController::class, 'store'])->name('schedule.store');
+  Route::put('/schedule/{id}', [DoctorScheduleController::class, 'update'])->name('schedule.update');
+  Route::delete('/schedule/{id}', [DoctorScheduleController::class, 'destroy'])->name('schedule.destroy');
+  Route::post('/schedule/multiple', [DoctorScheduleController::class, 'storeMultiple'])->name('schedule.store-multiple');
+  Route::get('/schedule/staff/{staffId}', [DoctorScheduleController::class, 'viewStaffSchedule'])->name('schedule.view-staff');
+
+
 });
 
 /*
@@ -233,6 +237,7 @@ use App\Http\Controllers\ClinicalStaff\LabRecordsController;
 use App\Http\Controllers\ClinicalStaff\MedicalRecordsController;
 use App\Http\Controllers\ClinicalStaff\RecordRequestsController;
 use App\Http\Middleware\ClinicalStaffMiddleware;
+use App\Http\Controllers\ClinicalStaff\ScheduleController;
 
 Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staff.')->group(function () {
   // Dashboard
@@ -302,6 +307,17 @@ Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staf
   Route::get('/record-requests/{id}', [RecordRequestsController::class, 'show'])->name('record-requests.show');
   Route::post('/record-requests/{id}/approve', [RecordRequestsController::class, 'approve'])->name('record-requests.approve');
   Route::post('/record-requests/{id}/deny', [RecordRequestsController::class, 'deny'])->name('record-requests.deny');
+
+
+  // Schedule Management
+  Route::prefix('/schedule')->middleware(['auth'])->group(function () {
+    Route::get('/', [ScheduleController::class, 'index'])->name('clinical-staff.schedule.index');
+    Route::post('/', [ScheduleController::class, 'store'])->name('clinical-staff.schedule.store');
+    Route::put('/{id}', [ScheduleController::class, 'update'])->name('clinical-staff.schedule.update');
+    Route::delete('/{id}', [ScheduleController::class, 'destroy'])->name('clinical-staff.schedule.destroy');
+    Route::post('/multiple', [ScheduleController::class, 'storeMultiple'])->name('clinical-staff.schedule.storeMultiple');
+});
+
 });
 
 /*

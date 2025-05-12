@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { FormEvent, useState, useMemo } from 'react';
 import { Head, router } from '@inertiajs/react';
-import DoctorLayout from '@/layouts/DoctorLayout';
+import { Header } from '@/components/clinicalstaff/header';
+import { Sidebar } from '@/components/clinicalstaff/sidebar';
 import { UserData } from '@/types';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -29,802 +37,948 @@ import {
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2 } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+import DoctorLayout from '@/layouts/DoctorLayout';
+import axios from 'axios';
 
-interface ScheduleData {
+// Define TypeScript interfaces for our data structures
+interface User {
   id: number;
+  name: string;
+  email: string;
+  role: string;
+}
+
+interface StaffMember {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  position: string;
+  specialization: string;
+  is_active: boolean;
+}
+
+interface Schedule {
+  id: number;
+  doctor_id: number;
+  staff_id: number;
   day_of_week: number;
   start_time: string;
   end_time: string;
   is_available: boolean;
   max_appointments: number;
-  notes?: string;
-  specific_date?: string;
+  specific_date: string | null;
+  notes: string | null;
 }
 
-interface Props {
-  user: UserData;
-  schedules: ScheduleData[];
+interface SchedulePageProps {
+  user: User;
+  schedules: Schedule[];
+  staff: StaffMember[];
 }
 
-interface TimeSlot {
-  startTime: string;
-  endTime: string;
-}
+const SchedulePage: React.FC<SchedulePageProps> = ({ user, schedules, staff }) => {
+  // State for filtering and modals
+  const [filteredStaffId, setFilteredStaffId] = useState<string>('all');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  const [isMultipleModalOpen, setIsMultipleModalOpen] = useState<boolean>(false);
+  const [currentSchedule, setCurrentSchedule] = useState<Schedule | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
-interface DateTimeSlots {
-  date: Date;
-  timeSlots: TimeSlot[];
-}
-
-interface ScheduleFormData {
-  dateTimeSlots: DateTimeSlots[];
-  is_available: boolean;
-  max_appointments: number;
-  notes: string;
-}
-
-const Schedule: React.FC<Props> = ({ user, schedules }) => {
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showDialog, setShowDialog] = useState(false);
-  const [selectedSingleDate, setSelectedSingleDate] = useState<Date | null>(null);
-  const [activeTab, setActiveTab] = useState('calendar');
-  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-  const [formData, setFormData] = useState<ScheduleFormData>({
-    dateTimeSlots: [],
+  // Form state for single schedule
+  const [formData, setFormData] = useState<Omit<Schedule, 'id' | 'doctor_id'>>({
+    staff_id: staff.length > 0 ? staff[0].id : 0,
+    day_of_week: 0,
+    start_time: '09:00',
+    end_time: '17:00',
     is_available: true,
-    max_appointments: 10,
-    notes: '',
+    max_appointments: 1,
+    specific_date: null,
+    notes: null,
   });
 
-  // Group schedules by date for display in list view
-  const groupedSchedules = useMemo(() => {
-    const groupedByDate: Record<string, ScheduleData[]> = {};
+  // Form state for multiple schedules
+  const [multipleSchedules, setMultipleSchedules] = useState<Omit<Schedule, 'id' | 'doctor_id'>[]>([
+    {
+      staff_id: staff.length > 0 ? staff[0].id : 0,
+      day_of_week: 0,
+      start_time: '09:00',
+      end_time: '17:00',
+      is_available: true,
+      max_appointments: 1,
+      specific_date: null,
+      notes: null,
+    },
+  ]);
 
-    schedules.forEach(schedule => {
-      // Use specific_date as the key, or day_of_week if no specific date
-      const key = schedule.specific_date || `day_${schedule.day_of_week}`;
+  // Helper functions for rendering
+  const getDayName = (dayNumber: number): string => {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days[dayNumber];
+  };
 
-      if (!groupedByDate[key]) {
-        groupedByDate[key] = [];
-      }
+  const getStaffName = (staffId: number): string => {
+    const staffMember = staff.find((s) => s.id === staffId);
+    return staffMember ? staffMember.name : 'Unknown Staff';
+  };
 
-      groupedByDate[key].push(schedule);
-    });
+  const formatTime = (time: string): string => {
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const formattedHour = hour % 12 || 12;
+    return `${formattedHour}:${minutes} ${ampm}`;
+  };
 
-    // Sort each group by start time
-    Object.keys(groupedByDate).forEach(key => {
-      groupedByDate[key].sort((a, b) => {
-        return a.start_time.localeCompare(b.start_time);
-      });
-    });
+  const formatDate = (dateString: string | null): string => {
+    if (!dateString) return 'N/A';
+    const options: Intl.DateTimeFormatOptions = {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+  };
 
-    return groupedByDate;
-  }, [schedules]);
-
-  // Helper function to convert 24-hour format to 12-hour for display
-  const formatTimeToAmPm = (timeStr: string) => {
-    if (!timeStr || typeof timeStr !== 'string') return '';
-
-    // If timeStr is already in HH:MM format
-    let hours = 0;
-    let minutes = 0;
-
-    if (timeStr.length >= 5 && timeStr.indexOf(':') === 2) {
-      const [h, m] = timeStr.substring(0, 5).split(':');
-      hours = parseInt(h, 10);
-      minutes = parseInt(m, 10);
+  // Form handling for single schedule
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
+    if (type === 'checkbox') {
+      const checked = (e.target as HTMLInputElement).checked;
+      setFormData((prev) => ({ ...prev, [name]: checked }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
-
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12; // the hour '0' should be '12'
-
-    return `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
   };
 
-  // Add a time slot to a specific date
-  const addTimeSlot = (dateIndex: number) => {
-    setFormData(prev => {
-      const updatedDateTimeSlots = [...prev.dateTimeSlots];
-
-      // If dateIndex is valid, add a time slot to that specific date
-      if (dateIndex >= 0 && dateIndex < updatedDateTimeSlots.length) {
-        updatedDateTimeSlots[dateIndex] = {
-          ...updatedDateTimeSlots[dateIndex],
-          timeSlots: [
-            ...updatedDateTimeSlots[dateIndex].timeSlots,
-            { startTime: '09:00', endTime: '17:00' }
-          ]
-        };
-      }
-
-      return {
-        ...prev,
-        dateTimeSlots: updatedDateTimeSlots
-      };
-    });
+  const handleSelectChange = (value: string, name: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Remove a time slot from a specific date
-  const removeTimeSlot = (dateIndex: number, timeSlotIndex: number) => {
-    setFormData(prev => {
-      const updatedDateTimeSlots = [...prev.dateTimeSlots];
-
-      if (dateIndex >= 0 && dateIndex < updatedDateTimeSlots.length) {
-        updatedDateTimeSlots[dateIndex] = {
-          ...updatedDateTimeSlots[dateIndex],
-          timeSlots: updatedDateTimeSlots[dateIndex].timeSlots.filter((_, i) => i !== timeSlotIndex)
-        };
-      }
-
-      return {
-        ...prev,
-        dateTimeSlots: updatedDateTimeSlots
-      };
-    });
+  const handleCheckboxChange = (checked: boolean) => {
+    setFormData((prev) => ({ ...prev, is_available: checked }));
   };
 
-  // Update a time slot for a specific date
-  const updateTimeSlot = (dateIndex: number, timeSlotIndex: number, field: 'startTime' | 'endTime', value: string) => {
-    setFormData(prev => {
-      const updatedDateTimeSlots = [...prev.dateTimeSlots];
-
-      if (dateIndex >= 0 && dateIndex < updatedDateTimeSlots.length) {
-        const timeSlots = [...updatedDateTimeSlots[dateIndex].timeSlots];
-
-        if (timeSlotIndex >= 0 && timeSlotIndex < timeSlots.length) {
-          timeSlots[timeSlotIndex] = {
-            ...timeSlots[timeSlotIndex],
-            [field]: value
-          };
-
-          updatedDateTimeSlots[dateIndex] = {
-            ...updatedDateTimeSlots[dateIndex],
-            timeSlots: timeSlots
-          };
-        }
-      }
-
-      return {
-        ...prev,
-        dateTimeSlots: updatedDateTimeSlots
-      };
-    });
-  };
-
-  // Remove a date
-  const removeDate = (dateIndex: number) => {
-    setFormData(prev => ({
-      ...prev,
-      dateTimeSlots: prev.dateTimeSlots.filter((_, i) => i !== dateIndex)
-    }));
-  };
-
-  // Handle form input changes
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  // Form handling for multiple schedules
+  const handleMultipleInputChange = (
+    index: number,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value, type } = e.target;
-
+    const updatedSchedules = [...multipleSchedules];
     if (type === 'checkbox') {
-      setFormData(prev => ({
-        ...prev,
-        [name]: (e.target as HTMLInputElement).checked,
-      }));
+      const checked = (e.target as HTMLInputElement).checked;
+      updatedSchedules[index] = { ...updatedSchedules[index], [name]: checked };
     } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-      }));
+      updatedSchedules[index] = { ...updatedSchedules[index], [name]: value };
     }
+    setMultipleSchedules(updatedSchedules);
   };
 
-  // Reset form
-  const resetForm = () => {
-    setFormData({
-      dateTimeSlots: [],
-      is_available: true,
-      max_appointments: 10,
-      notes: '',
-    });
-    setEditingId(null);
-    setSelectedSingleDate(null);
-    setErrors({});
-    setShowDialog(false);
+  const handleMultipleSelectChange = (index: number, value: string, name: string) => {
+    const updatedSchedules = [...multipleSchedules];
+    updatedSchedules[index] = { ...updatedSchedules[index], [name]: value };
+    setMultipleSchedules(updatedSchedules);
   };
 
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleMultipleCheckboxChange = (index: number, checked: boolean) => {
+    const updatedSchedules = [...multipleSchedules];
+    updatedSchedules[index] = { ...updatedSchedules[index], is_available: checked };
+    setMultipleSchedules(updatedSchedules);
+  };
+
+  const addScheduleForm = () => {
+    setMultipleSchedules([
+      ...multipleSchedules,
+      {
+        staff_id: staff.length > 0 ? staff[0].id : 0,
+        day_of_week: 0,
+        start_time: '09:00',
+        end_time: '17:00',
+        is_available: true,
+        max_appointments: 1,
+        specific_date: null,
+        notes: null,
+      },
+    ]);
+  };
+
+  const removeScheduleForm = (index: number) => {
+    setMultipleSchedules(multipleSchedules.filter((_, i) => i !== index));
+  };
+
+  // Filter schedules based on selected staff using useMemo
+  const filteredSchedules = useMemo(() => {
+    return filteredStaffId === 'all'
+      ? schedules
+      : schedules.filter((schedule) => schedule.staff_id === parseInt(filteredStaffId, 10));
+  }, [filteredStaffId, schedules]);
+
+  // Create a new schedule
+  const handleCreateSchedule = (e: FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setErrors({});
-
-    // Validate form
-    const validationErrors: Record<string, string> = {};
-
-    if (formData.dateTimeSlots.length === 0) {
-      validationErrors.dates = 'Please select at least one date';
-    }
-
-    // Validate each date has at least one time slot
-    formData.dateTimeSlots.forEach((dateTimeSlot, dateIndex) => {
-      if (dateTimeSlot.timeSlots.length === 0) {
-        validationErrors[`date_${dateIndex}`] = `Please add at least one time slot for ${format(dateTimeSlot.date, 'MMM d, yyyy')}`;
-      }
-
-      // Validate time slots
-      dateTimeSlot.timeSlots.forEach((slot, slotIndex) => {
-        if (slot.startTime >= slot.endTime) {
-          validationErrors[`dateTimeSlot_${dateIndex}_${slotIndex}`] = 'End time must be after start time';
-        }
-      });
+    router.post(route('doctor.schedule.store'), formData, {
+      onSuccess: () => {
+        setIsCreateModalOpen(false);
+        toast({
+          title: 'Success',
+          description: 'Schedule created successfully',
+        });
+        resetForm();
+      },
+      onError: (errors) => {
+        console.error(errors);
+        toast({
+          title: 'Error',
+          description: errors.specific_date || 'Failed to create schedule',
+          variant: 'destructive',
+        });
+      },
     });
-
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      setIsSubmitting(false);
-      return;
-    }
-
-    try {
-      // Process form data for submission
-      const schedulesToSubmit = formData.dateTimeSlots.flatMap(dateTimeSlot => {
-        return dateTimeSlot.timeSlots.map(timeSlot => ({
-          day_of_week: dateTimeSlot.date.getDay(),
-          start_time: timeSlot.startTime,
-          end_time: timeSlot.endTime,
-          is_available: formData.is_available,
-          max_appointments: Number(formData.max_appointments),
-          notes: formData.notes,
-          specific_date: format(dateTimeSlot.date, 'yyyy-MM-dd')
-        }));
-      });
-
-      // Submit the data
-      if (editingId) {
-        // If editing a specific schedule, update just that one
-        const scheduleToUpdate = schedulesToSubmit[0];
-        router.put(`/doctor/schedule/${editingId}`, scheduleToUpdate, {
-          onSuccess: () => {
-            resetForm();
-            setIsSubmitting(false);
-          },
-          onError: (errors) => {
-            console.error('Error updating schedule:', errors);
-            setErrors(errors);
-            setIsSubmitting(false);
-          }
-        });
-      } else {
-        // Otherwise, create multiple schedules
-        router.post('/doctor/schedule/multiple', { schedules: schedulesToSubmit }, {
-          onSuccess: () => {
-            resetForm();
-            setIsSubmitting(false);
-          },
-          onError: (errors) => {
-            console.error('Error creating schedules:', errors);
-            setErrors(errors);
-            setIsSubmitting(false);
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Error processing form data:', error);
-      setErrors({
-        general: 'An error occurred while processing your request. Please try again.'
-      });
-      setIsSubmitting(false);
-    }
   };
 
-  // Handle edit schedule
-  const handleEdit = (schedule: ScheduleData) => {
-    // Convert schedule data to form data
-    let date;
+  // Edit an existing schedule
+  const handleEditSchedule = (e: FormEvent) => {
+    e.preventDefault();
+    if (!currentSchedule) return;
+    router.put(route('doctor.schedule.update', currentSchedule.id), formData, {
+      onSuccess: () => {
+        setIsEditModalOpen(false);
+        toast({
+          title: 'Success',
+          description: 'Schedule updated successfully',
+        });
+        resetForm();
+      },
+      onError: (errors) => {
+        console.error(errors);
+        toast({
+          title: 'Error',
+          description: 'Failed to update schedule',
+          variant: 'destructive',
+        });
+      },
+    });
+  };
 
-    // If there's a specific date, use it
-    if (schedule.specific_date) {
-      date = new Date(schedule.specific_date);
-      setSelectedSingleDate(date);
-    } else {
-      // Otherwise calculate from day of week
-      date = new Date();
-      date.setDate(date.getDate() + (schedule.day_of_week - date.getDay() + 7) % 7);
-      setSelectedSingleDate(null);
-    }
+  // Delete a schedule
+  const handleDeleteSchedule = () => {
+    if (!currentSchedule) return;
+    router.delete(route('doctor.schedule.destroy', currentSchedule.id), {
+      onSuccess: () => {
+        setIsDeleteModalOpen(false);
+        toast({
+          title: 'Success',
+          description: 'Schedule deleted successfully',
+        });
+      },
+      onError: () => {
+        toast({
+          title: 'Error',
+          description: 'Failed to delete schedule',
+          variant: 'destructive',
+        });
+      },
+    });
+  };
 
+  // Create multiple schedules
+  const handleCreateMultipleSchedules = (e: FormEvent) => {
+    e.preventDefault();
+    router.post(route('doctor.schedule.storeMultiple'), { schedules: multipleSchedules }, {
+      onSuccess: () => {
+        setIsMultipleModalOpen(false);
+        toast({
+          title: 'Success',
+          description: 'Schedules created successfully',
+        });
+        setMultipleSchedules([
+          {
+            staff_id: staff.length > 0 ? staff[0].id : 0,
+            day_of_week: 0,
+            start_time: '09:00',
+            end_time: '17:00',
+            is_available: true,
+            max_appointments: 1,
+            specific_date: null,
+            notes: null,
+          },
+        ]);
+      },
+      onError: (errors) => {
+        console.error(errors);
+        toast({
+          title: 'Error',
+          description: 'Failed to create schedules',
+          variant: 'destructive',
+        });
+      },
+    });
+  };
+
+  // View staff schedule
+  const viewStaffSchedule = (staffId: number) => {
+    router.get(route('doctor.schedule.viewStaffSchedule', staffId));
+  };
+
+  // Open edit modal and populate form with selected schedule data
+  const openEditModal = (schedule: Schedule) => {
+    setCurrentSchedule(schedule);
     setFormData({
-      dateTimeSlots: [
-        {
-          date,
-          timeSlots: [{
-            startTime: schedule.start_time.substring(0, 5), // Extract HH:MM part
-            endTime: schedule.end_time.substring(0, 5)      // Extract HH:MM part
-          }]
-        }
-      ],
+      staff_id: schedule.staff_id,
+      day_of_week: schedule.day_of_week,
+      start_time: schedule.start_time,
+      end_time: schedule.end_time,
       is_available: schedule.is_available,
       max_appointments: schedule.max_appointments,
-      notes: schedule.notes || '',
+      specific_date: schedule.specific_date,
+      notes: schedule.notes,
     });
-
-    setEditingId(schedule.id);
-    setShowDialog(true);
+    setIsEditModalOpen(true);
   };
 
-  // Handle delete schedule
-  const handleDelete = (id: number) => {
-    if (window.confirm('Are you sure you want to delete this schedule?')) {
-      router.delete(`/doctor/schedule/${id}`);
-    }
+  // Open delete confirmation modal
+  const openDeleteModal = (schedule: Schedule) => {
+    setCurrentSchedule(schedule);
+    setIsDeleteModalOpen(true);
   };
 
-  // Open the dialog with a specific date
-  const openDialogWithDate = (date: Date) => {
-    setSelectedSingleDate(date);
+  // Reset form state
+  const resetForm = () => {
     setFormData({
-      dateTimeSlots: [
-        {
-          date,
-          timeSlots: [{ startTime: '09:00', endTime: '17:00' }]
-        }
-      ],
+      staff_id: staff.length > 0 ? staff[0].id : 0,
+      day_of_week: 0,
+      start_time: '09:00',
+      end_time: '17:00',
       is_available: true,
-      max_appointments: 10,
-      notes: '',
+      max_appointments: 1,
+      specific_date: null,
+      notes: null,
     });
-    setEditingId(null);
-    setShowDialog(true);
+    setCurrentSchedule(null);
   };
 
   return (
-    <DoctorLayout user={user}>
-      <Head title="Manage Schedule" />
-      <div className="py-12">
-        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-semibold text-gray-900">Manage Your Schedule</h1>
-            <Button onClick={() => setShowDialog(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Add Schedule
-            </Button>
-          </div>
+    <DoctorLayout>
+      <Head title="Doctor Schedule" />
+      <Header title="Doctor Schedule Management" />
 
-          <Tabs defaultValue="calendar" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-6">
-              <TabsTrigger value="calendar">Calendar View</TabsTrigger>
-              <TabsTrigger value="list">List View</TabsTrigger>
-            </TabsList>
+      <div className="flex">
+        {/* Sidebar */}
+        <Sidebar />
 
-            <TabsContent value="calendar" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Your Schedule</CardTitle>
-                  <CardDescription>
-                    Calendar view of your availability. Click on a date to add or edit your schedule for that day.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col items-center">
-                    <Calendar
-                      mode="single"
-                      selected={undefined}
-                      onSelect={(date: Date | undefined) => {
-                        if (date) {
-                          // When a date is clicked, open the dialog to add times for that date
-                          openDialogWithDate(date);
-                        }
-                      }}
-                      className="rounded-md border cursor-pointer"
-                      classNames={{
-                        day_today: "bg-primary/10 text-primary font-bold",
-                      }}
-                      modifiers={{
-                        booked: (date) => {
-                          const dateStr = format(date, 'yyyy-MM-dd');
-                          const dayOfWeek = date.getDay();
+        <main className="container mx-auto py-6 flex-1">
+          <Card>
+            <CardHeader>
+              <CardTitle>Schedule Management</CardTitle>
+              <CardDescription>Manage staff scheduling and availability</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="table" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="table">Table View</TabsTrigger>
+                  <TabsTrigger value="calendar">Calendar View</TabsTrigger>
+                </TabsList>
 
-                          // Check if there's a specific schedule for this date
-                          const hasSpecificSchedule = schedules.some(s => s.specific_date === dateStr);
-
-                          // Check if there's a recurring schedule for this day of the week
-                          const hasRecurringSchedule = schedules.some(s => s.day_of_week === dayOfWeek && !s.specific_date);
-
-                          return hasSpecificSchedule || hasRecurringSchedule;
-                        }
-                      }}
-                      modifiersStyles={{
-                        booked: { backgroundColor: '#ecfdf5', color: '#065f46', fontWeight: 'bold' }
-                      }}
-                    />
-                    <div className="text-sm text-gray-500 mt-4">
-                      <p className="mb-2">
-                        <span className="inline-block w-3 h-3 bg-green-100 rounded-full mr-2"></span>
-                        Green dates have scheduled availability
-                      </p>
-                      <p className="mb-2">
-                        <span className="inline-block w-3 h-3 bg-primary/10 rounded-full mr-2"></span>
-                        Today's date
-                      </p>
-                      <p className="font-medium text-center mt-3">Click on any date to add or edit your schedule</p>
+                {/* Table View */}
+                <TabsContent value="table">
+                  <div className="flex flex-col md:flex-row justify-between mb-6 gap-4">
+                    <div className="w-full md:w-1/3">
+                      <Select value={filteredStaffId} onValueChange={(value) => setFilteredStaffId(value)}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Filter by Staff Member" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Staff Members</SelectItem>
+                          {staff.map((staffMember) => (
+                            <SelectItem key={staffMember.id} value={staffMember.id.toString()}>
+                              {staffMember.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={() => setIsCreateModalOpen(true)}>
+                        <Plus className="mr-2 h-4 w-4" /> Add Schedule
+                      </Button>
+                      <Button onClick={() => setIsMultipleModalOpen(true)}>
+                        <Plus className="mr-2 h-4 w-4" /> Add Multiple Schedules
+                      </Button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
 
-            <TabsContent value="list">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Schedule List</CardTitle>
-                  <CardDescription>
-                    All your scheduled days and time slots
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Day</TableHead>
-                        <TableHead>Hours</TableHead>
-                        <TableHead>Max Appointments</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Notes</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Object.keys(groupedSchedules).length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center text-sm text-gray-500">
-                            No schedules found. Add your first schedule using the "Add Schedule" button.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        Object.entries(groupedSchedules).map(([dateKey, dateSchedules]) => {
-                          // Get date information from the first schedule in the group
-                          const firstSchedule = dateSchedules[0];
-                          const isSpecificDate = !!firstSchedule.specific_date;
-                          const displayDate = isSpecificDate
-                            ? format(new Date(firstSchedule.specific_date!), 'MMM d, yyyy')
-                            : dayNames[firstSchedule.day_of_week];
-
-                          // Format all time slots for this date
-                          const timeSlots = dateSchedules.map(schedule =>
-                            `${formatTimeToAmPm(schedule.start_time)} - ${formatTimeToAmPm(schedule.end_time)}`
-                          ).join(', ');
-
-                          return (
-                            <TableRow key={dateKey}>
-                              <TableCell className="font-medium">
-                                {displayDate}
+                  {/* Schedules Table */}
+                  <div className="rounded-md border">
+                    {filteredSchedules.length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Staff Member</TableHead>
+                            <TableHead>Day</TableHead>
+                            <TableHead>Time</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Max Appointments</TableHead>
+                            <TableHead>Specific Date</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredSchedules.map((schedule) => (
+                            <TableRow key={schedule.id}>
+                              <TableCell className="font-medium">{getStaffName(schedule.staff_id)}</TableCell>
+                              <TableCell>{getDayName(schedule.day_of_week)}</TableCell>
+                              <TableCell>
+                                {formatTime(schedule.start_time)} - {formatTime(schedule.end_time)}
                               </TableCell>
                               <TableCell>
-                                {timeSlots}
-                              </TableCell>
-                              <TableCell>{firstSchedule.max_appointments}</TableCell>
-                              <TableCell>
-                                <Badge className={firstSchedule.is_available ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                                  {firstSchedule.is_available ? 'Available' : 'Unavailable'}
+                                <Badge variant={schedule.is_available ? 'success' : 'destructive'}>
+                                  {schedule.is_available ? 'Available' : 'Unavailable'}
                                 </Badge>
                               </TableCell>
-                              <TableCell className="max-w-xs truncate">
-                                {firstSchedule.notes || '-'}
-                              </TableCell>
+                              <TableCell>{schedule.max_appointments}</TableCell>
+                              <TableCell>{formatDate(schedule.specific_date)}</TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
-                                  {dateSchedules.map(schedule => (
-                                    <div key={schedule.id} className="flex gap-1">
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => handleEdit(schedule)}
-                                        className="h-7 px-2 text-xs"
-                                        title="Edit this time slot"
-                                      >
-                                        {formatTimeToAmPm(schedule.start_time)}
-                                      </Button>
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => handleDelete(schedule.id)}
-                                        className="h-7 w-7 p-0 text-red-600 hover:text-red-800"
-                                        title="Delete this time slot"
-                                      >
-                                        <Trash2 className="h-3 w-3" />
-                                      </Button>
-                                    </div>
-                                  ))}
+                                  <Button variant="outline" size="sm" onClick={() => openEditModal(schedule)}>
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => openDeleteModal(schedule)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => viewStaffSchedule(schedule.staff_id)}
+                                  >
+                                    View Staff
+                                  </Button>
                                 </div>
                               </TableCell>
                             </TableRow>
-                          );
-                        })
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-
-          {/* Add/Edit Schedule Dialog */}
-          <Dialog open={showDialog} onOpenChange={setShowDialog}>
-            <DialogContent className="w-full max-w-[95%] sm:max-w-[500px] md:max-w-[600px] max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingId
-                    ? 'Edit Schedule'
-                    : selectedSingleDate
-                      ? <>Schedule for <span className="text-primary">{format(selectedSingleDate, 'EEEE, MMMM d, yyyy')}</span></>
-                      : 'Add New Schedule'
-                  }
-                </DialogTitle>
-                <DialogDescription>
-                  {selectedSingleDate
-                    ? 'Set your availability times for this specific date.'
-                    : 'Set your availability by selecting dates. Each date can have its own set of time slots.'
-                  }
-                </DialogDescription>
-              </DialogHeader>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {!selectedSingleDate && (
-                  <div className="space-y-2">
-                    <Label htmlFor="calendar">Select Dates</Label>
-                    <div className="border rounded-md p-2 sm:p-4 overflow-x-auto">
-                      <Calendar
-                        mode="multiple"
-                        selected={formData.dateTimeSlots.map(dt => dt.date)}
-                        onSelect={(dates: Date[] | undefined) => {
-                          if (dates) {
-                            // Create a new dateTimeSlots array based on selected dates
-                            const updatedDateTimeSlots: DateTimeSlots[] = [];
-
-                            // Keep existing dates and their time slots if still selected
-                            formData.dateTimeSlots.forEach(existingDateTimeSlot => {
-                              const existingDateStr = format(existingDateTimeSlot.date, 'yyyy-MM-dd');
-                              const stillSelected = dates.some(date =>
-                                format(date, 'yyyy-MM-dd') === existingDateStr
-                              );
-
-                              if (stillSelected) {
-                                updatedDateTimeSlots.push(existingDateTimeSlot);
-                              }
-                            });
-
-                            // Add new dates with default time slots
-                            dates.forEach(date => {
-                              const dateStr = format(date, 'yyyy-MM-dd');
-                              const alreadyExists = updatedDateTimeSlots.some(dt =>
-                                format(dt.date, 'yyyy-MM-dd') === dateStr
-                              );
-
-                              if (!alreadyExists) {
-                                updatedDateTimeSlots.push({
-                                  date,
-                                  timeSlots: [{ startTime: '09:00', endTime: '17:00' }]
-                                });
-                              }
-                            });
-
-                            setFormData(prev => ({
-                              ...prev,
-                              dateTimeSlots: updatedDateTimeSlots
-                            }));
-                          }
-                        }}
-                        className="rounded-md border w-full"
-                        classNames={{
-                          months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-                          month: "space-y-4 w-full",
-                          caption: "flex justify-center pt-1 relative items-center",
-                          caption_label: "text-sm font-medium",
-                          nav: "space-x-1 flex items-center",
-                          table: "w-full border-collapse space-y-1",
-                          head_row: "flex",
-                          head_cell: "text-muted-foreground rounded-md w-8 sm:w-9 font-normal text-[0.7rem] sm:text-[0.8rem]",
-                          row: "flex w-full mt-2",
-                          cell: "h-8 w-8 sm:h-9 sm:w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                          day: "h-8 w-8 sm:h-9 sm:w-9 p-0 font-normal aria-selected:opacity-100",
-                        }}
-                      />
-                    </div>
-                    {errors.dates && (
-                      <p className="text-red-500 text-sm">{errors.dates}</p>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <div className="py-6 px-4 text-center text-sm text-gray-500">
+                        No schedules found. Click "Add Schedule" to create one.
+                      </div>
                     )}
                   </div>
-                )}
+                </TabsContent>
 
-                {/* Time Slots by Date */}
-                {formData.dateTimeSlots.length > 0 && (
-                  <div className="space-y-6">
-                    {formData.dateTimeSlots.map((dateTimeSlot, dateIndex) => (
-                      <div
-                        key={dateIndex}
-                        className="p-4 border rounded-md bg-gray-50 space-y-3"
-                      >
-                        <div className="flex justify-between items-center">
-                          <h3 className="text-sm font-semibold text-primary">
-                            {format(dateTimeSlot.date, 'EEEE, MMMM d, yyyy')}
-                          </h3>
-                          {!selectedSingleDate && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeDate(dateIndex)}
-                              className="h-6 w-6"
-                            >
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
-                          )}
+                {/* Calendar View */}
+                <TabsContent value="calendar">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Calendar View</CardTitle>
+                      <CardDescription>View schedules by date</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-col md:flex-row gap-4">
+                        <div className="md:w-1/3">
+                          <Calendar
+                            mode="single"
+                            selected={selectedDate}
+                            onSelect={setSelectedDate}
+                            className="rounded-md border"
+                          />
                         </div>
-
-                        {errors[`date_${dateIndex}`] && (
-                          <p className="text-red-500 text-xs">{errors[`date_${dateIndex}`]}</p>
-                        )}
-
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium">Time Slots</span>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => addTimeSlot(dateIndex)}
-                              className="h-7 text-xs px-2 py-1"
-                            >
-                              <Plus className="h-3 w-3 mr-1" /> Add Time
-                            </Button>
-                          </div>
-
-                          <div className="space-y-2">
-                            {dateTimeSlot.timeSlots.map((slot, timeSlotIndex) => (
-                              <div key={timeSlotIndex} className="p-2 border rounded bg-white">
-                                <div className="flex justify-between items-center mb-1">
-                                  <span className="text-xs font-medium">Slot #{timeSlotIndex + 1}</span>
-                                  {dateTimeSlot.timeSlots.length > 1 && (
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => removeTimeSlot(dateIndex, timeSlotIndex)}
-                                      className="h-5 w-5"
-                                    >
-                                      <Trash2 className="h-3 w-3 text-red-500" />
-                                    </Button>
-                                  )}
-                                </div>
-                                <div className="flex flex-col sm:flex-row sm:items-end gap-2">
-                                  <div className="grow">
-                                    <Label htmlFor={`startTime-${dateIndex}-${timeSlotIndex}`} className="text-xs">
-                                      Start Time <span className="text-gray-500">(24-hour format)</span>
-                                    </Label>
-                                    <Input
-                                      id={`startTime-${dateIndex}-${timeSlotIndex}`}
-                                      type="time"
-                                      value={slot.startTime}
-                                      onChange={e => updateTimeSlot(dateIndex, timeSlotIndex, 'startTime', e.target.value)}
-                                      className="h-8 text-sm"
-                                    />
-                                  </div>
-                                  <div className="grow">
-                                    <Label htmlFor={`endTime-${dateIndex}-${timeSlotIndex}`} className="text-xs">
-                                      End Time <span className="text-gray-500">(24-hour format)</span>
-                                    </Label>
-                                    <Input
-                                      id={`endTime-${dateIndex}-${timeSlotIndex}`}
-                                      type="time"
-                                      value={slot.endTime}
-                                      onChange={e => updateTimeSlot(dateIndex, timeSlotIndex, 'endTime', e.target.value)}
-                                      className="h-8 text-sm"
-                                    />
-                                  </div>
-                                </div>
-                                {errors && errors[`dateTimeSlot_${dateIndex}_${timeSlotIndex}`] && (
-                                  <p className="text-red-500 text-xs mt-1">
-                                    {errors[`dateTimeSlot_${dateIndex}_${timeSlotIndex}`]}
+                        <div className="md:w-2/3">
+                          <h3 className="text-lg font-medium mb-4">
+                            Schedules for {selectedDate ? format(selectedDate, 'PPPP') : 'Selected Date'}
+                          </h3>
+                          {filteredSchedules
+                            .filter((schedule) =>
+                              selectedDate && schedule.specific_date
+                                ? format(new Date(schedule.specific_date), 'yyyy-MM-dd') ===
+                                  format(selectedDate, 'yyyy-MM-dd')
+                                : true
+                            )
+                            .map((schedule) => (
+                              <div key={schedule.id} className="mb-4 p-4 border rounded-md">
+                                <p>
+                                  <strong>Staff:</strong> {getStaffName(schedule.staff_id)}
+                                </p>
+                                <p>
+                                  <strong>Time:</strong> {formatTime(schedule.start_time)} -{' '}
+                                  {formatTime(schedule.end_time)}
+                                </p>
+                                <p>
+                                  <strong>Status:</strong>{' '}
+                                  {schedule.is_available ? 'Available' : 'Unavailable'}
+                                </p>
+                                <p>
+                                  <strong>Max Appointments:</strong> {schedule.max_appointments}
+                                </p>
+                                {schedule.notes && (
+                                  <p>
+                                    <strong>Notes:</strong> {schedule.notes}
                                   </p>
                                 )}
                               </div>
                             ))}
-                          </div>
+                          {filteredSchedules.filter((schedule) =>
+                            selectedDate && schedule.specific_date
+                              ? format(new Date(schedule.specific_date), 'yyyy-MM-dd') ===
+                                format(selectedDate, 'yyyy-MM-dd')
+                              : true
+                          ).length === 0 && (
+                            <p className="text-gray-500">No schedules for this date.</p>
+                          )}
                         </div>
                       </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+
+      {/* Create Schedule Modal */}
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Schedule</DialogTitle>
+            <DialogDescription>Create a new schedule for staff availability</DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateSchedule} className="space-y-4 py-4">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="staff_id">Staff Member</Label>
+                <Select
+                  value={formData.staff_id.toString()}
+                  onValueChange={(value) => handleSelectChange(value, 'staff_id')}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select staff member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staff.map((staffMember) => (
+                      <SelectItem key={staffMember.id} value={staffMember.id.toString()}>
+                        {staffMember.name}
+                      </SelectItem>
                     ))}
-                    <p className="text-gray-500 text-xs mt-1">
-                      Note: Enter times in 24-hour format (e.g., 13:00 for 1:00 PM). Times will be displayed in 12-hour format on the schedule.
-                    </p>
-                  </div>
-                )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="day_of_week">Day of Week</Label>
+                <Select
+                  value={formData.day_of_week.toString()}
+                  onValueChange={(value) => handleSelectChange(value, 'day_of_week')}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select day" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Sunday</SelectItem>
+                    <SelectItem value="1">Monday</SelectItem>
+                    <SelectItem value="2">Tuesday</SelectItem>
+                    <SelectItem value="3">Wednesday</SelectItem>
+                    <SelectItem value="4">Thursday</SelectItem>
+                    <SelectItem value="5">Friday</SelectItem>
+                    <SelectItem value="6">Saturday</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="start_time">Start Time</Label>
+                  <Input
+                    type="time"
+                    id="start_time"
+                    name="start_time"
+                    value={formData.start_time}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="max_appointments">Max Appointments Per Slot</Label>
+                  <Label htmlFor="end_time">End Time</Label>
                   <Input
-                    id="max_appointments"
-                    name="max_appointments"
-                    type="number"
-                    min="1"
-                    value={formData.max_appointments}
-                    onChange={handleChange}
-                    className="max-w-[150px]"
+                    type="time"
+                    id="end_time"
+                    name="end_time"
+                    value={formData.end_time}
+                    onChange={handleInputChange}
+                    required
                   />
-                  {errors.max_appointments && (
-                    <p className="text-red-500 text-sm">{errors.max_appointments}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="max_appointments">Maximum Appointments</Label>
+                <Input
+                  type="number"
+                  id="max_appointments"
+                  name="max_appointments"
+                  value={formData.max_appointments}
+                  onChange={handleInputChange}
+                  min="1"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="specific_date">Specific Date (Optional)</Label>
+                <Input
+                  type="date"
+                  id="specific_date"
+                  name="specific_date"
+                  value={formData.specific_date || ''}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="is_available"
+                  checked={formData.is_available}
+                  onCheckedChange={handleCheckboxChange}
+                />
+                <Label htmlFor="is_available">Available for appointments</Label>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes (Optional)</Label>
+                <Textarea
+                  id="notes"
+                  name="notes"
+                  rows={3}
+                  value={formData.notes || ''}
+                  onChange={handleInputChange}
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Create</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Schedule Modal */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Schedule</DialogTitle>
+            <DialogDescription>Modify the selected schedule</DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleEditSchedule} className="space-y-4 py-4">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="staff_id">Staff Member</Label>
+                <Select
+                  value={formData.staff_id.toString()}
+                  onValueChange={(value) => handleSelectChange(value, 'staff_id')}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select staff member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staff.map((staffMember) => (
+                      <SelectItem key={staffMember.id} value={staffMember.id.toString()}>
+                        {staffMember.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="day_of_week">Day of Week</Label>
+                <Select
+                  value={formData.day_of_week.toString()}
+                  onValueChange={(value) => handleSelectChange(value, 'day_of_week')}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select day" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Sunday</SelectItem>
+                    <SelectItem value="1">Monday</SelectItem>
+                    <SelectItem value="2">Tuesday</SelectItem>
+                    <SelectItem value="3">Wednesday</SelectItem>
+                    <SelectItem value="4">Thursday</SelectItem>
+                    <SelectItem value="5">Friday</SelectItem>
+                    <SelectItem value="6">Saturday</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="start_time">Start Time</Label>
+                  <Input
+                    type="time"
+                    id="start_time"
+                    name="start_time"
+                    value={formData.start_time}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="end_time">End Time</Label>
+                  <Input
+                    type="time"
+                    id="end_time"
+                    name="end_time"
+                    value={formData.end_time}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="max_appointments">Maximum Appointments</Label>
+                <Input
+                  type="number"
+                  id="max_appointments"
+                  name="max_appointments"
+                  value={formData.max_appointments}
+                  onChange={handleInputChange}
+                  min="1"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="specific_date">Specific Date (Optional)</Label>
+                <Input
+                  type="date"
+                  id="specific_date"
+                  name="specific_date"
+                  value={formData.specific_date || ''}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="is_available"
+                  checked={formData.is_available}
+                  onCheckedChange={handleCheckboxChange}
+                />
+                <Label htmlFor="is_available">Available for appointments</Label>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes (Optional)</Label>
+                <Textarea
+                  id="notes"
+                  name="notes"
+                  rows={3}
+                  value={formData.notes || ''}
+                  onChange={handleInputChange}
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Update</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Schedule</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this schedule? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" onClick={handleDeleteSchedule}>
+              <Trash2 className="mr-2 h-4 w-4" /> Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Multiple Schedules Modal */}
+      <Dialog open={isMultipleModalOpen} onOpenChange={setIsMultipleModalOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Add Multiple Schedules</DialogTitle>
+            <DialogDescription>Create multiple schedules at once</DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateMultipleSchedules} className="space-y-4 py-4">
+            {multipleSchedules.map((schedule, index) => (
+              <div key={index} className="space-y-4 border-b pb-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-medium">Schedule {index + 1}</h3>
+                  {index > 0 && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => removeScheduleForm(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="notes">Notes (Optional)</Label>
-                  <Textarea
-                    id="notes"
-                    name="notes"
-                    rows={3}
-                    value={formData.notes}
-                    onChange={handleChange}
-                    placeholder="Add any special instructions or notes about your availability"
+                  <Label htmlFor={`staff_id_${index}`}>Staff Member</Label>
+                  <Select
+                    value={schedule.staff_id.toString()}
+                    onValueChange={(value) => handleMultipleSelectChange(index, value, 'staff_id')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select staff member" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {staff.map((staffMember) => (
+                        <SelectItem key={staffMember.id} value={staffMember.id.toString()}>
+                          {staffMember.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor={`day_of_week_${index}`}>Day of Week</Label>
+                  <Select
+                    value={schedule.day_of_week.toString()}
+                    onValueChange={(value) => handleMultipleSelectChange(index, value, 'day_of_week')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select day" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Sunday</SelectItem>
+                      <SelectItem value="1">Monday</SelectItem>
+                      <SelectItem value="2">Tuesday</SelectItem>
+                      <SelectItem value="3">Wednesday</SelectItem>
+                      <SelectItem value="4">Thursday</SelectItem>
+                      <SelectItem value="5">Friday</SelectItem>
+                      <SelectItem value="6">Saturday</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor={`start_time_${index}`}>Start Time</Label>
+                    <Input
+                      type="time"
+                      id={`start_time_${index}`}
+                      name="start_time"
+                      value={schedule.start_time}
+                      onChange={(e) => handleMultipleInputChange(index, e)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor={`end_time_${index}`}>End Time</Label>
+                    <Input
+                      type="time"
+                      id={`end_time_${index}`}
+                      name="end_time"
+                      value={schedule.end_time}
+                      onChange={(e) => handleMultipleInputChange(index, e)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor={`max_appointments_${index}`}>Maximum Appointments</Label>
+                  <Input
+                    type="number"
+                    id={`max_appointments_${index}`}
+                    name="max_appointments"
+                    value={schedule.max_appointments}
+                    onChange={(e) => handleMultipleInputChange(index, e)}
+                    min="1"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor={`specific_date_${index}`}>Specific Date (Optional)</Label>
+                  <Input
+                    type="date"
+                    id={`specific_date_${index}`}
+                    name="specific_date"
+                    value={schedule.specific_date || ''}
+                    onChange={(e) => handleMultipleInputChange(index, e)}
                   />
                 </div>
 
                 <div className="flex items-center space-x-2">
                   <Checkbox
-                    id="is_available"
-                    name="is_available"
-                    checked={formData.is_available}
-                    onCheckedChange={(checked) =>
-                      setFormData(prev => ({
-                        ...prev,
-                        is_available: checked === true
-                      }))
-                    }
+                    id={`is_available_${index}`}
+                    checked={schedule.is_available}
+                    onCheckedChange={(checked) => handleMultipleCheckboxChange(index, !!checked)}
                   />
-                  <Label htmlFor="is_available" className="cursor-pointer">
-                    Available for Appointments
-                  </Label>
+                  <Label htmlFor={`is_available_${index}`}>Available for appointments</Label>
                 </div>
 
-                {errors.general && (
-                  <div className="bg-red-50 p-4 rounded-md border border-red-200 mb-4">
-                    <p className="text-red-600">{errors.general}</p>
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor={`notes_${index}`}>Notes (Optional)</Label>
+                  <Textarea
+                    id={`notes_${index}`}
+                    name="notes"
+                    rows={3}
+                    value={schedule.notes || ''}
+                    onChange={(e) => handleMultipleInputChange(index, e)}
+                  />
+                </div>
+              </div>
+            ))}
 
-                <DialogFooter className="sm:justify-end flex-col sm:flex-row gap-2 sm:gap-0 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={resetForm}
-                    disabled={isSubmitting}
-                    className="w-full sm:w-auto"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting || formData.dateTimeSlots.length === 0}
-                    className="w-full sm:w-auto"
-                  >
-                    {isSubmitting
-                      ? 'Saving...'
-                      : editingId
-                        ? 'Update Schedule'
-                        : selectedSingleDate
-                          ? 'Add Time Slots'
-                          : 'Add Schedule'
-                    }
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+            <Button type="button" variant="outline" onClick={addScheduleForm} className="mt-4">
+              <Plus className="mr-2 h-4 w-4" /> Add Another Schedule
+            </Button>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsMultipleModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Create Schedules</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </DoctorLayout>
   );
 };
 
-export default Schedule;
+export default SchedulePage;

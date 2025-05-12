@@ -4,8 +4,8 @@ import {
     LayoutDashboard,
     Calendar,
     FileText,
-    LogOut,
-    Stethoscope
+    Stethoscope,
+    Clock
 } from 'lucide-react';
 
 interface User {
@@ -40,16 +40,31 @@ export function Sidebar({ user }: SidebarProps) {
         {
             name: 'Dashboard',
             route: 'staff.dashboard',
-            icon: <LayoutDashboard size={18} />
+            icon: <LayoutDashboard size={18} />,
+            path: '/staff/dashboard'
         },
         {
             name: 'Appointments',
             route: 'staff.appointments',
-            icon: <Calendar size={18} />
+            icon: <Calendar size={18} />,
+            path: '/staff/appointments'
         },
         {
             name: 'Medical Records',
             route: 'staff.clinical.info',
+            icon: <FileText size={18} />,
+            path: '/staff/clinical/info'
+        },
+        {
+            name: 'Schedule',
+            route: 'staff.clinical-staff.schedule.index',
+            path: 'ClinicalStaff/Schedule',
+            icon: <Clock size={18} />
+        },
+        {
+            name: 'Record',
+            route: 'staff.clinical-staff.record.index',
+            path: 'ClinicalStaff/Record',
             icon: <FileText size={18} />
         }
     ];
@@ -72,7 +87,7 @@ export function Sidebar({ user }: SidebarProps) {
                         routeExists(item.route) ? (
                             <Link href={route(item.route)} key={item.name} className="w-full">
                                 <Button
-                                    variant={isActive(`/staff/${item.route.split('.').pop()}`) ? 'secondary' : 'ghost'}
+                                    variant={isActive(item.path) ? 'secondary' : 'ghost'}
                                     className="flex w-full items-center justify-start gap-3 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
                                 >
                                     {item.icon}
@@ -87,22 +102,14 @@ export function Sidebar({ user }: SidebarProps) {
                                 disabled
                             >
                                 {item.icon}
-                                {item.name}
+                                {item.name} (Route Missing)
                             </Button>
                         )
                     ))}
                 </nav>
             </div>
 
-            {/* Logout Button */}
-            <div className="border-t p-4 dark:border-gray-700">
-                <Button asChild variant="outline" className="w-full">
-                    <Link href={route('auth.logout')} method="post" className="flex items-center justify-center">
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Logout
-                    </Link>
-                </Button>
-            </div>
+            
         </div>
     );
 }

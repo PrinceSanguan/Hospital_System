@@ -77,6 +77,7 @@ class LandingController extends Controller
                 ->with(['schedules', 'services'])
                 ->get()
                 ->map(function ($doctor) {
+
                     return [
                         'id' => $doctor->id,
                         'name' => $doctor->name,
