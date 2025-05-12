@@ -504,11 +504,6 @@ export default function PatientDashboard({
               <p className="mt-1 text-gray-600">Here's an overview of your health</p>
             </div>
             <div className="mt-4 md:mt-0 flex gap-2">
-              <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700">
-                <Link href="/patient/appointments/book">
-                  <Calendar className="w-4 h-4 mr-2" /> Book Appointment
-                </Link>
-              </Button>
               <Button asChild size="sm" variant="outline">
                 <Link href="/patient/records">
                   <FileText className="w-4 h-4 mr-2" /> View Records

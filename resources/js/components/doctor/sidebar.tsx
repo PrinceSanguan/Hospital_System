@@ -7,8 +7,8 @@ import {
     Calendar,
     Settings,
     Stethoscope,
-    Clock,
-    UserCircle
+    UserCircle,
+    Clock
 } from 'lucide-react';
 
 interface User {
@@ -60,30 +60,6 @@ export function Sidebar({ user, unreadNotifications = 0 }: SidebarProps) {
             path: '/doctor/appointments',
             icon: <Calendar size={18} />
         },
-        {
-            name: 'Schedule',
-            route: 'doctor.schedule.index',
-            path: '/doctor/schedule',
-            icon: <Clock size={18} />
-        },
-        {
-            name: 'Records',
-            route: 'doctor.records.index',
-            path: '/doctor/records',
-            icon: <FileText size={18} />
-        },
-        {
-            name: 'Professional Profile',
-            route: 'doctor.profile',
-            path: '/doctor/profile',
-            icon: <UserCircle size={18} />
-        },
-        {
-            name: 'Settings',
-            route: 'doctor.settings',
-            path: '/doctor/settings',
-            icon: <Settings size={18} />
-        }
     ];
 
     return (
@@ -109,9 +85,9 @@ export function Sidebar({ user, unreadNotifications = 0 }: SidebarProps) {
                         <Button
                             key={item.name}
                             asChild
-                                variant={isActive(item.path) ? 'secondary' : 'ghost'}
-                                className="flex w-full items-center justify-start gap-3 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-                                disabled={!routeExists(item.route)}
+                            variant={isActive(item.path) ? 'secondary' : 'ghost'}
+                            className="flex w-full items-center justify-start gap-3 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                            disabled={!routeExists(item.route)}
                         >
                             <Link
                                 href={routeExists(item.route) ? route(item.route) : '#'}

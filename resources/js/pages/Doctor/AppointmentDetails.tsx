@@ -127,42 +127,6 @@ export default function AppointmentDetails({ user, appointment, patientFiles = [
                     const detailsObj = JSON.parse(appointment.details);
                     return (
                         <div className="space-y-5">
-                            {/* Appointment Basic Info */}
-                            <div className="bg-blue-50 p-4 rounded-md">
-                                <h3 className="text-md font-semibold text-blue-800 mb-2">Appointment Information</h3>
-                                {detailsObj.appointment_time && (
-                                    <div className="mb-2">
-                                        <h4 className="text-sm font-medium text-gray-700">Appointment Time:</h4>
-                                        <p className="text-gray-700">{detailsObj.appointment_time}</p>
-                                    </div>
-                                )}
-                                {detailsObj.reason && (
-                                    <div className="mb-2">
-                                        <h4 className="text-sm font-medium text-gray-700">Reason:</h4>
-                                        <p className="text-gray-700">{detailsObj.reason}</p>
-                                    </div>
-                                )}
-                                {detailsObj.notes && (
-                                    <div className="mb-2">
-                                        <h4 className="text-sm font-medium text-gray-700">Additional Notes:</h4>
-                                        <p className="text-gray-700">{detailsObj.notes}</p>
-                                    </div>
-                                )}
-                                {detailsObj.service && (
-                                    <div className="mb-2">
-                                        <h4 className="text-sm font-medium text-gray-700">Service:</h4>
-                                        <p className="text-gray-700">{detailsObj.service.name}</p>
-                                        {detailsObj.service.price && (
-                                            <p className="text-gray-700">Price: ${detailsObj.service.price}</p>
-                                        )}
-                                        {detailsObj.service.duration_minutes && (
-                                            <p className="text-gray-700">Duration: {detailsObj.service.duration_minutes} minutes</p>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Patient Personal Information */}
                             {detailsObj.patient_info && (
                                 <div className="bg-green-50 p-4 rounded-md">
                                     <h3 className="text-md font-semibold text-green-800 mb-2">Patient Information</h3>

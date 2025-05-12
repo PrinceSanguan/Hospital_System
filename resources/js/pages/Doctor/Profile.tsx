@@ -438,66 +438,7 @@ export default function DoctorProfile({ user, services, flash, specialties = [] 
                             </div>
                         </form>
                     </div>
-                    {/* Services Section */}
-                    <div className="bg-white rounded-lg shadow-md p-6 mt-8">
-                        <div className="flex justify-between items-center mb-6">
-                            <div>
-                                <h2 className="text-2xl font-bold">Services Offered</h2>
-                                <p className="text-gray-600">Manage the services you offer to patients</p>
-                            </div>
-                            <Button 
-                                onClick={() => router.visit('/doctor/services/create')}
-                                className="bg-green-600 hover:bg-green-700 text-white"
-                            >
-                                Add New Service
-                            </Button>
-                        </div>
-                        {services.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {services.map((service) => (
-                                    <div key={service.id} className={`border rounded-lg p-4 flex justify-between ${service.is_active ? 'bg-white' : 'bg-gray-100'}`}>
-                                        <div>
-                                            <h3 className="font-semibold">{service.name}</h3>
-                                            <p className="text-sm text-gray-600">
-                                                {service.description.length > 100 
-                                                    ? `${service.description.substring(0, 100)}...` 
-                                                    : service.description}
-                                            </p>
-                                            <div className="mt-2 flex items-center">
-                                                <span className="text-sm font-medium">${service.price.toFixed(2)}</span>
-                                                <span className="mx-2 text-gray-400">•</span>
-                                                <span className="text-sm">{service.duration_minutes} minutes</span>
-                                                <span className="mx-2 text-gray-400">•</span>
-                                                <span className={`text-xs px-2 py-1 rounded-full ${service.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'}`}>
-                                                    {service.is_active ? 'Active' : 'Inactive'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-start">
-                                            <button 
-                                                onClick={() => router.visit(`/doctor/services/${service.id}/edit`)}
-                                                className="text-blue-600 hover:text-blue-800"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="bg-gray-100 rounded-lg p-6 text-center">
-                                <p className="text-gray-600">You haven't added any services yet. Add your first service to let patients know what you offer.</p>
-                                <Button
-                                    onClick={() => router.visit('/doctor/services/create')}
-                                    className="mt-3 bg-blue-600 hover:bg-blue-700 text-white"
-                                >
-                                    Add Your First Service
-                                </Button>
-                            </div>
-                        )}
-                    </div>
+                 
                 </div>
             </div>
         </DoctorLayout>

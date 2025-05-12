@@ -1,16 +1,15 @@
 <?php
 
-namespace App\Http\Controllers\Doctor;
+namespace App\Http\Controllers\ClinicalStaff;
 
 use App\Http\Controllers\Controller;
-use App\Models\DoctorSchedule;
-use App\Models\User; // Use User model
+use App\Models\StaffSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
-class DoctorScheduleController extends Controller
+class ScheduleController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -18,14 +17,11 @@ class DoctorScheduleController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $schedules = DoctorSchedule::where('doctor_id', $user->id)
+        $schedules = StaffSchedule::where('doctor_id', $user->id)
             ->orderBy('day_of_week')
             ->get();
-            
-        // Get all staff members assigned to this doctor
-        $staff = User::where('user_role', 'staff')->orderBy('name')->get();
 
-        return Inertia::render('Doctor/Schedule', [
+        return Inertia::render('ClinicalStaff/Schedule', [
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -33,7 +29,6 @@ class DoctorScheduleController extends Controller
                 'role' => $user->user_role,
             ],
             'schedules' => $schedules,
-            'staff' => $staff,
         ]);
     }
 
@@ -48,7 +43,6 @@ class DoctorScheduleController extends Controller
             'end_time' => 'required|date_format:H:i|after:start_time',
             'is_available' => 'boolean',
             'max_appointments' => 'required|integer|min:1',
-            'staff_id' => 'required|exists:staff,id',
             'notes' => 'nullable|string|max:255',
             'specific_date' => 'nullable|date',
         ]);
@@ -57,8 +51,7 @@ class DoctorScheduleController extends Controller
             $specificDate = Carbon::parse($validated['specific_date']);
 
             // Check for overlapping schedules
-            $existingSchedule = DoctorSchedule::where('doctor_id', Auth::id())
-                ->where('staff_id', $validated['staff_id'])
+            $existingSchedule = StaffSchedule::where('doctor_id', Auth::id())
                 ->where('day_of_week', $specificDate->dayOfWeek)
                 ->where('specific_date', $specificDate->format('Y-m-d'))
                 ->where(function($query) use ($validated) {
@@ -74,14 +67,13 @@ class DoctorScheduleController extends Controller
 
             if ($existingSchedule) {
                 return back()->withErrors([
-                    'specific_date' => 'A schedule already exists for this staff member on this date and time range.'
+                    'specific_date' => 'A schedule already exists for this date and time range.'
                 ]);
             }
         }
 
-        $schedule = new DoctorSchedule();
-        $schedule->doctor_id = Auth::id();
-        $schedule->staff_id = $validated['staff_id'];
+        $schedule = new StaffSchedule();
+        $schedule->user_role = Auth::id();
         $schedule->day_of_week = $validated['day_of_week'];
         $schedule->start_time = $validated['start_time'];
         $schedule->end_time = $validated['end_time'];
@@ -92,7 +84,7 @@ class DoctorScheduleController extends Controller
 
         $schedule->save();
 
-        return redirect()->route('doctor.schedule.index')->with('success', 'Schedule created successfully');
+        return redirect()->route('staff.clinical-staff.schedule.index')->with('success', 'Schedule created successfully');
     }
 
     /**
@@ -100,7 +92,7 @@ class DoctorScheduleController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $schedule = DoctorSchedule::where('doctor_id', Auth::id())
+        $schedule = StaffSchedule::where('doctor_id', Auth::id())
             ->findOrFail($id);
 
         $validated = $request->validate([
@@ -109,7 +101,6 @@ class DoctorScheduleController extends Controller
             'end_time' => 'required|date_format:H:i|after:start_time',
             'is_available' => 'boolean',
             'max_appointments' => 'required|integer|min:1',
-            'staff_id' => 'required|exists:staff,id',
             'notes' => 'nullable|string|max:255',
             'specific_date' => 'nullable|date',
         ]);
@@ -120,12 +111,11 @@ class DoctorScheduleController extends Controller
             'end_time' => $validated['end_time'],
             'is_available' => $validated['is_available'] ?? true,
             'max_appointments' => $validated['max_appointments'],
-            'staff_id' => $validated['staff_id'],
-            'notes' => $validated['notes'] ?? null, 
+            'notes' => $validated['notes'] ?? null,
             'specific_date' => $validated['specific_date'] ?? null,
         ]);
 
-        return redirect()->route('doctor.schedule.index')->with('success', 'Schedule updated successfully');
+        return redirect()->route('staff.clinical-staff.schedule.index')->with('success', 'Schedule updated successfully');
     }
 
     /**
@@ -133,12 +123,12 @@ class DoctorScheduleController extends Controller
      */
     public function destroy($id)
     {
-        $schedule = DoctorSchedule::where('doctor_id', Auth::id())
+        $schedule = StaffSchedule::where('doctor_id', Auth::id())
             ->findOrFail($id);
 
         $schedule->delete();
 
-        return redirect()->route('doctor.schedule.index')->with('success', 'Schedule deleted successfully');
+        return redirect()->route('staff.clinical-staff.schedule.index')->with('success', 'Schedule deleted successfully');
     }
 
     /**
@@ -153,7 +143,6 @@ class DoctorScheduleController extends Controller
             'schedules.*.end_time' => 'required|date_format:H:i|after:schedules.*.start_time',
             'schedules.*.is_available' => 'boolean',
             'schedules.*.max_appointments' => 'required|integer|min:1',
-            'schedules.*.staff_id' => 'required|exists:staff,id',
             'schedules.*.notes' => 'nullable|string|max:255',
             'schedules.*.specific_date' => 'nullable|date',
         ]);
@@ -161,12 +150,11 @@ class DoctorScheduleController extends Controller
         $schedules = $request->input('schedules');
 
         foreach ($schedules as $scheduleData) {
-            DoctorSchedule::create([
-                'doctor_id' => Auth::id(),
-                'staff_id' => $scheduleData['staff_id'],
+            StaffSchedule::create([
+                'user_role' => Auth::id(),
                 'day_of_week' => $scheduleData['day_of_week'],
                 'start_time' => $scheduleData['start_time'],
-                'end_time' => $scheduleData['end_time'],
+                'end_time' => $scheduleData['end_time'], // Fixed: was incorrectly set to start_time
                 'is_available' => $scheduleData['is_available'] ?? true,
                 'max_appointments' => $scheduleData['max_appointments'],
                 'notes' => $scheduleData['notes'] ?? null,
@@ -174,34 +162,6 @@ class DoctorScheduleController extends Controller
             ]);
         }
 
-        return redirect()->route('doctor.schedule.index')->with('success', 'Schedules created successfully');
-    }
-    
-    /**
-     * View schedules for a specific staff member
-     */
-    public function viewStaffSchedule($staffId)
-    {
-        $user = Auth::user();
-        
-        // Verify this staff belongs to the doctor
-        $staff = Staff::where('doctor_id', $user->id)
-            ->findOrFail($staffId);
-        
-        $schedules = DoctorSchedule::where('doctor_id', $user->id)
-            ->where('staff_id', $staffId)
-            ->orderBy('day_of_week')
-            ->get();
-            
-        return Inertia::render('Doctor/StaffSchedule', [
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->user_role,
-            ],
-            'staff' => $staff,
-            'schedules' => $schedules,
-        ]);
+        return redirect()->route('staff.clinical-staff.schedule.index')->with('success', 'Schedules created successfully');
     }
 }
