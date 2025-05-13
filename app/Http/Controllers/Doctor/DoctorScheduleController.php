@@ -21,7 +21,7 @@ class DoctorScheduleController extends Controller
         $schedules = DoctorSchedule::where('doctor_id', $user->id)
             ->orderBy('day_of_week')
             ->get();
-            
+
         // Get all staff members assigned to this doctor
         $staff = User::where('user_role', 'staff')->orderBy('name')->get();
 
@@ -79,6 +79,18 @@ class DoctorScheduleController extends Controller
             }
         }
 
+        // Determine schedule_date based on specific_date or day_of_week
+        if (isset($validated['specific_date'])) {
+            $scheduleDate = $validated['specific_date'];
+        } else {
+            // Set schedule_date to the next occurrence of the day of week
+            $today = Carbon::today();
+            $dayOfWeek = (int)$validated['day_of_week'];
+            $scheduleDate = $today->dayOfWeek === $dayOfWeek
+                ? $today->format('Y-m-d')
+                : $today->next($dayOfWeek)->format('Y-m-d');
+        }
+
         $schedule = new DoctorSchedule();
         $schedule->doctor_id = Auth::id();
         $schedule->staff_id = $validated['staff_id'];
@@ -89,6 +101,7 @@ class DoctorScheduleController extends Controller
         $schedule->max_appointments = $validated['max_appointments'];
         $schedule->notes = $validated['notes'] ?? null;
         $schedule->specific_date = $validated['specific_date'] ?? null;
+        $schedule->schedule_date = $scheduleDate;
 
         $schedule->save();
 
@@ -114,6 +127,18 @@ class DoctorScheduleController extends Controller
             'specific_date' => 'nullable|date',
         ]);
 
+        // Determine schedule_date based on specific_date or day_of_week
+        if (isset($validated['specific_date'])) {
+            $scheduleDate = $validated['specific_date'];
+        } else {
+            // Set schedule_date to the next occurrence of the day of week
+            $today = Carbon::today();
+            $dayOfWeek = (int)$validated['day_of_week'];
+            $scheduleDate = $today->dayOfWeek === $dayOfWeek
+                ? $today->format('Y-m-d')
+                : $today->next($dayOfWeek)->format('Y-m-d');
+        }
+
         $schedule->update([
             'day_of_week' => $validated['day_of_week'],
             'start_time' => $validated['start_time'],
@@ -121,8 +146,9 @@ class DoctorScheduleController extends Controller
             'is_available' => $validated['is_available'] ?? true,
             'max_appointments' => $validated['max_appointments'],
             'staff_id' => $validated['staff_id'],
-            'notes' => $validated['notes'] ?? null, 
+            'notes' => $validated['notes'] ?? null,
             'specific_date' => $validated['specific_date'] ?? null,
+            'schedule_date' => $scheduleDate,
         ]);
 
         return redirect()->route('doctor.schedule.index')->with('success', 'Schedule updated successfully');
@@ -161,6 +187,18 @@ class DoctorScheduleController extends Controller
         $schedules = $request->input('schedules');
 
         foreach ($schedules as $scheduleData) {
+            // Determine schedule_date
+            if (isset($scheduleData['specific_date'])) {
+                $scheduleDate = $scheduleData['specific_date'];
+            } else {
+                // Set schedule_date to the next occurrence of the day of week
+                $today = Carbon::today();
+                $dayOfWeek = (int)$scheduleData['day_of_week'];
+                $scheduleDate = $today->dayOfWeek === $dayOfWeek
+                    ? $today->format('Y-m-d')
+                    : $today->next($dayOfWeek)->format('Y-m-d');
+            }
+
             DoctorSchedule::create([
                 'doctor_id' => Auth::id(),
                 'staff_id' => $scheduleData['staff_id'],
@@ -171,28 +209,30 @@ class DoctorScheduleController extends Controller
                 'max_appointments' => $scheduleData['max_appointments'],
                 'notes' => $scheduleData['notes'] ?? null,
                 'specific_date' => $scheduleData['specific_date'] ?? null,
+                'schedule_date' => $scheduleDate,
             ]);
         }
 
         return redirect()->route('doctor.schedule.index')->with('success', 'Schedules created successfully');
     }
-    
+
     /**
      * View schedules for a specific staff member
      */
     public function viewStaffSchedule($staffId)
     {
         $user = Auth::user();
-        
+
         // Verify this staff belongs to the doctor
-        $staff = Staff::where('doctor_id', $user->id)
-            ->findOrFail($staffId);
-        
+        $staff = User::where('id', $staffId)
+            ->where('user_role', 'staff')
+            ->firstOrFail();
+
         $schedules = DoctorSchedule::where('doctor_id', $user->id)
             ->where('staff_id', $staffId)
             ->orderBy('day_of_week')
             ->get();
-            
+
         return Inertia::render('Doctor/StaffSchedule', [
             'user' => [
                 'id' => $user->id,

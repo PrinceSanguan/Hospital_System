@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { Header } from '@/components/clinicalstaff/header';
 import { Sidebar } from '@/components/clinicalstaff/sidebar';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import PatientSearch from '@/components/PatientSearch';
 import {
   Select,
   SelectContent,
@@ -21,7 +22,7 @@ import {
   CardTitle,
   CardFooter,
 } from '@/components/ui/card';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeftIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 
 interface User {
@@ -36,19 +37,22 @@ interface Doctor {
   email: string;
 }
 
-interface Patient {
+// This interface needs to be compatible with PatientSearch component
+interface PatientRecord {
   id: number;
   name: string;
   email: string;
+  reference_number?: string;
 }
 
 interface LabRecordsAddProps {
   user: User;
-  patients: Patient[];
+  patients: PatientRecord[];
   doctors: Doctor[];
 }
 
-export default function LabRecordsAdd({ user, patients, doctors }: LabRecordsAddProps) {
+export default function LabRecordsAdd({ user, doctors }: Omit<LabRecordsAddProps, 'patients'>) {
+  const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const { data, setData, post, processing, errors } = useForm({
     patient_id: '',
     assigned_doctor_id: '',
@@ -63,6 +67,11 @@ export default function LabRecordsAdd({ user, patients, doctors }: LabRecordsAdd
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     post(route('staff.lab.records.store'));
+  };
+
+  const handlePatientSelect = (patient: any) => {
+    setSelectedPatient(patient);
+    setData('patient_id', patient.id?.toString() || '');
   };
 
   const labTypeOptions = [
@@ -103,7 +112,7 @@ export default function LabRecordsAdd({ user, patients, doctors }: LabRecordsAdd
                 <div className="flex items-center space-x-2">
                   <Button variant="ghost" asChild className="p-0">
                     <Link href={route('staff.lab.records')}>
-                      <ChevronLeft className="h-4 w-4" />
+                      <ChevronLeftIcon className="h-4 w-4" />
                     </Link>
                   </Button>
                   <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -126,27 +135,16 @@ export default function LabRecordsAdd({ user, patients, doctors }: LabRecordsAdd
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Patient Selection */}
-                  <div className="space-y-2">
-                    <Label htmlFor="patient_id">Patient <span className="text-red-500">*</span></Label>
-                    <Select
-                      onValueChange={(value) => setData('patient_id', value)}
-                      value={data.patient_id}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a patient" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {patients.map((patient) => (
-                          <SelectItem key={patient.id} value={patient.id.toString()}>
-                            {patient.name} ({patient.email})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.patient_id && (
-                      <p className="text-sm text-red-500">{errors.patient_id}</p>
-                    )}
-                  </div>
+                  <PatientSearch
+                    onSelect={handlePatientSelect}
+                    label="Patient"
+                    placeholder="Search by patient name or reference number"
+                    required={true}
+                    className="w-full"
+                  />
+                  {errors.patient_id && (
+                    <p className="text-sm text-red-500">{errors.patient_id}</p>
+                  )}
 
                   {/* Doctor Selection */}
                   <div className="space-y-2">

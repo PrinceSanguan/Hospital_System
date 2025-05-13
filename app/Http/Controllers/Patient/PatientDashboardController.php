@@ -649,7 +649,40 @@ class PatientDashboardController extends Controller
         return inertia('Patient/DoctorProfile', [
             'doctor' => $doctor,
             'availableDates' => $availableDates,
-            'user' => auth()->user(),
+            'user' => Auth::user(),
+        ]);
+    }
+
+    /**
+     * Display the doctor schedules page
+     *
+     * @return \Inertia\Response
+     */
+    public function viewDoctorSchedules()
+    {
+        $user = Auth::user();
+
+        // Get all doctors
+        $doctors = User::where('user_role', 'doctor')
+            ->with('doctor_profile')
+            ->get()
+            ->map(function($doctor) {
+                return [
+                    'id' => $doctor->id,
+                    'name' => $doctor->name,
+                    'specialty' => $doctor->doctor_profile->specialty ?? 'General Practitioner',
+                    'profile_image' => $doctor->doctor_profile->profile_image ?? null,
+                ];
+            });
+
+        return Inertia::render('Patient/ViewDoctorSchedules', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+            ],
+            'doctors' => $doctors,
         ]);
     }
 }

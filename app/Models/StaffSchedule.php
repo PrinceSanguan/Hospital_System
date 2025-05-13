@@ -30,7 +30,11 @@ class StaffSchedule extends Model
         'is_available',
         'max_appointments',
         'notes',
-        'specific_date'
+        'specific_date',
+        'schedule_date',
+        'is_approved',
+        'status',
+        'rejection_note'
     ];
 
     /**
@@ -41,6 +45,7 @@ class StaffSchedule extends Model
     protected $casts = [
         'is_available' => 'boolean',
         'specific_date' => 'date',
+        'schedule_date' => 'date',
     ];
 
     /**

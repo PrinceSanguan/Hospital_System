@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/clinicalstaff/header';
 import { Sidebar } from '@/components/clinicalstaff/sidebar';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, parseISO } from 'date-fns';
-import { Eye, FileText } from 'lucide-react';
+import { EyeIcon, PrinterIcon, PencilIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 
 interface User {
     id: number;
@@ -39,7 +39,8 @@ interface Appointment {
         name: string;
         email: string;
     };
-    appointment_type?: string; // For additional appointment type info
+    appointment_type?: string;
+    reason?: string;
 }
 
 interface AppointmentsProps {
@@ -125,6 +126,16 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
             default:
                 return <Badge>{status}</Badge>;
         }
+    };
+
+    // Download appointment as PDF
+    const downloadAppointment = (id: number) => {
+        window.open(route('staff.appointments.pdf', id), '_blank');
+    };
+
+    // Create receipt for appointment
+    const createReceipt = (id: number) => {
+        router.visit(route('staff.appointments.receipt', id));
     };
 
     return (
@@ -213,58 +224,64 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead>Reference #</TableHead>
+                                                <TableHead>Appointment Ref #</TableHead>
                                                 <TableHead>Patient</TableHead>
-                                                <TableHead>Doctor</TableHead>
-                                                <TableHead>Type</TableHead>
                                                 <TableHead>Date & Time</TableHead>
+                                                <TableHead>Reasons</TableHead>
                                                 <TableHead>Status</TableHead>
-                                                <TableHead className="text-right">Actions</TableHead>
+                                                <TableHead className="text-center">Actions</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {filteredAppointments.map((appointment) => (
                                                 <TableRow key={appointment.id}>
                                                     <TableCell>
-                                                        {appointment.reference_number || `REF-${appointment.id}`}
+                                                        {appointment.reference_number || `APP-${appointment.id}`}
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="font-medium">{appointment.patient.name}</div>
-                                                        <div className="text-sm text-gray-500">{appointment.patient.email}</div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {appointment.doctor ? (
-                                                            <>
-                                                                <div className="font-medium">Dr. {appointment.doctor.name}</div>
-                                                                <div className="text-sm text-gray-500">{appointment.doctor.email}</div>
-                                                            </>
-                                                        ) : (
-                                                            <span className="text-gray-500">Unassigned</span>
+                                                        {appointment.doctor && (
+                                                            <div className="text-xs text-gray-500">Dr. {appointment.doctor.name}</div>
                                                         )}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Badge className="bg-gray-100 text-gray-800">
-                                                            {appointment.record_type.replace('_', ' ').charAt(0).toUpperCase() +
-                                                            appointment.record_type.replace('_', ' ').slice(1)}
-                                                        </Badge>
                                                     </TableCell>
                                                     <TableCell>
                                                         <div>{formatDate(appointment.appointment_date)}</div>
                                                         <div className="text-sm text-gray-500">{getAppointmentTime(appointment.details)}</div>
                                                     </TableCell>
+                                                    <TableCell>
+                                                        {appointment.reason || 'Not specified'}
+                                                    </TableCell>
                                                     <TableCell>{getStatusBadge(appointment.status)}</TableCell>
-                                                    <TableCell className="text-right">
-                                                        <div className="flex justify-end items-center gap-2">
-                                                            <Button asChild variant="ghost" size="icon">
+                                                    <TableCell>
+                                                        <div className="flex items-center justify-center space-x-2">
+                                                            <Button asChild variant="ghost" size="icon" title="View">
                                                                 <Link href={route('staff.appointments.show', appointment.id)}>
-                                                                    <Eye className="h-4 w-4" />
+                                                                    <EyeIcon className="h-4 w-4" />
                                                                 </Link>
                                                             </Button>
 
-                                                            <Button asChild variant="ghost" size="icon">
-                                                                <Link href={route('staff.clinical.info.show', appointment.id)}>
-                                                                    <FileText className="h-4 w-4" />
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                title="Print"
+                                                                onClick={() => downloadAppointment(appointment.id)}
+                                                            >
+                                                                <PrinterIcon className="h-4 w-4" />
+                                                            </Button>
+
+                                                            <Button asChild variant="ghost" size="icon" title="Edit">
+                                                                <Link href={route('staff.appointments.edit', appointment.id)}>
+                                                                    <PencilIcon className="h-4 w-4" />
                                                                 </Link>
+                                                            </Button>
+
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                title="Create Receipt"
+                                                                onClick={() => createReceipt(appointment.id)}
+                                                            >
+                                                                <DocumentTextIcon className="h-4 w-4" />
                                                             </Button>
                                                         </div>
                                                     </TableCell>
@@ -274,7 +291,20 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                                     </Table>
                                 ) : (
                                     <div className="flex flex-col items-center justify-center py-8 text-center">
-                                        <p className="text-gray-500 mb-2">No appointments found</p>
+                                        <p className="text-gray-500 mb-4">No appointments found</p>
+                                        <div className="max-w-md text-sm text-gray-500 mb-4">
+                                            There are no appointments in the system yet. You may need to:
+                                            <ul className="list-disc list-inside mt-2 text-left">
+                                                <li>Create patients first</li>
+                                                <li>Ensure doctors are registered in the system</li>
+                                                <li>Check that database connections are working correctly</li>
+                                            </ul>
+                                        </div>
+                                        <Button asChild variant="outline">
+                                            <Link href={route('staff.dashboard')}>
+                                                Return to Dashboard
+                                            </Link>
+                                        </Button>
                                     </div>
                                 )}
                             </CardContent>

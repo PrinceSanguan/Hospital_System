@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DoctorSchedule extends Model
 {
@@ -16,14 +17,17 @@ class DoctorSchedule extends Model
      */
     protected $fillable = [
         'doctor_id',
-        'staff_id',
         'day_of_week',
         'start_time',
         'end_time',
+        'specific_date',
+        'schedule_date',
+        'notes',
         'is_available',
         'max_appointments',
-        'specific_date',
-        'notes',
+        'is_approved',
+        'status',
+        'rejection_note'
     ];
 
     /**
@@ -33,13 +37,16 @@ class DoctorSchedule extends Model
      */
     protected $casts = [
         'is_available' => 'boolean',
-        'specific_date' => 'date',
+        'is_approved' => 'boolean',
+        'specific_date' => 'datetime',
+        'schedule_date' => 'date',
+        'max_appointments' => 'integer'
     ];
 
     /**
      * Get the doctor that owns the schedule.
      */
-    public function doctor()
+    public function doctor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'doctor_id');
     }
@@ -51,7 +58,7 @@ class DoctorSchedule extends Model
     {
         return $this->belongsTo(Staff::class, 'staff_id');
     }
-    
+
     /**
      * Get the appointments for this schedule time slot.
      */
@@ -77,6 +84,14 @@ class DoctorSchedule extends Model
     }
 
     /**
+     * Scope a query to only include approved schedules.
+     */
+    public function scopeApproved($query)
+    {
+        return $query->where('is_approved', true);
+    }
+
+    /**
      * Check if the schedule is fully booked.
      *
      * @return bool
@@ -93,10 +108,10 @@ class DoctorSchedule extends Model
      */
     public function getAvailableSlotsCount()
     {
-        if (!$this->is_available) {
+        if (!$this->is_available || !$this->is_approved) {
             return 0;
         }
-        
+
         $bookedAppointments = $this->appointments()->count();
         return max(0, $this->max_appointments - $bookedAppointments);
     }
