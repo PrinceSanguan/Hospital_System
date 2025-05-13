@@ -36,10 +36,20 @@ return new class extends Migration
                 ]);
         }
 
+        // Handle different column names depending on the database driver
+        $userRoleColumn = DB::getDriverName() === 'pgsql' ? '"user_role"' : 'user_role';
+
         // Get all users with patient role who don't have a patient record
-        $patientUsers = DB::table('users')
-            ->where('user_role', 'patient')
-            ->whereNotExists(function ($query) {
+        $patientUsers = DB::table('users');
+
+        // Build query based on database driver
+        if (DB::getDriverName() === 'pgsql') {
+            $patientUsers = $patientUsers->whereRaw("{$userRoleColumn} = 'patient'");
+        } else {
+            $patientUsers = $patientUsers->where('user_role', 'patient');
+        }
+
+        $patientUsers = $patientUsers->whereNotExists(function ($query) {
                 $query->select(DB::raw(1))
                     ->from('patients')
                     ->whereRaw('patients.user_id = users.id');
