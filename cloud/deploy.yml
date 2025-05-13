@@ -1,61 +1,48 @@
+prod:
+  # Setup and configure the Laravel application
+  deploy-steps:
+    - "php artisan down || true"
+    - "composer install --no-dev --optimize-autoloader"
+    - "php artisan migrate --force"
+    - "php artisan storage:link || true"
+    - "php artisan config:cache"
+    - "php artisan route:cache"
+    - "php artisan view:cache"
+    - "php artisan vite:fix-manifest --force"
+    - "php artisan up"
+
+  # Set up and build the frontend assets
+  build-steps:
+    - "echo 'Setting up Node.js and NPM...'"
+    - "nvm install 20 && nvm use 20"
+    - "echo 'Installing NPM dependencies...'"
+    - "npm ci --no-audit"
+    - "echo 'Building frontend assets...'"
+    - "npm run build:cloud"
+    - "echo 'Verifying build...'"
+    - "ls -la public/build/"
+    - "echo 'Fixing manifest permissions...'"
+    - "chmod -R 775 public/build"
+
+  # Explicitly include the public/build directory
+  directory-include:
+    - "public/build"
+
+  # Start fresh with each deployment
+  directory-clean:
+    - "bootstrap/cache"
+
+  # Make sure logs are accessible
+  log-files:
+    - "storage/logs/laravel.log"
+
+  # Persist storage between deployments
+  persist-directories:
+    - "storage"
+
+# Don't create subdirectories for PR deployments
+local:
+  clone-directory: "/"
+
+# Don't use custom hooks or deploy script
 pull_requests: true
-# Disable the default script in favor of more explicit commands below
-# run_deploy_script: true
-laravel:
-  build:
-    # Install dependencies
-    - 'composer install --optimize-autoloader --no-dev'
-    # Force node version
-    - 'nvm install 20 && nvm use 20'
-    # Install NPM dependencies and build assets
-    - 'npm ci --no-audit'
-    - 'npm run build'
-    # Display built assets for verification
-    - 'ls -la public/build/'
-    # Run the manifest check script
-    - 'bash cloud/ensure-manifest'
-    # Add execute permissions to scripts
-    - 'chmod +x cloud/post-deploy cloud/ensure-manifest'
-  # Set explicit deploy commands
-  deploy:
-    - 'php artisan migrate --force'
-    - 'php artisan storage:link'
-    - 'php artisan config:cache'
-    - 'php artisan route:cache'
-    - 'php artisan view:cache'
-    - 'bash cloud/post-deploy'
-    - 'php artisan vite:fix-manifest --force'
-    # Run the manifest check script again
-    - 'bash cloud/ensure-manifest'
-# Prevent project files from being ignored by the deployment
-source: /
-destination: /var/www/html
-exclude:
-  - .git
-  - .github
-  - node_modules
-  - vendor
-  - tests
-include:
-  - public/build
-hooks:
-  build:
-    - command: npm ci --no-audit
-      display: "Installing NPM dependencies"
-    - command: npm run build
-      display: "Building frontend assets"
-    - command: composer install --no-dev --optimize-autoloader
-      display: "Installing Composer dependencies"
-  deploy:
-    - command: php artisan migrate --force
-      display: "Running migrations"
-    - command: php artisan config:cache
-      display: "Caching configuration"
-    - command: php artisan route:cache
-      display: "Caching routes"
-    - command: php artisan view:cache
-      display: "Caching views"
-    - command: php artisan storage:link
-      display: "Linking storage"
-    - command: bash cloud/post-deploy
-      display: "Verifying Vite manifest"
