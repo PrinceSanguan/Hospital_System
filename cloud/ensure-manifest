@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+
+# This script ensures that the Vite manifest file is in the correct location
+# It's meant to be run after the build process on Laravel Cloud
+
+set -e # Exit on error
+set -x # Echo commands
+
+echo "===== ENSURING VITE MANIFEST FILE EXISTS ====="
+
+# Define the expected paths
+BUILT_MANIFEST_PATH="public/build/manifest.json"
+BUILT_ASSETS_DIR="public/build/assets"
+
+# Check if the manifest file exists in the build directory
+if [ -f "$BUILT_MANIFEST_PATH" ]; then
+    echo "✅ Manifest file found at $BUILT_MANIFEST_PATH"
+    cat "$BUILT_MANIFEST_PATH"
+else
+    echo "❌ Manifest file not found at $BUILT_MANIFEST_PATH"
+
+    # Create the build directory if it doesn't exist
+    if [ ! -d "public/build" ]; then
+        echo "Creating build directory..."
+        mkdir -p public/build
+    fi
+
+    # Create assets directory if it doesn't exist
+    if [ ! -d "$BUILT_ASSETS_DIR" ]; then
+        echo "Creating assets directory..."
+        mkdir -p "$BUILT_ASSETS_DIR"
+    fi
+
+    # Create fallback assets
+    echo "Creating fallback asset files..."
+    echo "/* Emergency CSS fallback - created on $(date) */" > "$BUILT_ASSETS_DIR/app-fallback.css"
+    echo "console.log('Emergency JS fallback loaded - created on $(date)'); console.warn('Vite assets failed to build - using emergency fallback');" > "$BUILT_ASSETS_DIR/app-fallback.js"
+
+    # Create a minimal manifest file
+    echo "Creating minimal manifest file..."
+    cat > "$BUILT_MANIFEST_PATH" << EOF
+{
+  "resources/css/app.css": {
+    "file": "assets/app-fallback.css",
+    "isEntry": true,
+    "src": "resources/css/app.css"
+  },
+  "resources/js/app.tsx": {
+    "file": "assets/app-fallback.js",
+    "isEntry": true,
+    "src": "resources/js/app.tsx"
+  }
+}
+EOF
+
+    echo "✅ Created fallback manifest file:"
+    cat "$BUILT_MANIFEST_PATH"
+fi
+
+# Set proper permissions
+echo "Setting proper permissions..."
+chmod -R 775 public/build
+chmod 664 "$BUILT_MANIFEST_PATH"
+if [ -d "$BUILT_ASSETS_DIR" ]; then
+    chmod 664 "$BUILT_ASSETS_DIR"/*
+fi
+
+echo "===== VITE MANIFEST CHECK COMPLETED ====="

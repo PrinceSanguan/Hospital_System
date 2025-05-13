@@ -1,17 +1,33 @@
 pull_requests: true
-run_deploy_script: true
+# Disable the default script in favor of more explicit commands below
+# run_deploy_script: true
 laravel:
   build:
+    # Install dependencies
+    - 'composer install --optimize-autoloader --no-dev'
+    # Force node version
+    - 'nvm install 20 && nvm use 20'
+    # Install NPM dependencies and build assets
     - 'npm ci --no-audit'
     - 'npm run build'
-    - 'composer install --no-dev --optimize-autoloader'
+    # Display built assets for verification
+    - 'ls -la public/build/'
+    # Run the manifest check script
+    - 'bash cloud/ensure-manifest'
+    # Add execute permissions to scripts
+    - 'chmod +x cloud/post-deploy cloud/ensure-manifest'
+  # Set explicit deploy commands
   deploy:
     - 'php artisan migrate --force'
+    - 'php artisan storage:link'
     - 'php artisan config:cache'
     - 'php artisan route:cache'
     - 'php artisan view:cache'
-    - 'php artisan storage:link'
     - 'bash cloud/post-deploy'
+    - 'php artisan vite:fix-manifest --force'
+    # Run the manifest check script again
+    - 'bash cloud/ensure-manifest'
+# Prevent project files from being ignored by the deployment
 source: /
 destination: /var/www/html
 exclude:
@@ -20,6 +36,8 @@ exclude:
   - node_modules
   - vendor
   - tests
+include:
+  - public/build
 hooks:
   build:
     - command: npm ci --no-audit
