@@ -1,19 +1,32 @@
+import React, { useState } from 'react';
 import { Header } from '@/components/clinicalstaff/header';
 import { Sidebar } from '@/components/clinicalstaff/sidebar';
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Calendar } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from 'date-fns';
-import { Link } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { EyeIcon, UserGroupIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import toast from 'react-hot-toast';
+import axios from 'axios';
 
 interface User {
     id: number;
     name: string;
     email: string;
     role?: string;
+}
+
+interface AppointmentDetails {
+    appointment_time?: string;
+    reason?: string;
+    notes?: string;
 }
 
 interface Appointment {
@@ -29,6 +42,9 @@ interface Appointment {
         name: string;
     };
     reason?: string;
+    reference_number?: string;
+    details?: AppointmentDetails;
+    has_lab_results?: boolean;
 }
 
 interface DashboardProps {
@@ -50,6 +66,11 @@ export default function StaffDashboard({
     },
     appointments = []
 }: DashboardProps) {
+    const [showDenyDialog, setShowDenyDialog] = useState(false);
+    const [denyAppointmentId, setDenyAppointmentId] = useState<number | null>(null);
+    const [denyNote, setDenyNote] = useState('');
+    const [isDenySubmitting, setIsDenySubmitting] = useState(false);
+    const [dashboardAppointments, setDashboardAppointments] = useState<Appointment[]>(appointments);
 
     // Format date
     const formatDate = (dateString: string) => {
@@ -77,8 +98,87 @@ export default function StaffDashboard({
         }
     };
 
+    // Handle appointment status update
+    const handleStatusUpdate = async (id: number, newStatus: string) => {
+        try {
+            const response = await axios.post(route('staff.appointments.status', id), {
+                status: newStatus,
+                notes: 'Status updated by clinical staff from dashboard'
+            });
+
+            if (response.data.success) {
+                // Update the state with the new array
+                setDashboardAppointments(
+                    dashboardAppointments.map(appointment => {
+                        if (appointment.id === id) {
+                            return {
+                                ...appointment,
+                                status: newStatus
+                            };
+                        }
+                        return appointment;
+                    })
+                );
+                
+                toast.success(`Appointment ${newStatus} successfully`);
+            } else {
+                toast.error('Failed to update appointment status');
+            }
+        } catch (error) {
+            console.error('Error updating appointment status:', error);
+            toast.error('An error occurred while updating the appointment status');
+        }
+    };
+
+    // Handle opening the deny dialog
+    const openDenyDialog = (id: number) => {
+        setDenyAppointmentId(id);
+        setDenyNote('');
+        setShowDenyDialog(true);
+    };
+
+    // Handle the appointment denial with notes
+    const handleDenyAppointment = async () => {
+        if (!denyAppointmentId || !denyNote.trim()) return;
+        
+        setIsDenySubmitting(true);
+        try {
+            const response = await axios.post(route('staff.appointments.status', denyAppointmentId), {
+                status: 'cancelled',
+                notes: denyNote
+            });
+
+            if (response.data.success) {
+                // Update the state with the new array
+                setDashboardAppointments(
+                    dashboardAppointments.map(appointment => {
+                        if (appointment.id === denyAppointmentId) {
+                            return {
+                                ...appointment,
+                                status: 'cancelled'
+                            };
+                        }
+                        return appointment;
+                    })
+                );
+                
+                toast.success('Appointment cancelled successfully');
+                setShowDenyDialog(false);
+            } else {
+                toast.error('Failed to cancel appointment');
+            }
+        } catch (error) {
+            console.error('Error cancelling appointment:', error);
+            toast.error('An error occurred while cancelling the appointment');
+        } finally {
+            setIsDenySubmitting(false);
+        }
+    };
+
     return (
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
+            <Head title="Dashboard" />
+            
             {/* Sidebar Component */}
             <Sidebar user={user} />
 
@@ -144,34 +244,99 @@ export default function StaffDashboard({
 
                         {/* All Appointments Section */}
                         <Card>
-                            <CardContent className="p-6">
-                                <h2 className="mb-4 text-xl font-semibold">All Appointments</h2>
-                                {appointments.length > 0 ? (
+                            <CardHeader className="pb-2">
+                                <CardTitle>Appointment List</CardTitle>
+                                <CardDescription>
+                                    Showing {dashboardAppointments.length} appointments
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {dashboardAppointments.length > 0 ? (
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
+                                                <TableHead>Appointment Ref #</TableHead>
                                                 <TableHead>Patient</TableHead>
                                                 <TableHead>Date</TableHead>
-                                                <TableHead>Doctor</TableHead>
                                                 <TableHead>Reason</TableHead>
                                                 <TableHead>Status</TableHead>
-                                                <TableHead className="text-right">Action</TableHead>
+                                                <TableHead className="text-center">Actions</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {appointments.map((appointment) => (
+                                            {dashboardAppointments.map((appointment) => (
                                                 <TableRow key={appointment.id}>
-                                                    <TableCell>{appointment.patient.name}</TableCell>
+                                                    <TableCell>
+                                                        {appointment.reference_number || `APP-${appointment.id}`}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="font-medium">{appointment.patient.name}</div>
+                                                        {appointment.doctor && (
+                                                            <div className="text-xs text-gray-500">Dr. {appointment.doctor.name}</div>
+                                                        )}
+                                                    </TableCell>
                                                     <TableCell>{formatDate(appointment.appointment_date)}</TableCell>
-                                                    <TableCell>{appointment.doctor ? `Dr. ${appointment.doctor.name}` : 'Unassigned'}</TableCell>
                                                     <TableCell>{appointment.reason || 'Not specified'}</TableCell>
                                                     <TableCell>{getStatusBadge(appointment.status)}</TableCell>
-                                                    <TableCell className="text-right">
-                                                        <Button asChild variant="ghost" size="icon">
-                                                            <Link href={route('staff.appointments.show', appointment.id)}>
-                                                                <EyeIcon className="h-4 w-4" />
-                                                            </Link>
-                                                        </Button>
+                                                    <TableCell>
+                                                        <div className="flex items-center justify-center space-x-2">
+                                                            {/* Status actions for pending appointments */}
+                                                            {appointment.status === 'pending' && (
+                                                                <>
+                                                                    <TooltipProvider>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <Button 
+                                                                                    variant="outline" 
+                                                                                    size="sm"
+                                                                                    className="bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100"
+                                                                                    onClick={() => handleStatusUpdate(appointment.id, 'confirmed')}
+                                                                                >
+                                                                                    Accept
+                                                                                </Button>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent>
+                                                                                <p>Accept on behalf of doctor</p>
+                                                                            </TooltipContent>
+                                                                        </Tooltip>
+                                                                    </TooltipProvider>
+                                                                    
+                                                                    <TooltipProvider>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <Button 
+                                                                                    variant="outline" 
+                                                                                    size="sm"
+                                                                                    className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100"
+                                                                                    onClick={() => openDenyDialog(appointment.id)}
+                                                                                >
+                                                                                    Deny
+                                                                                </Button>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent>
+                                                                                <p>Deny with note</p>
+                                                                            </TooltipContent>
+                                                                        </Tooltip>
+                                                                    </TooltipProvider>
+                                                                </>
+                                                            )}
+                                                            
+                                                            {/* View Button */}
+                                                            <TooltipProvider>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button asChild variant="ghost" size="icon">
+                                                                            <Link href={route('staff.appointments.show', appointment.id)}>
+                                                                                <EyeIcon className="h-4 w-4" />
+                                                                            </Link>
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        <p>View Details</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            </TooltipProvider>
+                                                        </div>
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
@@ -195,6 +360,46 @@ export default function StaffDashboard({
                     </div>
                 </main>
             </div>
+
+            {/* Deny Appointment Dialog */}
+            <Dialog open={showDenyDialog} onOpenChange={setShowDenyDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Deny Appointment</DialogTitle>
+                    </DialogHeader>
+
+                    <div className="py-4">
+                        <p className="text-sm text-gray-500 mb-4">
+                            Please provide a reason for denying this appointment. This note will be visible to the patient.
+                        </p>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="denyNote">Denial Reason</Label>
+                            <Textarea
+                                id="denyNote"
+                                placeholder="Enter reason for denial..."
+                                value={denyNote}
+                                onChange={(e) => setDenyNote(e.target.value)}
+                                rows={4}
+                                className="w-full"
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowDenyDialog(false)}>
+                            Cancel
+                        </Button>
+                        <Button 
+                            variant="destructive" 
+                            onClick={handleDenyAppointment}
+                            disabled={!denyNote.trim() || isDenySubmitting}
+                        >
+                            {isDenySubmitting ? 'Processing...' : 'Deny Appointment'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

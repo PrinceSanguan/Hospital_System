@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,11 @@ import { format, parseISO } from 'date-fns';
 import { ArrowLeftIcon, PrinterIcon } from '@heroicons/react/24/outline';
 import { Sidebar } from '@/components/clinicalstaff/sidebar';
 import { Header } from '@/components/clinicalstaff/header';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import axios from 'axios';
+import { toast } from "react-hot-toast";
 
 interface User {
     id: number;
@@ -69,6 +74,10 @@ interface AppointmentProps {
 
 export default function AppointmentDetail({ appointment, user }: AppointmentProps) {
     const printRef = useRef<HTMLDivElement>(null);
+    const [status, setStatus] = useState<string>(appointment.status);
+    const [notes, setNotes] = useState<string>('');
+    const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+    const [showStatusForm, setShowStatusForm] = useState<boolean>(false);
 
     // Handle print function
     const handlePrint = () => {
@@ -215,6 +224,32 @@ export default function AppointmentDetail({ appointment, user }: AppointmentProp
         </div>
     ));
 
+    // Handle status update
+    const handleUpdateStatus = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+
+        try {
+            const response = await axios.post(route('staff.appointments.status', appointment.id), {
+                status,
+                notes
+            });
+
+            if (response.data.success) {
+                toast.success('Appointment status updated successfully');
+                // Reload the page to show updated status
+                window.location.reload();
+            } else {
+                toast.error('Failed to update appointment status');
+            }
+        } catch (error) {
+            console.error('Error updating appointment status:', error);
+            toast.error('An error occurred while updating the appointment status');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     return (
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
             <Head title={`Appointment Details - ${appointment.reference_number || `APP-${appointment.id}`}`} />
@@ -250,6 +285,77 @@ export default function AppointmentDetail({ appointment, user }: AppointmentProp
                             </div>
                         </div>
 
+                        {/* Status Update Form */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Appointment Status</CardTitle>
+                                <CardDescription>
+                                    Update the appointment status on behalf of doctors
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {!showStatusForm ? (
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Current Status:</p>
+                                            <div className="mt-1">{getStatusBadge(appointment.status)}</div>
+                                        </div>
+                                        <Button 
+                                            onClick={() => setShowStatusForm(true)}
+                                            variant="outline"
+                                        >
+                                            Update Status
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <form onSubmit={handleUpdateStatus} className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="status">Status</Label>
+                                            <Select
+                                                value={status}
+                                                onValueChange={setStatus}
+                                            >
+                                                <SelectTrigger id="status">
+                                                    <SelectValue placeholder="Select Status" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="pending">Pending</SelectItem>
+                                                    <SelectItem value="confirmed">Confirmed</SelectItem>
+                                                    <SelectItem value="completed">Completed</SelectItem>
+                                                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="notes">Notes</Label>
+                                            <Textarea
+                                                id="notes"
+                                                placeholder="Add notes about this status change"
+                                                value={notes}
+                                                onChange={(e) => setNotes(e.target.value)}
+                                                rows={3}
+                                            />
+                                        </div>
+                                        <div className="flex justify-end gap-2">
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                onClick={() => setShowStatusForm(false)}
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button 
+                                                type="submit" 
+                                                disabled={isSubmitting}
+                                            >
+                                                {isSubmitting ? 'Updating...' : 'Update Status'}
+                                            </Button>
+                                        </div>
+                                    </form>
+                                )}
+                            </CardContent>
+                        </Card>
+
                         {/* Regular UI for screen viewing */}
                         <Card>
                             <CardHeader>
@@ -277,6 +383,23 @@ export default function AppointmentDetail({ appointment, user }: AppointmentProp
                                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Additional Notes:</p>
                                     <p>{details.notes || 'No additional notes'}</p>
                                 </div>
+                                {appointment.doctor && (
+                                    <div className="flex items-center justify-between border-t pt-4 mt-4">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Assigned Doctor:</p>
+                                            <p>Dr. {appointment.doctor.name}</p>
+                                        </div>
+                                        <Button 
+                                            asChild
+                                            variant="outline" 
+                                            size="sm"
+                                        >
+                                            <Link href={route('staff.doctor-schedules.view', appointment.doctor.id)}>
+                                                View Doctor Schedule
+                                            </Link>
+                                        </Button>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
 

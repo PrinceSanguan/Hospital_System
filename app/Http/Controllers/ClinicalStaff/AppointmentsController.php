@@ -140,7 +140,7 @@ class AppointmentsController extends Controller
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
-     * @return \Illuminate\Http\RedirectResponse
+     * @return \Illuminate\Http\Response
      */
     public function updateStatus(Request $request, $id)
     {
@@ -243,6 +243,17 @@ class AppointmentsController extends Controller
             DB::commit();
 
             $statusMessage = ucfirst($newStatus);
+            
+            // Handle API requests
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Appointment {$statusMessage} successfully",
+                    'appointment' => $appointment
+                ]);
+            }
+
+            // Handle normal requests
             return redirect()->back()->with('success', "Appointment {$statusMessage} successfully");
 
         } catch (\Exception $e) {
@@ -251,6 +262,15 @@ class AppointmentsController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+
+            // Handle API requests
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update appointment status. Please try again.',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
 
             return redirect()->back()->with('error', 'Failed to update appointment status. Please try again.');
         }
