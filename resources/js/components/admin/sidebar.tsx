@@ -70,7 +70,11 @@ export function Sidebar() {
             {/* Header with logo */}
             <div className="flex h-16 items-center border-b px-4 dark:border-gray-700">
                 <Link href={route('admin.dashboard')} className="flex items-center gap-2">
-                    <Stethoscope className="h-6 w-6 text-blue-600" />
+                    <img
+                      src="/images/logo_famcare.jpg"
+                      alt="Famcare Logo"
+                      className="h-6 w-auto"
+                    />
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Famcare Admin</h2>
                 </Link>
             </div>

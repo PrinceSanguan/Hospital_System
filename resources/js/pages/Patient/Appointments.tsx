@@ -152,7 +152,11 @@ export default function Appointments({
       }`}>
         <div className="flex h-16 items-center justify-center border-b px-4">
           <Link href="/patient/dashboard" className="flex items-center">
-            <Stethoscope className="h-6 w-6 text-blue-600" />
+            <img
+              src="/images/logo_famcare.jpg"
+              alt="Famcare Logo"
+              className="h-6 w-auto mr-2"
+            />
             <span className="ml-2 text-xl font-semibold text-gray-900">Famcare Health</span>
           </Link>
         </div>

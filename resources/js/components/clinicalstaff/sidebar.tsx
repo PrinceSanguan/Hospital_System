@@ -121,22 +121,11 @@ export function Sidebar({ user }: SidebarProps) {
             {/* Header with logo */}
             <div className="flex h-16 items-center border-b px-4 dark:border-gray-700">
                 <Link href={route('staff.dashboard')} className="flex items-center gap-2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-6 w-6 text-blue-600"
-                    >
-                      <path d="M8 2v4" />
-                      <path d="M16 2v4" />
-                      <path d="M20 11c-.5-5.27-1.9-8-9-8-7.1 0-8.5 2.73-9 8 .5 5.27 1.9 8 9 8 7.1 0 8.5-2.73 9-8Z" />
-                      <path d="M9 11h6" />
-                      <path d="M8 15a6 6 0 0 0 8 0" />
-                    </svg>
+                    <img
+                      src="/images/logo_famcare.jpg"
+                      alt="Famcare Logo"
+                      className="h-6 w-auto"
+                    />
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Famcare Staff</h2>
                 </Link>
             </div>

@@ -80,7 +80,14 @@ export function Header({ user }: { user: User }) {
             </Button>
             <div className="flex flex-1 items-center justify-between">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 md:hidden">
-                    Famcare Health
+                    <div className="flex items-center">
+                        <img
+                          src="/images/logo_famcare.jpg"
+                          alt="Famcare Logo"
+                          className="h-6 w-auto mr-2"
+                        />
+                        Famcare Health
+                    </div>
                 </h2>
                 <div className="ml-auto flex items-center gap-4">
                     {/* Notifications Dropdown */}

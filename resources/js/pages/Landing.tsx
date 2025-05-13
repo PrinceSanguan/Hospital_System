@@ -749,7 +749,11 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
           <div className="grid gap-8 md:grid-cols-4">
             <div>
               <div className="mb-4 flex items-center">
-                <Stethoscope className="h-8 w-8 text-blue-300" />
+                <img
+                  src="/images/logo_famcare.jpg"
+                  alt="Famcare Logo"
+                  className="h-8 w-auto mr-2"
+                />
                 <span className="ml-2 text-xl font-bold">Famcare</span>
               </div>
               <p className="mb-4 text-blue-200">Providing quality healthcare services to our community since 2010.</p>
