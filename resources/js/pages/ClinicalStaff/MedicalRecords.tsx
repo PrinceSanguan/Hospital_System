@@ -30,6 +30,7 @@ import { Plus, FileEdit, FileSearch, Trash, X } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface User {
+  id: number;
   name: string;
   email: string;
   role?: string;
@@ -169,7 +170,7 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
       {/* Sidebar */}
-      <Sidebar />
+      <Sidebar user={user} />
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
@@ -209,7 +210,6 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
                       <TableHead>Patient</TableHead>
                       <TableHead>Record Type</TableHead>
                       <TableHead>Details</TableHead>
-                      <TableHead>Doctor</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -222,7 +222,6 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
                           <TableCell className="font-medium">{record.patient?.name || 'Unknown Patient'}</TableCell>
                           <TableCell>{getRecordTypeDisplay(record.record_type)}</TableCell>
                           <TableCell className="max-w-xs truncate">{getDetailsValue(record, 'info')}</TableCell>
-                          <TableCell>{record.assignedDoctor?.name || 'Unassigned'}</TableCell>
                           <TableCell>{getStatusBadge(record.status)}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end items-center gap-2">

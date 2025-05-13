@@ -24,6 +24,7 @@ class MedicalRecordsController extends Controller
 
         return Inertia::render('ClinicalStaff/MedicalRecords', [
             'user' => [
+                'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
@@ -43,6 +44,7 @@ class MedicalRecordsController extends Controller
 
         return Inertia::render('ClinicalStaff/MedicalRecordsAdd', [
             'user' => [
+                'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
@@ -114,6 +116,7 @@ class MedicalRecordsController extends Controller
 
         return Inertia::render('ClinicalStaff/MedicalRecordsView', [
             'user' => [
+                'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
@@ -137,6 +140,7 @@ class MedicalRecordsController extends Controller
 
         return Inertia::render('ClinicalStaff/MedicalRecordsEdit', [
             'user' => [
+                'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
@@ -228,6 +232,7 @@ class MedicalRecordsController extends Controller
 
         return Inertia::render('ClinicalStaff/PatientHistory', [
             'user' => [
+                'id' => Auth::user()->id,
                 'name' => Auth::user()->name,
                 'email' => Auth::user()->email,
                 'role' => Auth::user()->user_role,
