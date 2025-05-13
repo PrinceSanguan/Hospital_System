@@ -4,6 +4,14 @@ import { format } from 'date-fns';
 import { ArrowLeftIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { Sidebar } from '@/components/clinicalstaff/sidebar';
 import { Header } from '@/components/clinicalstaff/header';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 
 interface Creator {
     id: number;
@@ -22,6 +30,13 @@ interface Appointment {
     status: string;
 }
 
+interface ReceiptItem {
+    description: string;
+    quantity: number;
+    unit_price: number;
+    amount: number;
+}
+
 interface Receipt {
     id: number;
     receipt_number: string;
@@ -31,6 +46,7 @@ interface Receipt {
     payment_method: string;
     payment_date: string;
     description: string;
+    items?: string;
     created_by: number;
     creator: Creator;
 }
@@ -47,12 +63,16 @@ interface Props {
 }
 
 export default function ReceiptDetail({ receipt, auth }: Props) {
+    // Parse items JSON if available
+    const receiptItems: ReceiptItem[] = receipt.items ? JSON.parse(receipt.items) : [];
+    const hasItems = Array.isArray(receiptItems) && receiptItems.length > 0;
+
     return (
         <>
             <Head title={`Receipt - ${receipt.receipt_number}`} />
 
             <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-                <Sidebar />
+                <Sidebar user={auth.user} />
 
                 <div className="flex flex-1 flex-col">
                     <Header user={auth.user} />
@@ -94,12 +114,53 @@ export default function ReceiptDetail({ receipt, auth }: Props) {
                                     </div>
 
                                     <div>
+                                        <h3 className="text-lg font-medium">Items</h3>
+                                        <div className="mt-2">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Description</TableHead>
+                                                        <TableHead className="text-right">Quantity</TableHead>
+                                                        <TableHead className="text-right">Unit Price</TableHead>
+                                                        <TableHead className="text-right">Amount</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {hasItems ? (
+                                                        receiptItems.map((item, index) => (
+                                                            <TableRow key={index}>
+                                                                <TableCell>{item.description}</TableCell>
+                                                                <TableCell className="text-right">{item.quantity}</TableCell>
+                                                                <TableCell className="text-right">PHP {item.unit_price.toFixed(2)}</TableCell>
+                                                                <TableCell className="text-right">PHP {item.amount.toFixed(2)}</TableCell>
+                                                            </TableRow>
+                                                        ))
+                                                    ) : (
+                                                        <TableRow>
+                                                            <TableCell>{receipt.description || 'Medical Services'}</TableCell>
+                                                            <TableCell className="text-right">1</TableCell>
+                                                            <TableCell className="text-right">
+                                                                PHP {typeof receipt.amount === 'number' ? receipt.amount.toFixed(2) : parseFloat(receipt.amount as string).toFixed(2)}
+                                                            </TableCell>
+                                                            <TableCell className="text-right">
+                                                                PHP {typeof receipt.amount === 'number' ? receipt.amount.toFixed(2) : parseFloat(receipt.amount as string).toFixed(2)}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )}
+                                                    <TableRow>
+                                                        <TableCell colSpan={3} className="text-right font-bold">Total</TableCell>
+                                                        <TableCell className="text-right font-bold">
+                                                            PHP {typeof receipt.amount === 'number' ? receipt.amount.toFixed(2) : parseFloat(receipt.amount as string).toFixed(2)}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
+
+                                    <div>
                                         <h3 className="text-lg font-medium">Payment Details</h3>
                                         <div className="mt-2 space-y-2">
-                                            <p>
-                                                <span className="font-medium">Amount:</span>{' '}
-                                                PHP {typeof receipt.amount === 'number' ? receipt.amount.toFixed(2) : receipt.amount}
-                                            </p>
                                             <p>
                                                 <span className="font-medium">Payment Method:</span>{' '}
                                                 {receipt.payment_method}
@@ -107,10 +168,6 @@ export default function ReceiptDetail({ receipt, auth }: Props) {
                                             <p>
                                                 <span className="font-medium">Payment Date:</span>{' '}
                                                 {format(new Date(receipt.payment_date), 'PPpp')}
-                                            </p>
-                                            <p>
-                                                <span className="font-medium">Description:</span>{' '}
-                                                {receipt.description || 'No description provided'}
                                             </p>
                                         </div>
                                     </div>

@@ -108,12 +108,38 @@
             </tr>
         </thead>
         <tbody>
-            <tr>
-                <td>{{ $receipt->description ?: 'Medical Services' }}</td>
-                <td>1</td>
-                <td>PHP {{ number_format((float)$receipt->amount, 2) }}</td>
-                <td>PHP {{ number_format((float)$receipt->amount, 2) }}</td>
-            </tr>
+            @php
+                $hasItems = false;
+                $items = [];
+                if (isset($receipt->items) && !empty($receipt->items)) {
+                    try {
+                        $items = json_decode($receipt->items, true);
+                        $hasItems = is_array($items) && count($items) > 0;
+                    } catch (\Exception $e) {
+                        // Fall back to description if JSON parse fails
+                        $hasItems = false;
+                    }
+                }
+            @endphp
+
+            @if($hasItems)
+                @foreach($items as $item)
+                <tr>
+                    <td>{{ $item['description'] }}</td>
+                    <td>{{ $item['quantity'] }}</td>
+                    <td>PHP {{ number_format((float)$item['unit_price'], 2) }}</td>
+                    <td>PHP {{ number_format((float)$item['amount'], 2) }}</td>
+                </tr>
+                @endforeach
+            @else
+                <tr>
+                    <td>{{ $receipt->description ?: 'Medical Services' }}</td>
+                    <td>1</td>
+                    <td>PHP {{ number_format((float)$receipt->amount, 2) }}</td>
+                    <td>PHP {{ number_format((float)$receipt->amount, 2) }}</td>
+                </tr>
+            @endif
+
             @if($receipt->appointment_id && isset($receipt->appointment) && $receipt->appointment)
             <tr>
                 <td colspan="3">Appointment: {{ date('m/d/Y', strtotime($receipt->appointment->appointment_date ?? now())) }}</td>

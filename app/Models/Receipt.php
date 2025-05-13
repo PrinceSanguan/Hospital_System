@@ -20,7 +20,8 @@ class Receipt extends Model
         'payment_date',
         'description',
         'status',
-        'created_by'
+        'created_by',
+        'items'
     ];
 
     protected $casts = [

@@ -27,7 +27,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { format } from 'date-fns';
-import { PlusIcon, ArrowDownTrayIcon, EyeIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, ArrowDownTrayIcon, EyeIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import PatientSearch from '@/components/PatientSearch';
 import axios from 'axios';
 import { Sidebar } from '@/components/clinicalstaff/sidebar';
@@ -46,6 +46,13 @@ interface Patient {
     reference_number: string;
 }
 
+interface ReceiptItem {
+    description: string;
+    quantity: number;
+    unit_price: number;
+    amount: number;
+}
+
 interface Receipt {
     id: number;
     patient: {
@@ -60,6 +67,7 @@ interface Receipt {
     payment_date: string;
     receipt_number: string;
     description: string;
+    items?: ReceiptItem[];
 }
 
 interface User {
@@ -74,15 +82,33 @@ export default function Receipts({ receipts, auth }: { receipts: { data: Receipt
     const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [isLoadingAppointments, setIsLoadingAppointments] = useState(false);
+    const [receiptItems, setReceiptItems] = useState<ReceiptItem[]>([
+        {
+            description: '',
+            quantity: 1,
+            unit_price: 0,
+            amount: 0
+        }
+    ]);
+    const [totalAmount, setTotalAmount] = useState<number>(0);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         patient_id: '',
         appointment_id: '',
-        amount: '',
+        amount: '0',
         payment_method: '',
         payment_date: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-        description: ''
+        description: '',
+        items: JSON.stringify(receiptItems)
     });
+
+    // Calculate total amount whenever receipt items change
+    useEffect(() => {
+        const total = receiptItems.reduce((sum, item) => sum + item.amount, 0);
+        setTotalAmount(total);
+        setData('amount', total.toString());
+        setData('items', JSON.stringify(receiptItems));
+    }, [receiptItems]);
 
     // Check for URL parameters to auto-open receipt creation
     useEffect(() => {
@@ -108,8 +134,10 @@ export default function Receipts({ receipts, auth }: { receipts: { data: Receipt
                             console.log(`Setting appointment_id to ${appointmentId}`);
                             setData('appointment_id', appointmentId);
 
-                            // Also set a default description
-                            setData('description', 'Consultation Fee');
+                            // Set initial item description
+                            const updatedItems = [...receiptItems];
+                            updatedItems[0].description = 'Consultation Fee';
+                            setReceiptItems(updatedItems);
                         }
                     } else {
                         console.error('Patient data not found in response', response.data);
@@ -171,8 +199,56 @@ export default function Receipts({ receipts, auth }: { receipts: { data: Receipt
                 setIsCreateOpen(false);
                 setSelectedPatient(null);
                 setAppointments([]);
+                setReceiptItems([{
+                    description: '',
+                    quantity: 1,
+                    unit_price: 0,
+                    amount: 0
+                }]);
             },
         });
+    };
+
+    const handleAddItem = () => {
+        setReceiptItems([
+            ...receiptItems,
+            {
+                description: '',
+                quantity: 1,
+                unit_price: 0,
+                amount: 0
+            }
+        ]);
+    };
+
+    const handleRemoveItem = (index: number) => {
+        if (receiptItems.length === 1) {
+            // Don't remove the last item, just clear it
+            setReceiptItems([{
+                description: '',
+                quantity: 1,
+                unit_price: 0,
+                amount: 0
+            }]);
+        } else {
+            setReceiptItems(receiptItems.filter((_, i) => i !== index));
+        }
+    };
+
+    const handleItemChange = (index: number, field: keyof ReceiptItem, value: string | number) => {
+        const updatedItems = [...receiptItems];
+
+        if (field === 'description') {
+            updatedItems[index].description = value as string;
+        } else if (field === 'quantity' || field === 'unit_price') {
+            const numValue = typeof value === 'string' ? parseFloat(value) || 0 : value;
+            updatedItems[index][field] = numValue;
+
+            // Recalculate amount
+            updatedItems[index].amount = updatedItems[index].quantity * updatedItems[index].unit_price;
+        }
+
+        setReceiptItems(updatedItems);
     };
 
     return (
@@ -197,7 +273,7 @@ export default function Receipts({ receipts, auth }: { receipts: { data: Receipt
                                                 Create Receipt
                                             </Button>
                                         </DialogTrigger>
-                                        <DialogContent className="sm:max-w-[425px]">
+                                        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
                                             <DialogHeader>
                                                 <DialogTitle>Create Receipt</DialogTitle>
                                                 <DialogDescription>
@@ -240,34 +316,81 @@ export default function Receipts({ receipts, auth }: { receipts: { data: Receipt
                                                     </div>
                                                 )}
 
-                                                <div>
-                                                    <Label htmlFor="description">Item Description</Label>
-                                                    <Input
-                                                        id="description"
-                                                        type="text"
-                                                        value={data.description}
-                                                        onChange={e => setData('description', e.target.value)}
-                                                        placeholder="e.g., Consultation Fee, Lab Test, Medical Certificate"
-                                                        required
-                                                    />
-                                                    {errors.description && (
-                                                        <p className="text-sm text-red-600">{errors.description}</p>
-                                                    )}
-                                                </div>
+                                                <div className="border rounded-md p-4">
+                                                    <h3 className="font-medium mb-3">Items</h3>
 
-                                                <div>
-                                                    <Label htmlFor="amount">Amount</Label>
-                                                    <Input
-                                                        id="amount"
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={data.amount}
-                                                        onChange={e => setData('amount', e.target.value)}
-                                                        required
-                                                    />
-                                                    {errors.amount && (
-                                                        <p className="text-sm text-red-600">{errors.amount}</p>
-                                                    )}
+                                                    {receiptItems.map((item, index) => (
+                                                        <div key={index} className="space-y-3 mb-4 pb-4 border-b last:border-b-0 relative">
+                                                            <div className="flex">
+                                                                <div className="flex-grow">
+                                                                    <Label htmlFor={`item-description-${index}`}>Description</Label>
+                                                                    <Input
+                                                                        id={`item-description-${index}`}
+                                                                        value={item.description}
+                                                                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                                                        placeholder="e.g., Consultation Fee, Lab Test, Medical Certificate"
+                                                                        required
+                                                                    />
+                                                                </div>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-8 w-8 p-0 mt-6 ml-1"
+                                                                    onClick={() => handleRemoveItem(index)}
+                                                                >
+                                                                    <XMarkIcon className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-3 gap-2">
+                                                                <div>
+                                                                    <Label htmlFor={`item-quantity-${index}`}>Quantity</Label>
+                                                                    <Input
+                                                                        id={`item-quantity-${index}`}
+                                                                        type="number"
+                                                                        min="1"
+                                                                        step="1"
+                                                                        value={item.quantity}
+                                                                        onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                                                                        required
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <Label htmlFor={`item-price-${index}`}>Unit Price</Label>
+                                                                    <Input
+                                                                        id={`item-price-${index}`}
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        min="0"
+                                                                        value={item.unit_price}
+                                                                        onChange={(e) => handleItemChange(index, 'unit_price', e.target.value)}
+                                                                        required
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <Label htmlFor={`item-amount-${index}`}>Amount</Label>
+                                                                    <Input
+                                                                        id={`item-amount-${index}`}
+                                                                        type="number"
+                                                                        value={item.amount.toFixed(2)}
+                                                                        readOnly
+                                                                        className="bg-gray-50"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+
+                                                    <div className="flex justify-between mt-3">
+                                                        <Button type="button" variant="outline" onClick={handleAddItem}>
+                                                            <PlusIcon className="h-4 w-4 mr-1" /> Add Item
+                                                        </Button>
+                                                        <div className="flex items-center">
+                                                            <span className="font-medium mr-3">Total Amount:</span>
+                                                            <span className="text-xl font-bold">PHP {totalAmount.toFixed(2)}</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
 
                                                 <div>
@@ -304,8 +427,8 @@ export default function Receipts({ receipts, auth }: { receipts: { data: Receipt
                                                     )}
                                                 </div>
 
-                                                <Button type="submit" disabled={processing || !selectedPatient}>
-                                                    Create
+                                                <Button type="submit" disabled={processing || !selectedPatient || totalAmount <= 0}>
+                                                    Create Receipt
                                                 </Button>
                                             </form>
                                         </DialogContent>

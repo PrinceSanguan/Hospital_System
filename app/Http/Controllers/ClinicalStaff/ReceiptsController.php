@@ -37,11 +37,49 @@ class ReceiptsController extends Controller
             'amount' => 'required|numeric|min:0',
             'payment_method' => 'required|string',
             'payment_date' => 'required|date',
-            'description' => 'required|string',
+            'items' => 'required|json',
         ]);
+
+        // Parse the items JSON
+        $items = json_decode($validated['items'], true);
+
+        // Validate items format
+        if (!is_array($items) || empty($items)) {
+            return redirect()->back()->withErrors(['items' => 'At least one item is required'])->withInput();
+        }
+
+        // Recalculate total to ensure it matches items
+        $calculatedTotal = 0;
+        $itemDescriptions = [];
+
+        foreach ($items as $item) {
+            if (!isset($item['description']) || !isset($item['quantity']) || !isset($item['unit_price']) || !isset($item['amount'])) {
+                return redirect()->back()->withErrors(['items' => 'Invalid item format'])->withInput();
+            }
+
+            // Validate item values
+            if (empty($item['description']) || $item['quantity'] <= 0 || $item['unit_price'] < 0) {
+                return redirect()->back()->withErrors(['items' => 'Invalid item values'])->withInput();
+            }
+
+            // Recalculate amount to ensure it's correct
+            $itemAmount = $item['quantity'] * $item['unit_price'];
+            $calculatedTotal += $itemAmount;
+
+            // Add to descriptions for summary
+            $itemDescriptions[] = $item['description'];
+        }
+
+        // Check if calculated total matches the provided total (with a small tolerance for floating point errors)
+        if (abs($calculatedTotal - (float)$validated['amount']) > 0.01) {
+            return redirect()->back()->withErrors(['amount' => 'Total amount does not match item totals'])->withInput();
+        }
 
         // Convert amount to a properly formatted decimal
         $amount = number_format((float)$validated['amount'], 2, '.', '');
+
+        // Create a combined description from item descriptions
+        $description = implode(', ', $itemDescriptions);
 
         // If no appointment_id is provided, just proceed without it
         if (empty($validated['appointment_id'])) {
@@ -52,8 +90,9 @@ class ReceiptsController extends Controller
                 'amount' => $amount,
                 'payment_method' => $validated['payment_method'],
                 'payment_date' => $validated['payment_date'],
-                'description' => $validated['description'],
+                'description' => $description,
                 'created_by' => Auth::id(),
+                'items' => $validated['items'], // Store the raw JSON
             ]);
         } else {
             // Handle with appointment
@@ -66,8 +105,9 @@ class ReceiptsController extends Controller
                 'amount' => $amount,
                 'payment_method' => $validated['payment_method'],
                 'payment_date' => $validated['payment_date'],
-                'description' => $validated['description'],
+                'description' => $description,
                 'created_by' => Auth::id(),
+                'items' => $validated['items'], // Store the raw JSON
             ]);
         }
 
