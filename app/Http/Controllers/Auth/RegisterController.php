@@ -87,18 +87,37 @@ class RegisterController extends Controller
 
     protected function createPatient($user, $data)
     {
-        $latestPatient = Patient::latest('id')->first();
-        $nextId = $latestPatient ? $latestPatient->id + 1 : 1;
-        $referenceNumber = 'PAT' . str_pad($nextId, 6, '0', STR_PAD_LEFT);
+        try {
+            $latestPatient = Patient::latest('id')->first();
+            $nextId = $latestPatient ? $latestPatient->id + 1 : 1;
+            $referenceNumber = 'PAT' . str_pad($nextId, 6, '0', STR_PAD_LEFT);
 
-        return Patient::create([
-            'user_id' => $user->id,
-            'reference_number' => $referenceNumber,
-            'name' => $data['name'],
-            'date_of_birth' => $data['date_of_birth'] ?? null,
-            'gender' => $data['gender'] ?? null,
-            'contact_number' => $data['phone'] ?? null,
-            'address' => $data['address'] ?? null,
-        ]);
+            // Check database connection type
+            $isPostgres = config('database.default') === 'pgsql';
+
+            // Create patient with the right field names depending on the database
+            $patientData = [
+                'user_id' => $user->id,
+                'reference_number' => $referenceNumber,
+                'name' => $data['name'],
+                'date_of_birth' => $data['date_of_birth'] ?? null,
+                'gender' => $data['gender'] ?? null,
+                // Use contact_number field name but ensure data maps correctly
+                'contact_number' => $data['phone'] ?? null,
+                'address' => $data['address'] ?? null,
+            ];
+
+            // Create the patient and log for debugging
+            $patient = Patient::create($patientData);
+            Log::info('Patient created successfully', ['patient_id' => $patient->id]);
+
+            return $patient;
+        } catch (\Exception $e) {
+            Log::error('Error creating patient: ' . $e->getMessage(), [
+                'user_id' => $user->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e; // Re-throw to be caught by the transaction
+        }
     }
 }

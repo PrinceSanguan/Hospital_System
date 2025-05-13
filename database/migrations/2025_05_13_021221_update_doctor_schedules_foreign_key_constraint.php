@@ -12,7 +12,29 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // First, get the foreign key constraint name
+        // Skip PostgreSQL specific operations
+        if (DB::getDriverName() === 'pgsql') {
+            // For PostgreSQL, directly update the constraint without querying information_schema
+            try {
+                // Try to drop the constraint if it exists (might fail if it doesn't exist)
+                DB::statement('ALTER TABLE doctor_schedules DROP CONSTRAINT IF EXISTS doctor_schedules_doctor_id_foreign');
+
+                // Add new constraint
+                Schema::table('doctor_schedules', function (Blueprint $table) {
+                    $table->foreign('doctor_id')
+                        ->references('id')
+                        ->on('users')
+                        ->onDelete('cascade');
+                });
+            } catch (\Exception $e) {
+                // Log the error and continue
+                logger()->error('Error updating foreign key constraint: ' . $e->getMessage());
+            }
+
+            return;
+        }
+
+        // MySQL specific operations
         $foreignKeys = $this->getForeignKeyConstraintDetails();
         $foreignKeyName = null;
 
@@ -44,7 +66,28 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // First, drop the foreign key constraint to users if it exists
+        // Skip PostgreSQL specific operations
+        if (DB::getDriverName() === 'pgsql') {
+            try {
+                // Try to drop the constraint if it exists
+                DB::statement('ALTER TABLE doctor_schedules DROP CONSTRAINT IF EXISTS doctor_schedules_doctor_id_foreign');
+
+                // Add back original constraint
+                Schema::table('doctor_schedules', function (Blueprint $table) {
+                    $table->foreign('doctor_id')
+                        ->references('id')
+                        ->on('doctors')
+                        ->onDelete('cascade');
+                });
+            } catch (\Exception $e) {
+                // Log the error and continue
+                logger()->error('Error reverting foreign key constraint: ' . $e->getMessage());
+            }
+
+            return;
+        }
+
+        // MySQL specific operations
         $foreignKeys = $this->getForeignKeyConstraintDetails();
         $foreignKeyName = null;
 
@@ -75,9 +118,12 @@ return new class extends Migration
      */
     private function getForeignKeyConstraintDetails()
     {
+        // This method is only used for MySQL
+        $dbName = config('database.connections.mysql.database');
+
         return DB::table('information_schema.KEY_COLUMN_USAGE')
             ->select(['CONSTRAINT_NAME', 'COLUMN_NAME', 'REFERENCED_TABLE_NAME', 'REFERENCED_COLUMN_NAME'])
-            ->where('TABLE_SCHEMA', '=', config('database.connections.mysql.database'))
+            ->where('TABLE_SCHEMA', '=', $dbName)
             ->where('TABLE_NAME', '=', 'doctor_schedules')
             ->whereNotNull('REFERENCED_TABLE_NAME')
             ->get();
