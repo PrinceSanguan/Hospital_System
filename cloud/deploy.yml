@@ -1,0 +1,5 @@
+pull_requests: true
+run_deploy_script: true
+laravel:
+  script:
+    - 'cloud/deploy'

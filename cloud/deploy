@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+# Check if the database already has migrations table
+if php artisan db:table-exists migrations; then
+    # If migrations table exists, run migrations with --force
+    echo "Running migrations on existing database..."
+    php artisan migrate --force
+else
+    # If migrations table doesn't exist, run fresh migrations
+    echo "Setting up fresh database..."
+    php artisan migrate
+fi
+
+# Run other deployment commands
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
