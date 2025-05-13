@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use App\Models\Patient;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class PatientDashboardController extends Controller
 {
@@ -445,11 +447,63 @@ class PatientDashboardController extends Controller
     {
         $user = Auth::user();
 
+        // Get lab records from PatientRecord table (lab appointments)
         $labRecords = PatientRecord::with('assignedDoctor')
             ->where('patient_id', $user->id)
             ->where('record_type', 'laboratory')
             ->latest('updated_at')
             ->paginate(10);
+
+        // Find patient record linked to this user
+        $patient = \App\Models\Patient::where('user_id', $user->id)->first();
+
+        // Get uploaded lab results if patient record exists
+        $uploadedLabResults = [];
+        if ($patient) {
+            // Get lab results from LabResult table (uploaded files)
+            $uploadedLabResults = \App\Models\LabResult::where('patient_id', $patient->id)
+                ->latest('test_date')
+                ->get()
+                ->map(function ($result) {
+                    return [
+                        'id' => 'lab_' . $result->id, // Prefix to distinguish from PatientRecord IDs
+                        'patient_id' => $result->patient_id,
+                        'record_type' => 'laboratory_file',
+                        'appointment_date' => $result->test_date,
+                        'status' => 'completed',
+                        'details' => json_encode([
+                            'lab_type' => $result->test_type,
+                            'notes' => $result->notes,
+                            'reference_number' => 'PAT' . str_pad($result->id, 6, '0', STR_PAD_LEFT),
+                            'file_path' => $result->file_path,
+                            'result_date' => $result->created_at,
+                        ]),
+                        'created_at' => $result->created_at,
+                        'updated_at' => $result->updated_at,
+                        'is_file' => true
+                    ];
+                });
+        }
+
+        // Add uploaded lab results to paginated records
+        $labRecords->getCollection()->transform(function ($record) {
+            $record->is_file = false;
+            return $record;
+        });
+
+        // Combine both types of results if there are uploaded lab results
+        if (count($uploadedLabResults) > 0) {
+            $combinedRecords = $labRecords->getCollection()->concat($uploadedLabResults);
+            $combinedRecords = $combinedRecords->sortByDesc('updated_at')->values();
+
+            $labRecords->setCollection($combinedRecords->slice(
+                ($labRecords->currentPage() - 1) * $labRecords->perPage(),
+                $labRecords->perPage()
+            ));
+
+            // Update total count for pagination
+            $labRecords->total(count($combinedRecords));
+        }
 
         return Inertia::render('Patient/LabResults', [
             'user' => [
@@ -748,6 +802,75 @@ class PatientDashboardController extends Controller
                 'success' => false,
                 'message' => 'Error retrieving booked time slots: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Download lab result file
+     */
+    public function downloadLabResult($id)
+    {
+        try {
+            // Trim 'lab_' prefix if it exists in the ID
+            if (Str::startsWith($id, 'lab_')) {
+                $id = Str::replaceFirst('lab_', '', $id);
+            }
+
+            // Find patient record linked to this user
+            $user = Auth::user();
+            $patient = \App\Models\Patient::where('user_id', $user->id)->first();
+
+            if (!$patient) {
+                Log::error('Patient record not found for download', ['user_id' => $user->id]);
+                return back()->with('error', 'Patient record not found');
+            }
+
+            // Find the lab result
+            $labResult = \App\Models\LabResult::where('id', $id)
+                ->where('patient_id', $patient->id)
+                ->first();
+
+            if (!$labResult) {
+                Log::error('Lab result not found', ['id' => $id, 'patient_id' => $patient->id]);
+                return back()->with('error', 'Lab result not found');
+            }
+
+            // Check if file exists in storage
+            if (!Storage::exists($labResult->file_path)) {
+                Log::error('Lab result file not found in storage', [
+                    'id' => $labResult->id,
+                    'file_path' => $labResult->file_path
+                ]);
+                return back()->with('error', 'The lab result file could not be found');
+            }
+
+            // Force file to be downloaded with a content disposition
+            $filename = $labResult->test_type . '_results.' . pathinfo($labResult->file_path, PATHINFO_EXTENSION);
+
+            // Set the content type based on the file extension
+            $extension = pathinfo($labResult->file_path, PATHINFO_EXTENSION);
+            $contentType = 'application/pdf';
+            if (in_array($extension, ['jpg', 'jpeg'])) {
+                $contentType = 'image/jpeg';
+            } elseif ($extension === 'png') {
+                $contentType = 'image/png';
+            }
+
+            return Storage::download(
+                $labResult->file_path,
+                $filename,
+                [
+                    'Content-Type' => $contentType,
+                    'Content-Disposition' => 'attachment; filename="' . $filename . '"'
+                ]
+            );
+        } catch (\Exception $e) {
+            Log::error('Error downloading lab result', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return back()->with('error', 'Error downloading lab result: ' . $e->getMessage());
         }
     }
 }

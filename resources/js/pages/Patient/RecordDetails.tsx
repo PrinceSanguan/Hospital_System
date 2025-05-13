@@ -344,15 +344,15 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
                 <div className="text-center mb-2">
                   <h1 className="text-2xl font-bold">Medical Record</h1>
                   <p className="text-sm">Physician: {record.assignedDoctor?.name ? `Dr. ${record.assignedDoctor.name}` : 'Healthcare Provider'}</p>
-                </div>
+              </div>
 
                 {/* Horizontal line */}
                 <div className="border-t border-gray-300 my-4"></div>
 
-                {/* Introduction text */}
+              {/* Introduction text */}
                 <div className="text-sm mb-8">
-                  <p>The following information is a comprehensive medical record of the patient, intended for professional use only. This document ensures a detailed overview of the patient's medical history and current health status.</p>
-                </div>
+                <p>The following information is a comprehensive medical record of the patient, intended for professional use only. This document ensures a detailed overview of the patient's medical history and current health status.</p>
+            </div>
 
                 {/* Patient Info Table */}
                 <table className="w-full border-collapse mb-8">
@@ -393,7 +393,7 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
                     </tr>
                   </tbody>
                 </table>
-              </div>
+                  </div>
 
               {/* PRINT VIEW - hidden on screen, visible when printing */}
               <div className="hidden print:block mx-auto" style={{ maxWidth: '800px' }}>
@@ -419,7 +419,7 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
                 {/* Introduction */}
                 <div className="text-sm mb-4">
                   <p>The following information is a comprehensive medical record of the patient, intended for professional use only. This document ensures a detailed overview of the patient's medical history and current health status.</p>
-                </div>
+              </div>
 
                 {/* Patient Information Table */}
                 <table className="w-full border-collapse mb-8">
@@ -461,13 +461,13 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
                   </tbody>
                 </table>
 
-                {/* Medical History Section */}
-                <div className="mb-8">
+              {/* Medical History Section */}
+              <div className="mb-8">
                   <h2 className="text-xl font-bold mb-2">Medical History</h2>
                   <div>
-                    {details.medical_history ? (
+                  {details.medical_history ? (
                       <p className="whitespace-pre-line">{details.medical_history}</p>
-                    ) : details.diagnosis ? (
+                  ) : details.diagnosis ? (
                       <p className="whitespace-pre-line">{details.diagnosis}</p>
                     ) : (
                       <p>
@@ -475,158 +475,228 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
                         regular medication since. Patient also reports occasional migraines and has been treated
                         for these symptoms with prescribed medication. There is no known history of major
                         surgeries or hospitalizations in the past five years.
-                      </p>
-                    )}
+                    </p>
+                  )}
+                  </div>
                   </div>
                 </div>
-              </div>
 
               {/* Rest of the existing content - only visible on screen */}
               <div className="print:hidden">
                 {!isLabRecord && (
                   <>
-                    {/* Vital Signs */}
+                  {/* Vital Signs */}
                     {details.vital_signs && Object.keys(details.vital_signs).some(key =>
                       details.vital_signs![key] !== null && details.vital_signs![key] !== undefined && details.vital_signs![key] !== ''
                     ) && (
-                      <div className="mb-8">
-                        <h2 className="text-xl font-bold mb-4">Vital Signs</h2>
+                    <div className="mb-8">
+                      <h2 className="text-xl font-bold mb-4">Vital Signs</h2>
                         <div className="bg-white border rounded-md p-4 grid grid-cols-2 md:grid-cols-3 gap-4">
                           {details.vital_signs.temperature && (
                             <div>
-                              <p className="font-semibold text-gray-600">Temperature:</p>
-                              <p>{renderValue(details.vital_signs.temperature, '°C')}</p>
+                            <p className="font-semibold text-gray-600">Temperature:</p>
+                            <p>{renderValue(details.vital_signs.temperature, '°C')}</p>
                             </div>
                           )}
                           {details.vital_signs.blood_pressure && (
                             <div>
-                              <p className="font-semibold text-gray-600">Blood Pressure:</p>
-                              <p>{renderValue(details.vital_signs.blood_pressure, 'mmHg')}</p>
+                            <p className="font-semibold text-gray-600">Blood Pressure:</p>
+                            <p>{renderValue(details.vital_signs.blood_pressure, 'mmHg')}</p>
                             </div>
                           )}
                           {(details.vital_signs.pulse_rate || details.vital_signs.heart_rate) && (
                             <div>
-                              <p className="font-semibold text-gray-600">Heart Rate:</p>
-                              <p>{renderValue(details.vital_signs.pulse_rate || details.vital_signs.heart_rate, 'bpm')}</p>
+                            <p className="font-semibold text-gray-600">Heart Rate:</p>
+                            <p>{renderValue(details.vital_signs.pulse_rate || details.vital_signs.heart_rate, 'bpm')}</p>
                             </div>
                           )}
                           {details.vital_signs.respiratory_rate && (
                             <div>
-                              <p className="font-semibold text-gray-600">Respiratory Rate:</p>
-                              <p>{renderValue(details.vital_signs.respiratory_rate, 'breaths/min')}</p>
+                            <p className="font-semibold text-gray-600">Respiratory Rate:</p>
+                            <p>{renderValue(details.vital_signs.respiratory_rate, 'breaths/min')}</p>
                             </div>
                           )}
                           {details.vital_signs.oxygen_saturation && (
                             <div>
-                              <p className="font-semibold text-gray-600">Oxygen Saturation:</p>
-                              <p>{renderValue(details.vital_signs.oxygen_saturation, '%')}</p>
+                            <p className="font-semibold text-gray-600">Oxygen Saturation:</p>
+                            <p>{renderValue(details.vital_signs.oxygen_saturation, '%')}</p>
                             </div>
                           )}
                         </div>
                       </div>
                     )}
 
-                    {/* Diagnosis */}
-                    {details.diagnosis && !details.diagnosis.startsWith('{') && (
-                      <div className="mb-8">
-                        <h2 className="text-xl font-bold mb-4">Diagnosis</h2>
+                  {/* Diagnosis */}
+                        {details.diagnosis && !details.diagnosis.startsWith('{') && (
+                    <div className="mb-8">
+                      <h2 className="text-xl font-bold mb-4">Diagnosis</h2>
                         <div className="bg-white border rounded-md p-4">
-                          <p className="whitespace-pre-line">{renderValue(details.diagnosis)}</p>
-                        </div>
-                      </div>
-                    )}
+                            <p className="whitespace-pre-line">{renderValue(details.diagnosis)}</p>
+                          </div>
+                          </div>
+                        )}
 
-                    {/* Prescriptions Section */}
-                    {details.prescriptions && (
-                      <div className="mb-8">
-                        <h2 className="text-xl font-bold mb-4">Prescriptions</h2>
+                  {/* Prescriptions Section */}
+                        {details.prescriptions && (
+                    <div className="mb-8">
+                      <h2 className="text-xl font-bold mb-4">Prescriptions</h2>
                         <div className="bg-white border rounded-md p-4">
-                          <ul className="list-disc list-inside">
-                            {(() => {
-                              // Handle array of prescriptions
-                              if (Array.isArray(details.prescriptions)) {
-                                return details.prescriptions.map((prescription, index) => {
-                                  // Case 1: Prescription is already a string that looks like JSON
-                                  if (typeof prescription === 'string') {
-                                    // First try parsing as JSON
-                                    const parsedPrescription = tryParseJson<PrescriptionItem>(prescription);
-                                    if (parsedPrescription) {
+                            <ul className="list-disc list-inside">
+                              {(() => {
+                                // Handle array of prescriptions
+                                if (Array.isArray(details.prescriptions)) {
+                                  return details.prescriptions.map((prescription, index) => {
+                                    // Case 1: Prescription is already a string that looks like JSON
+                                    if (typeof prescription === 'string') {
+                                      // First try parsing as JSON
+                                      const parsedPrescription = tryParseJson<PrescriptionItem>(prescription);
+                                      if (parsedPrescription) {
+                                        return (
+                                          <li key={index} className="mb-3">
+                                            <div className="ml-2 mt-1">
+                                              <p className="font-medium">
+                                                {parsedPrescription.medication || ''}
+                                                {parsedPrescription.dosage ? ` - ${parsedPrescription.dosage}` : ''}
+                                              </p>
+                                              <div className="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-1 mt-1">
+                                                {parsedPrescription.frequency && (
+                                                  <span>Frequency: {parsedPrescription.frequency}</span>
+                                                )}
+                                                {parsedPrescription.duration && (
+                                                  <span>Duration: {parsedPrescription.duration} {parsedPrescription.duration === '1' ? 'day' : 'days'}</span>
+                                                )}
+                                                {parsedPrescription.instructions && (
+                                                  <span className="md:col-span-2">Instructions: {parsedPrescription.instructions}</span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </li>
+                                        );
+                                      }
+                                      // If parsing failed, just render as text
+                                      return <li key={index} className="mb-1">{renderValue(prescription)}</li>;
+                                    }
+
+                                    // Case 2: Prescription is already an object
+                                    if (typeof prescription === 'object' && prescription !== null) {
+                                      const prescObj = prescription as Record<string, string>;
                                       return (
                                         <li key={index} className="mb-3">
                                           <div className="ml-2 mt-1">
                                             <p className="font-medium">
-                                              {parsedPrescription.medication || ''}
-                                              {parsedPrescription.dosage ? ` - ${parsedPrescription.dosage}` : ''}
+                                              {prescObj.medication || ''}
+                                              {prescObj.dosage ? ` - ${prescObj.dosage}` : ''}
                                             </p>
                                             <div className="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-1 mt-1">
-                                              {parsedPrescription.frequency && (
-                                                <span>Frequency: {parsedPrescription.frequency}</span>
+                                              {prescObj.frequency && (
+                                                <span>Frequency: {prescObj.frequency}</span>
                                               )}
-                                              {parsedPrescription.duration && (
-                                                <span>Duration: {parsedPrescription.duration} {parsedPrescription.duration === '1' ? 'day' : 'days'}</span>
+                                              {prescObj.duration && (
+                                                <span>Duration: {prescObj.duration} {prescObj.duration === '1' ? 'day' : 'days'}</span>
                                               )}
-                                              {parsedPrescription.instructions && (
-                                                <span className="md:col-span-2">Instructions: {parsedPrescription.instructions}</span>
+                                              {prescObj.instructions && (
+                                                <span className="md:col-span-2">Instructions: {prescObj.instructions}</span>
                                               )}
                                             </div>
                                           </div>
                                         </li>
                                       );
                                     }
-                                    // If parsing failed, just render as text
-                                    return <li key={index} className="mb-1">{renderValue(prescription)}</li>;
-                                  }
 
-                                  // Case 2: Prescription is already an object
-                                  if (typeof prescription === 'object' && prescription !== null) {
-                                    const prescObj = prescription as Record<string, string>;
+                                    // Default case: Just render as text
+                                    return <li key={index} className="mb-1">{renderValue(prescription)}</li>;
+                                  });
+                                }
+
+                                // Handle object style prescriptions
+                                if (typeof details.prescriptions === 'object' && details.prescriptions !== null) {
+                                  return Object.entries(details.prescriptions as Record<string, string>).map(([key, value], index) => {
+                                    // Try to parse JSON string value
+                                    if (typeof value === 'string') {
+                                      const parsedValue = tryParseJson<PrescriptionItem>(value);
+                                      if (parsedValue) {
+                                        return (
+                                          <li key={index} className="mb-3">
+                                            <div className="ml-2 mt-1">
+                                              <p className="font-medium">
+                                                {parsedValue.medication || key}
+                                                {parsedValue.dosage ? ` - ${parsedValue.dosage}` : ''}
+                                              </p>
+                                              <div className="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-1 mt-1">
+                                                {Object.entries(parsedValue).map(([subKey, subValue]) =>
+                                                  subKey !== 'medication' && subKey !== 'dosage' ? (
+                                                    <span key={subKey} className={subKey === 'instructions' ? 'md:col-span-2' : ''}>
+                                                      {subKey.charAt(0).toUpperCase() + subKey.slice(1)}: {subValue}
+                                                    </span>
+                                                  ) : null
+                                                )}
+                                              </div>
+                                            </div>
+                                          </li>
+                                        );
+                                      }
+                                    }
+
                                     return (
-                                      <li key={index} className="mb-3">
-                                        <div className="ml-2 mt-1">
-                                          <p className="font-medium">
-                                            {prescObj.medication || ''}
-                                            {prescObj.dosage ? ` - ${prescObj.dosage}` : ''}
-                                          </p>
-                                          <div className="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-1 mt-1">
-                                            {prescObj.frequency && (
-                                              <span>Frequency: {prescObj.frequency}</span>
-                                            )}
-                                            {prescObj.duration && (
-                                              <span>Duration: {prescObj.duration} {prescObj.duration === '1' ? 'day' : 'days'}</span>
-                                            )}
-                                            {prescObj.instructions && (
-                                              <span className="md:col-span-2">Instructions: {prescObj.instructions}</span>
-                                            )}
-                                          </div>
-                                        </div>
+                                      <li key={index} className="mb-1">
+                                        <span className="font-semibold">{key}:</span> {renderValue(value)}
                                       </li>
                                     );
+                                  });
+                                }
+
+                                // Handle string prescription that might be JSON
+                                if (typeof details.prescriptions === 'string') {
+                                  // Try parsing as a JSON array first
+                                  if (details.prescriptions.startsWith('[')) {
+                                    const parsedArray = tryParseJson<PrescriptionItem[]>(details.prescriptions);
+                                    if (parsedArray && Array.isArray(parsedArray)) {
+                                      return parsedArray.map((item, index) => {
+                                        if (typeof item === 'object' && item !== null) {
+                                          const prescObj = item as PrescriptionItem;
+                                          return (
+                                            <li key={index} className="mb-3">
+                                              <div className="ml-2 mt-1">
+                                                <p className="font-medium">
+                                                  {prescObj.medication || ''}
+                                                  {prescObj.dosage ? ` - ${prescObj.dosage}` : ''}
+                                                </p>
+                                                <div className="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-1 mt-1">
+                                                  {prescObj.frequency && (
+                                                    <span>Frequency: {prescObj.frequency}</span>
+                                                  )}
+                                                  {prescObj.duration && (
+                                                    <span>Duration: {prescObj.duration} {prescObj.duration === '1' ? 'day' : 'days'}</span>
+                                                  )}
+                                                  {prescObj.instructions && (
+                                                    <span className="md:col-span-2">Instructions: {prescObj.instructions}</span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </li>
+                                          );
+                                        }
+                                        return <li key={index} className="mb-1">{renderValue(item)}</li>;
+                                      });
+                                    }
                                   }
 
-                                  // Default case: Just render as text
-                                  return <li key={index} className="mb-1">{renderValue(prescription)}</li>;
-                                });
-                              }
-
-                              // Handle object style prescriptions
-                              if (typeof details.prescriptions === 'object' && details.prescriptions !== null) {
-                                return Object.entries(details.prescriptions as Record<string, string>).map(([key, value], index) => {
-                                  // Try to parse JSON string value
-                                  if (typeof value === 'string') {
-                                    const parsedValue = tryParseJson<PrescriptionItem>(value);
-                                    if (parsedValue) {
+                                  // Try parsing as a JSON object
+                                  if (details.prescriptions.startsWith('{')) {
+                                    const parsedPrescription = tryParseJson<PrescriptionItem>(details.prescriptions);
+                                    if (parsedPrescription) {
                                       return (
-                                        <li key={index} className="mb-3">
+                                        <li className="mb-3">
                                           <div className="ml-2 mt-1">
                                             <p className="font-medium">
-                                              {parsedValue.medication || key}
-                                              {parsedValue.dosage ? ` - ${parsedValue.dosage}` : ''}
+                                              {parsedPrescription.medication || ''}
+                                              {parsedPrescription.dosage ? ` - ${parsedPrescription.dosage}` : ''}
                                             </p>
                                             <div className="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-1 mt-1">
-                                              {Object.entries(parsedValue).map(([subKey, subValue]) =>
-                                                subKey !== 'medication' && subKey !== 'dosage' ? (
-                                                  <span key={subKey} className={subKey === 'instructions' ? 'md:col-span-2' : ''}>
-                                                    {subKey.charAt(0).toUpperCase() + subKey.slice(1)}: {subValue}
+                                              {Object.entries(parsedPrescription).map(([key, value]) =>
+                                                key !== 'medication' && key !== 'dosage' ? (
+                                                  <span key={key} className={key === 'instructions' ? 'md:col-span-2' : ''}>
+                                                    {key.charAt(0).toUpperCase() + key.slice(1)}: {value}
                                                   </span>
                                                 ) : null
                                               )}
@@ -637,174 +707,104 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
                                     }
                                   }
 
-                                  return (
-                                    <li key={index} className="mb-1">
-                                      <span className="font-semibold">{key}:</span> {renderValue(value)}
-                                    </li>
-                                  );
-                                });
-                              }
-
-                              // Handle string prescription that might be JSON
-                              if (typeof details.prescriptions === 'string') {
-                                // Try parsing as a JSON array first
-                                if (details.prescriptions.startsWith('[')) {
-                                  const parsedArray = tryParseJson<PrescriptionItem[]>(details.prescriptions);
-                                  if (parsedArray && Array.isArray(parsedArray)) {
-                                    return parsedArray.map((item, index) => {
-                                      if (typeof item === 'object' && item !== null) {
-                                        const prescObj = item as PrescriptionItem;
-                                        return (
-                                          <li key={index} className="mb-3">
-                                            <div className="ml-2 mt-1">
-                                              <p className="font-medium">
-                                                {prescObj.medication || ''}
-                                                {prescObj.dosage ? ` - ${prescObj.dosage}` : ''}
-                                              </p>
-                                              <div className="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-1 mt-1">
-                                                {prescObj.frequency && (
-                                                  <span>Frequency: {prescObj.frequency}</span>
-                                                )}
-                                                {prescObj.duration && (
-                                                  <span>Duration: {prescObj.duration} {prescObj.duration === '1' ? 'day' : 'days'}</span>
-                                                )}
-                                                {prescObj.instructions && (
-                                                  <span className="md:col-span-2">Instructions: {prescObj.instructions}</span>
-                                                )}
-                                              </div>
-                                            </div>
-                                          </li>
-                                        );
-                                      }
-                                      return <li key={index} className="mb-1">{renderValue(item)}</li>;
-                                    });
-                                  }
+                                  // Default: render as plain text
+                                  return <li>{renderValue(details.prescriptions)}</li>;
                                 }
 
-                                // Try parsing as a JSON object
-                                if (details.prescriptions.startsWith('{')) {
-                                  const parsedPrescription = tryParseJson<PrescriptionItem>(details.prescriptions);
-                                  if (parsedPrescription) {
-                                    return (
-                                      <li className="mb-3">
-                                        <div className="ml-2 mt-1">
-                                          <p className="font-medium">
-                                            {parsedPrescription.medication || ''}
-                                            {parsedPrescription.dosage ? ` - ${parsedPrescription.dosage}` : ''}
-                                          </p>
-                                          <div className="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-1 mt-1">
-                                            {Object.entries(parsedPrescription).map(([key, value]) =>
-                                              key !== 'medication' && key !== 'dosage' ? (
-                                                <span key={key} className={key === 'instructions' ? 'md:col-span-2' : ''}>
-                                                  {key.charAt(0).toUpperCase() + key.slice(1)}: {value}
-                                                </span>
-                                              ) : null
-                                            )}
-                                          </div>
-                                        </div>
-                                      </li>
-                                    );
-                                  }
-                                }
-
-                                // Default: render as plain text
-                                return <li>{renderValue(details.prescriptions)}</li>;
-                              }
-
-                              // Fallback
-                              return <li>No prescription information available</li>;
-                            })()}
-                          </ul>
-                        </div>
+                                // Fallback
+                                return <li>No prescription information available</li>;
+                              })()}
+                            </ul>
                       </div>
-                    )}
+                          </div>
+                        )}
 
-                    {/* Treatments */}
-                    {details.treatments && (
-                      <div className="mb-8">
-                        <h2 className="text-xl font-bold mb-4">Treatments</h2>
+                  {/* Treatments */}
+                        {details.treatments && (
+                    <div className="mb-8">
+                      <h2 className="text-xl font-bold mb-4">Treatments</h2>
                         <div className="bg-white border rounded-md p-4">
-                          <p className="whitespace-pre-line">{renderValue(details.treatments)}</p>
-                        </div>
+                            <p className="whitespace-pre-line">{renderValue(details.treatments)}</p>
                       </div>
-                    )}
+                    </div>
+                  )}
                   </>
                 )}
 
-                {/* Lab Results */}
+              {/* Lab Results */}
                 {isLabRecord && details.results && (
-                  <div className="mb-8">
-                    <h2 className="text-xl font-bold mb-4">Test Results</h2>
+                <div className="mb-8">
+                  <h2 className="text-xl font-bold mb-4">Test Results</h2>
                     <div className="bg-white border rounded-md p-4">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-2 font-medium">Test</th>
-                            <th className="text-left py-2 font-medium">Result</th>
-                            <th className="text-left py-2 font-medium">Reference Range</th>
-                            <th className="text-left py-2 font-medium">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Object.entries(details.results || {}).map(([test, result]) => (
-                            <tr key={test} className="border-b">
-                              <td className="py-2 font-medium">{test}</td>
-                              <td className="py-2">{renderValue(result.value)}</td>
-                              <td className="py-2">{renderValue(result.range || 'N/A')}</td>
-                              <td className="py-2">
-                                <Badge className={
-                                  result.status === 'normal' ? 'bg-green-100 text-green-800' :
-                                  result.status === 'abnormal' ? 'bg-red-100 text-red-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }>
-                                  {renderValue(result.status || 'Not specified')}
-                                </Badge>
-                              </td>
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="text-left py-2 font-medium">Test</th>
+                              <th className="text-left py-2 font-medium">Result</th>
+                              <th className="text-left py-2 font-medium">Reference Range</th>
+                              <th className="text-left py-2 font-medium">Status</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {Object.entries(details.results || {}).map(([test, result]) => (
+                              <tr key={test} className="border-b">
+                                <td className="py-2 font-medium">{test}</td>
+                                <td className="py-2">{renderValue(result.value)}</td>
+                                <td className="py-2">{renderValue(result.range || 'N/A')}</td>
+                                <td className="py-2">
+                                  <Badge className={
+                                    result.status === 'normal' ? 'bg-green-100 text-green-800' :
+                                    result.status === 'abnormal' ? 'bg-red-100 text-red-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }>
+                                    {renderValue(result.status || 'Not specified')}
+                                  </Badge>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
                 )}
 
                 {/* Notes */}
-                {details.notes && (
-                  <div className="mb-8">
-                    <h2 className="text-xl font-bold mb-4">Notes</h2>
+              {details.notes && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-bold mb-4">Notes</h2>
                     <div className="bg-white border rounded-md p-4">
                       <p className="whitespace-pre-line">{renderValue(details.notes)}</p>
-                    </div>
                   </div>
-                )}
+                </div>
+              )}
 
                 {/* Instructions for lab records */}
                 {isLabRecord && details.instructions && (
-                  <div className="mb-8">
-                    <h2 className="text-xl font-bold mb-4">Instructions</h2>
+                <div className="mb-8">
+                  <h2 className="text-xl font-bold mb-4">Instructions</h2>
                     <div className="bg-white border rounded-md p-4">
-                      <p className="whitespace-pre-line">{renderValue(details.instructions)}</p>
+                        <p className="whitespace-pre-line">{renderValue(details.instructions)}</p>
+                      </div>
                     </div>
-                  </div>
-                )}
+              )}
 
-                {/* Signature section */}
+              {/* Signature section */}
                 <div className="mt-10">
-                  <Separator className="mb-6" />
-                  <div className="grid grid-cols-2 gap-8">
-                    <div>
-                      <p className="font-semibold mb-6">Attending Physician:</p>
-                      <div className="h-px-24 border-b border-dashed border-gray-400 w-3/4 mb-2"></div>
-                      <p>Dr. {record.assignedDoctor?.name || 'Unassigned'}</p>
-                      <p className="text-xs text-gray-500 mt-1">Physician Signature</p>
-                    </div>
-                    <div>
-                      <p className="font-semibold mb-6">Date:</p>
-                      <div className="h-px-24 border-b border-dashed border-gray-400 w-3/4 mb-2"></div>
-                      <p className="text-xs text-gray-500 mt-1">Signature Date</p>
-                    </div>
+                <Separator className="mb-6" />
+                <div className="grid grid-cols-2 gap-8">
+                  <div>
+                    <p className="font-semibold mb-6">Attending Physician:</p>
+                    <div className="h-px-24 border-b border-dashed border-gray-400 w-3/4 mb-2"></div>
+                    <p>Dr. {record.assignedDoctor?.name || 'Unassigned'}</p>
+                    <p className="text-xs text-gray-500 mt-1">Physician Signature</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold mb-6">Date:</p>
+                    <div className="h-px-24 border-b border-dashed border-gray-400 w-3/4 mb-2"></div>
+                    <p className="text-xs text-gray-500 mt-1">Signature Date</p>
                   </div>
                 </div>
+              </div>
               </div>
             </CardContent>
           </Card>

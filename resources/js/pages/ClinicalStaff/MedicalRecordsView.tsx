@@ -218,7 +218,7 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
 
     // Check for assigned_doctor_id field first (from the appointments table)
     if (record.assigned_doctor_id) {
-      return {
+            return {
         name: record.assignedDoctor?.name || `Doctor #${record.assigned_doctor_id}`,
         email: record.assignedDoctor?.email,
         specialty: record.assignedDoctor?.specialty || 'Assigned Specialist',
