@@ -1,13 +1,19 @@
+import { useState } from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileDown, UserPlus, User, Stethoscope, FileText } from 'lucide-react';
-import { useState } from 'react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import {
     LineChart, Line, BarChart, Bar, PieChart, Pie,
-    ResponsiveContainer, XAxis, YAxis, CartesianGrid,
-    Tooltip, Legend, Cell
+    XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+    ResponsiveContainer, Cell
 } from 'recharts';
 
 interface User {
@@ -61,9 +67,10 @@ interface ReportsProps {
 
 export default function Reports({ user, stats, charts }: ReportsProps) {
     const [activeTab, setActiveTab] = useState('appointment');
+    const [reportType, setReportType] = useState('summary');
 
     const handleDownloadReport = () => {
-        window.location.href = route('admin.reports.download');
+        window.location.href = route('admin.reports.download', { type: reportType });
     };
 
     return (
@@ -74,10 +81,26 @@ export default function Reports({ user, stats, charts }: ReportsProps) {
                         <h1 className="text-2xl font-bold tracking-tight">Reports & Analytics</h1>
                         <p className="text-muted-foreground">View and download reports based on clinic data.</p>
                     </div>
-                    <Button onClick={handleDownloadReport}>
-                        <FileDown className="mr-2 h-4 w-4" />
-                        Download Report
-                    </Button>
+                    <div className="flex space-x-2">
+                        <Select
+                            value={reportType}
+                            onValueChange={setReportType}
+                        >
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="Select report type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="summary">Summary Report</SelectItem>
+                                <SelectItem value="patient">Patient Report</SelectItem>
+                                <SelectItem value="appointment">Appointment Report</SelectItem>
+                                <SelectItem value="financial">Financial Report</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Button onClick={handleDownloadReport}>
+                            {/* Download icon placeholder */}
+                            Download Report
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Overview Stats */}
@@ -90,7 +113,7 @@ export default function Reports({ user, stats, charts }: ReportsProps) {
                                     <p className="text-3xl font-bold">{stats.users.patients}</p>
                                 </div>
                                 <div className="rounded-full bg-blue-100 p-3 text-blue-600">
-                                    <User size={20} />
+                                    {/* User icon placeholder */}
                                 </div>
                             </div>
                         </CardContent>
@@ -104,7 +127,7 @@ export default function Reports({ user, stats, charts }: ReportsProps) {
                                     <p className="text-3xl font-bold">{stats.users.doctors}</p>
                                 </div>
                                 <div className="rounded-full bg-green-100 p-3 text-green-600">
-                                    <Stethoscope size={20} />
+                                    {/* Doctor icon placeholder */}
                                 </div>
                             </div>
                         </CardContent>
@@ -118,7 +141,7 @@ export default function Reports({ user, stats, charts }: ReportsProps) {
                                     <p className="text-3xl font-bold">{stats.users.new_this_month}</p>
                                 </div>
                                 <div className="rounded-full bg-purple-100 p-3 text-purple-600">
-                                    <UserPlus size={20} />
+                                    {/* UserPlus icon placeholder */}
                                 </div>
                             </div>
                         </CardContent>
@@ -132,7 +155,7 @@ export default function Reports({ user, stats, charts }: ReportsProps) {
                                     <p className="text-3xl font-bold">{stats.appointments.this_month}</p>
                                 </div>
                                 <div className="rounded-full bg-amber-100 p-3 text-amber-600">
-                                    <FileText size={20} />
+                                    {/* FileText icon placeholder */}
                                 </div>
                             </div>
                         </CardContent>
@@ -257,46 +280,6 @@ export default function Reports({ user, stats, charts }: ReportsProps) {
                         </Card>
                     </TabsContent>
                 </Tabs>
-
-                {/* Exportable Data Report */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Downloadable Reports</CardTitle>
-                        <CardDescription>
-                            Generate detailed reports for your clinic records
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid gap-4 md:grid-cols-3">
-                            <div className="rounded-lg border p-4">
-                                <h3 className="font-medium">Patient Report</h3>
-                                <p className="text-sm text-muted-foreground">Detailed patient statistics and demographics</p>
-                                <Button variant="outline" className="mt-4 w-full">
-                                    <FileDown className="mr-2 h-4 w-4" />
-                                    Download PDF
-                                </Button>
-                            </div>
-
-                            <div className="rounded-lg border p-4">
-                                <h3 className="font-medium">Appointment Report</h3>
-                                <p className="text-sm text-muted-foreground">Appointment trends and statistics</p>
-                                <Button variant="outline" className="mt-4 w-full">
-                                    <FileDown className="mr-2 h-4 w-4" />
-                                    Download PDF
-                                </Button>
-                            </div>
-
-                            <div className="rounded-lg border p-4">
-                                <h3 className="font-medium">Financial Report</h3>
-                                <p className="text-sm text-muted-foreground">Clinic revenue and transaction summary</p>
-                                <Button variant="outline" className="mt-4 w-full">
-                                    <FileDown className="mr-2 h-4 w-4" />
-                                    Download PDF
-                                </Button>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
             </div>
         </AdminLayout>
     );
