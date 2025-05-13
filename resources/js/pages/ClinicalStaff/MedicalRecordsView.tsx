@@ -673,7 +673,7 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
               {/* Medical History */}
               <h2 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '15px' }}>
                 Medical History
-              </h2>
+            </h2>
               <p style={{ lineHeight: '1.5' }}>
                 {record.patient?.name || 'The patient'} has a history of {details.diagnosis || 'medical conditions'},
                 diagnosed in {new Date(record.created_at).getFullYear()}, and has been under
