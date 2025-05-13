@@ -2,9 +2,9 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vite build",
-        "build:cloud": "LARAVEL_CLOUD=true NODE_ENV=production vite build --mode production",
-        "build:ssr": "vite build && vite build --ssr",
+        "build": "npx vite build",
+        "build:cloud": "LARAVEL_CLOUD=true NODE_ENV=production npx vite build --mode production",
+        "build:ssr": "npx vite build && npx vite build --ssr",
         "dev": "vite",
         "format": "prettier --write resources/",
         "format:check": "prettier --check resources/",
