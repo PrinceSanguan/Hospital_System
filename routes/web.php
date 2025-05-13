@@ -274,13 +274,14 @@ Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staf
   Route::put('/lab-records/{id}/results', [LabRecordsController::class, 'updateResults'])->name('lab.records.results');
   Route::delete('/lab-records/{id}', [LabRecordsController::class, 'destroy'])->name('lab.records.destroy');
   Route::get('/lab-records/pending/list', [LabRecordsController::class, 'pending'])->name('lab.records.pending');
+  Route::get('/lab-records/{id}/download', [LabRecordsController::class, 'downloadResults'])->name('lab.records.download');
 
   // Appointments Management
   Route::get('/appointments', [AppointmentsController::class, 'index'])->name('appointments.index');
   Route::get('/appointments/{id}', [AppointmentsController::class, 'show'])->name('appointments.show');
   Route::get('/appointments/{id}/edit', [AppointmentsController::class, 'edit'])->name('appointments.edit');
   Route::put('/appointments/{id}', [AppointmentsController::class, 'update'])->name('appointments.update');
-  Route::put('/appointments/{id}/status', [AppointmentsController::class, 'updateStatus'])->name('appointments.status');
+  Route::match(['put', 'post'], '/appointments/{id}/status', [AppointmentsController::class, 'updateStatus'])->name('appointments.status');
   Route::get('/appointments/{id}/pdf', [AppointmentsController::class, 'generatePdf'])->name('appointments.pdf');
   Route::get('/appointments/{id}/receipt', [AppointmentsController::class, 'createReceipt'])->name('appointments.receipt');
 

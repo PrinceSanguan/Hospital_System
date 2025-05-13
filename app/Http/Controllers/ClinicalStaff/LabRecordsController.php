@@ -230,4 +230,44 @@ class LabRecordsController extends Controller
 
         return response()->json($pendingLabRecords);
     }
+
+    /**
+     * Download lab results as PDF
+     *
+     * @param int $id
+     * @return \Illuminate\Http\Response
+     */
+    public function downloadResults($id)
+    {
+        try {
+            $labRecord = \App\Models\PatientRecord::where('id', $id)
+                ->where('record_type', 'laboratory_test')
+                ->with(['patient', 'assignedDoctor'])
+                ->firstOrFail();
+
+            // Get the lab result data
+            $data = [
+                'record' => $labRecord,
+                'patient' => $labRecord->patient,
+                'doctor' => $labRecord->assignedDoctor,
+                'results' => json_decode($labRecord->lab_results ?? '{}', true),
+                'date' => now()->format('F d, Y'),
+                'hospital_name' => 'Choros Medical Center',
+                'hospital_address' => '123 Medical Drive, Healthcare City',
+                'hospital_contact' => '+1 234 567 8900',
+            ];
+
+            // Generate PDF filename
+            $filename = 'lab_results_' . $labRecord->id . '_' . date('Ymd') . '.pdf';
+
+            // Create PDF view
+            $pdf = \PDF::loadView('pdf.lab_results', $data);
+
+            // Return the PDF as a download
+            return $pdf->download($filename);
+        } catch (\Exception $e) {
+            \Log::error('Error generating lab results PDF: ' . $e->getMessage());
+            return back()->with('error', 'Error generating PDF. Please try again later.');
+        }
+    }
 }

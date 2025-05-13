@@ -26,7 +26,11 @@ class PatientsController extends Controller
                     'id' => $patient->id,
                     'name' => $patient->name,
                     'reference_number' => $patient->reference_number,
-                    // Add other patient fields as needed
+                    'gender' => $patient->gender,
+                    'date_of_birth' => $patient->date_of_birth,
+                    'contact_number' => $patient->contact_number,
+                    'address' => $patient->address,
+                    'user_id' => $patient->user_id
                 ]
             ]);
         } catch (\Exception $e) {

@@ -7,7 +7,7 @@ import { useState } from 'react';
 export default function Register() {
   const [activeTab, setActiveTab] = useState(0);
 
-  const { data, setData, post, processing, errors } = useForm({
+  const { data, setData, post, processing, errors, reset } = useForm({
     name: '',
     email: '',
     password: '',
@@ -20,7 +20,16 @@ export default function Register() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    post(route('auth.register.store'));
+
+    // Use the post method from Inertia with the route and options
+    post(route('auth.register.store'), {
+      onSuccess: () => {
+        // Optionally reset the form after successful submission
+        reset();
+      },
+      // Preserve the scroll position
+      preserveScroll: true,
+    });
   };
 
   const nextTab = () => {

@@ -99,13 +99,20 @@ export default function Receipts({ receipts, auth }: { receipts: { data: Receipt
                 .then(response => {
                     if (response.data.success && response.data.patient) {
                         const patient = response.data.patient;
+                        console.log("Retrieved patient from API:", patient);
                         setSelectedPatient(patient);
                         setData('patient_id', patient.id.toString());
 
                         // Set appointment ID if provided
                         if (appointmentId) {
+                            console.log(`Setting appointment_id to ${appointmentId}`);
                             setData('appointment_id', appointmentId);
+
+                            // Also set a default description
+                            setData('description', 'Consultation Fee');
                         }
+                    } else {
+                        console.error('Patient data not found in response', response.data);
                     }
                 })
                 .catch(error => {
@@ -201,6 +208,7 @@ export default function Receipts({ receipts, auth }: { receipts: { data: Receipt
                                                 <PatientSearch
                                                     onSelect={handlePatientSelect}
                                                     required={true}
+                                                    initialPatient={selectedPatient}
                                                 />
 
                                                 {selectedPatient && (

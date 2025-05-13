@@ -11,6 +11,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, parseISO } from 'date-fns';
 import { EyeIcon, PrinterIcon, PencilIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import {
+    Dialog,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface User {
     id: number;
@@ -25,22 +33,61 @@ interface Patient {
     email: string;
 }
 
+interface UploadedFile {
+    name: string;
+    path: string;
+    size?: number;
+    type?: string;
+    url?: string;
+}
+
+interface AppointmentDetails {
+    appointment_time?: string;
+    reason?: string;
+    notes?: string;
+    patient_info?: {
+        name?: string;
+        birthdate?: string;
+        age?: number;
+        height?: number;
+        weight?: number;
+        bmi?: number;
+        address?: string;
+    };
+    vital_signs?: {
+        temperature?: number;
+        pulse_rate?: number;
+        respiratory_rate?: number;
+        blood_pressure?: string;
+        oxygen_saturation?: number;
+        recorded_at?: string;
+    };
+    service?: {
+        id?: number;
+        name?: string;
+        price?: number;
+        duration_minutes?: number;
+    };
+    uploaded_files?: UploadedFile[];
+}
+
 interface Appointment {
     id: number;
     patient: Patient;
     record_type: string;
     appointment_date: string;
     status: string;
-    details: string;
+    details: AppointmentDetails | string; // Can be either parsed object or string JSON
     reference_number?: string;
     assigned_doctor_id?: number;
     doctor?: {
         id: number;
         name: string;
-        email: string;
     };
     appointment_type?: string;
     reason?: string;
+    has_lab_results?: boolean;
+    has_medical_record?: boolean;
 }
 
 interface AppointmentsProps {
@@ -53,6 +100,9 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [typeFilter, setTypeFilter] = useState('all');
+    const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+    const [showPrintDialog, setShowPrintDialog] = useState(false);
+    const [printType, setPrintType] = useState<'lab' | 'record' | 'receipt' | null>(null);
 
     // Sort appointments: Pending first, then Completed/Done
     useEffect(() => {
@@ -103,10 +153,20 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
     };
 
     // Extract appointment time from details
-    const getAppointmentTime = (details: string) => {
+    const getAppointmentTime = (details: AppointmentDetails | string): string => {
         try {
-            const detailsObj = JSON.parse(details);
-            return detailsObj.appointment_time || 'N/A';
+            // If details is already an object
+            if (typeof details === 'object' && details !== null) {
+                return details.appointment_time || 'N/A';
+            }
+
+            // If details is a string, try to parse it
+            if (typeof details === 'string') {
+                const detailsObj = JSON.parse(details) as AppointmentDetails;
+                return detailsObj.appointment_time || 'N/A';
+            }
+
+            return 'N/A';
         } catch {
             return 'N/A';
         }
@@ -128,9 +188,34 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
         }
     };
 
-    // Download appointment as PDF
-    const downloadAppointment = (id: number) => {
-        window.open(route('staff.appointments.pdf', id), '_blank');
+    // Open print dialog
+    const openPrintDialog = (appointment: Appointment, type: 'lab' | 'record' | 'receipt') => {
+        setSelectedAppointment(appointment);
+        setPrintType(type);
+        setShowPrintDialog(true);
+    };
+
+    // Handle print document
+    const handlePrintDocument = () => {
+        if (!selectedAppointment || !printType) return;
+
+        let url = '';
+        switch(printType) {
+            case 'lab':
+                url = route('staff.lab-results.download', selectedAppointment.id);
+                break;
+            case 'record':
+                url = route('staff.appointments.pdf', selectedAppointment.id);
+                break;
+            case 'receipt':
+                url = route('staff.receipts.download', selectedAppointment.id);
+                break;
+        }
+
+        window.open(url, '_blank');
+        setShowPrintDialog(false);
+        setSelectedAppointment(null);
+        setPrintType(null);
     };
 
     // Create receipt for appointment
@@ -254,35 +339,68 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                                                     <TableCell>{getStatusBadge(appointment.status)}</TableCell>
                                                     <TableCell>
                                                         <div className="flex items-center justify-center space-x-2">
-                                                            <Button asChild variant="ghost" size="icon" title="View">
-                                                                <Link href={route('staff.appointments.show', appointment.id)}>
-                                                                    <EyeIcon className="h-4 w-4" />
-                                                                </Link>
-                                                            </Button>
+                                                            {/* Simple Action Buttons - Only 4 as requested */}
+                                                            <TooltipProvider>
+                                                                {/* View Button */}
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button asChild variant="ghost" size="icon">
+                                                                            <Link href={route('staff.appointments.show', appointment.id)}>
+                                                                                <EyeIcon className="h-4 w-4" />
+                                                                            </Link>
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        <p>View Record</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
 
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                title="Print"
-                                                                onClick={() => downloadAppointment(appointment.id)}
-                                                            >
-                                                                <PrinterIcon className="h-4 w-4" />
-                                                            </Button>
+                                                                {/* Print Button */}
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            onClick={() => openPrintDialog(appointment, 'record')}
+                                                                        >
+                                                                            <PrinterIcon className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        <p>Print Record</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
 
-                                                            <Button asChild variant="ghost" size="icon" title="Edit">
-                                                                <Link href={route('staff.appointments.edit', appointment.id)}>
-                                                                    <PencilIcon className="h-4 w-4" />
-                                                                </Link>
-                                                            </Button>
+                                                                {/* Edit Button */}
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button asChild variant="ghost" size="icon">
+                                                                            <Link href={route('staff.appointments.edit', appointment.id)}>
+                                                                                <PencilIcon className="h-4 w-4" />
+                                                                            </Link>
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        <p>Edit Record</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
 
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                title="Create Receipt"
-                                                                onClick={() => createReceipt(appointment.id)}
-                                                            >
-                                                                <DocumentTextIcon className="h-4 w-4" />
-                                                            </Button>
+                                                                {/* Receipt Button */}
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            onClick={() => createReceipt(appointment.id)}
+                                                                        >
+                                                                            <DocumentTextIcon className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        <p>Create Receipt</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            </TooltipProvider>
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>
@@ -312,6 +430,40 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                     </div>
                 </main>
             </div>
+
+            {/* Print Dialog */}
+            <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {printType === 'lab' ? 'Print Lab Results' :
+                             printType === 'record' ? 'Print Medical Record' : 'Print Receipt'}
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    <div className="py-4">
+                        <p className="text-sm text-gray-500 mb-4">
+                            You are about to print the
+                            {printType === 'lab' ? ' lab results' :
+                             printType === 'record' ? ' medical record' : ' receipt'}
+                            for {selectedAppointment?.patient.name}.
+                        </p>
+
+                        <p className="text-sm font-medium">
+                            This will open a new tab with the document ready for printing.
+                        </p>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowPrintDialog(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handlePrintDocument}>
+                            Print Document
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

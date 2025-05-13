@@ -16,6 +16,7 @@ interface PatientSearchProps {
   className?: string;
   placeholder?: string;
   required?: boolean;
+  initialPatient?: Patient | null;
 }
 
 export default function PatientSearch({
@@ -23,11 +24,12 @@ export default function PatientSearch({
   label = 'Search Patient (Name or Reference #)',
   className = '',
   placeholder = 'Enter patient name or reference number',
-  required = false
+  required = false,
+  initialPatient = null
 }: PatientSearchProps) {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(initialPatient ? initialPatient.reference_number : '');
   const [searchResults, setSearchResults] = useState<Patient[]>([]);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(initialPatient);
   const [isLoading, setIsLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -117,6 +119,21 @@ export default function PatientSearch({
       setError(null);
     }
   }, [searchTerm]);
+
+  // Initialize with initial patient if provided
+  useEffect(() => {
+    if (initialPatient) {
+      handlePatientSelect(initialPatient);
+    }
+  }, [initialPatient]);
+
+  // If initialPatient changes, update the selectedPatient and searchTerm
+  useEffect(() => {
+    if (initialPatient) {
+      setSelectedPatient(initialPatient);
+      setSearchTerm(initialPatient.reference_number);
+    }
+  }, [initialPatient]);
 
   const handlePatientSelect = (patient: Patient) => {
     console.log('Patient selected:', patient);

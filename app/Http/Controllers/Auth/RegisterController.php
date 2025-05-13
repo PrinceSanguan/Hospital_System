@@ -8,6 +8,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use App\Models\Patient;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class RegisterController extends Controller
 {
@@ -21,37 +23,66 @@ class RegisterController extends Controller
     // Store registration data
     public function store(Request $request)
     {
-        // Validate request
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:6|confirmed',
-            'date_of_birth' => 'required|date|before:today',
-            'gender' => 'required|in:male,female,other',
-            'phone' => 'required|string|max:20',
-            'address' => 'required|string|max:500',
-        ]);
+        try {
+            // Check database connection
+            $connection = DB::connection()->getPdo();
+            Log::info("Connected to database: " . config('database.default'));
 
-        // Create a new user with patient role
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'user_role' => User::ROLE_PATIENT, // Automatically set as patient
-        ]);
+            // Validate request
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|unique:users,email',
+                'password' => 'required|min:6|confirmed',
+                'date_of_birth' => 'required|date|before:today',
+                'gender' => 'required|in:male,female,other',
+                'phone' => 'required|string|max:20',
+                'address' => 'required|string|max:500',
+            ]);
 
-        // Create a new patient record
-        $this->createPatient($user, [
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'address' => $request->address,
-            'date_of_birth' => $request->date_of_birth,
-            'gender' => $request->gender,
-        ]);
+            // Start transaction to ensure both user and patient are created or neither
+            DB::beginTransaction();
 
-        // Redirect to login or dashboard
-        return redirect()->route('auth.login')->with('success', 'Account created successfully! Please log in to continue.');
+            try {
+                // Create a new user with patient role
+                $user = User::create([
+                    'name' => $validated['name'],
+                    'email' => $validated['email'],
+                    'password' => Hash::make($validated['password']),
+                    'user_role' => User::ROLE_PATIENT, // Automatically set as patient
+                ]);
+
+                // Create a new patient record
+                $this->createPatient($user, [
+                    'name' => $validated['name'],
+                    'email' => $validated['email'],
+                    'phone' => $validated['phone'],
+                    'address' => $validated['address'],
+                    'date_of_birth' => $validated['date_of_birth'],
+                    'gender' => $validated['gender'],
+                ]);
+
+                // Commit transaction
+                DB::commit();
+
+                // Redirect to login or dashboard
+                return redirect()->route('auth.login')->with('success', 'Account created successfully! Please log in to continue.');
+
+            } catch (\Exception $e) {
+                // Rollback transaction if there was an error
+                DB::rollBack();
+                Log::error('Registration error: ' . $e->getMessage());
+
+                return back()->withErrors([
+                    'database' => 'An error occurred while creating your account. Please try again.'
+                ])->withInput();
+            }
+        } catch (\Exception $e) {
+            Log::error('Database connection error: ' . $e->getMessage());
+
+            return back()->withErrors([
+                'database' => 'Unable to connect to the database. Please try again later.'
+            ])->withInput();
+        }
     }
 
     protected function createPatient($user, $data)

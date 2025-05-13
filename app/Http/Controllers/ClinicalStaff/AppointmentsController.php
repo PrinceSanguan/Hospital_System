@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\Receipt;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class AppointmentsController extends Controller
 {
@@ -22,21 +23,24 @@ class AppointmentsController extends Controller
     public function index()
     {
         try {
-            // Get all appointments with patient and doctor information
-            $appointments = Appointment::with(['patient', 'doctor'])
-                ->orderBy('appointment_date', 'desc')
-                ->get()
-                ->map(function ($appointment) {
-                    // Debug appointment data
-                    Log::info('Processing appointment:', [
-                        'id' => $appointment->id,
-                        'patient_id' => $appointment->patient_id,
-                        'doctor_id' => $appointment->doctor_id,
-                        'has_patient' => $appointment->patient ? 'yes' : 'no',
-                        'has_doctor' => $appointment->doctor ? 'yes' : 'no'
-                    ]);
+            // Clear cache to ensure fresh data (for MySQL)
+            if (DB::connection()->getDriverName() === 'mysql') {
+                DB::statement("SET SESSION query_cache_type=0");
+            }
 
-                    // Check if patient relation exists
+            // Get all appointments with patient information
+            $appointments = Appointment::select('appointments.*')
+                ->join('patients', 'appointments.patient_id', '=', 'patients.id')
+                ->leftJoin('users as doctors', 'appointments.assigned_doctor_id', '=', 'doctors.id')
+                ->orderBy('appointments.appointment_date', 'desc')
+                ->get();
+
+            // Debug appointment data
+            Log::info('Retrieved appointments count:', ['count' => $appointments->count()]);
+
+            $formattedAppointments = $appointments->map(function ($appointment) {
+                try {
+                    // Get patient information
                     $patient = Patient::find($appointment->patient_id);
                     if (!$patient) {
                         Log::warning('Appointment #' . $appointment->id . ' has no associated patient');
@@ -45,8 +49,8 @@ class AppointmentsController extends Controller
 
                     // Get doctor information
                     $doctor = null;
-                    if ($appointment->doctor_id) {
-                        $doctor = \App\Models\Doctor::find($appointment->doctor_id);
+                    if ($appointment->assigned_doctor_id) {
+                        $doctor = User::find($appointment->assigned_doctor_id);
                     }
 
                     // Parse additional details (handle null or invalid JSON)
@@ -64,31 +68,48 @@ class AppointmentsController extends Controller
                         }
                     }
 
+                    // Format the appointment for display
                     return [
                         'id' => $appointment->id,
                         'reference_number' => $appointment->reference_number ?? ('APP-' . str_pad($appointment->id, 6, '0', STR_PAD_LEFT)),
-                        'patient' => $patient,
-                        'doctor' => $doctor,
+                        'patient' => [
+                            'id' => $patient->id,
+                            'name' => $patient->name,
+                            'reference_number' => $patient->reference_number ?? null,
+                        ],
+                        'doctor' => $doctor ? [
+                            'id' => $doctor->id,
+                            'name' => $doctor->name,
+                        ] : null,
                         'record_type' => $appointment->record_type ?? 'doctor_appointment',
                         'appointment_date' => $appointment->appointment_date,
                         'status' => $appointment->status,
-                        'details' => json_encode($detailsArray),
                         'reason' => $appointment->reason ?? ($detailsArray['reason'] ?? 'Not specified'),
-                        'appointment_type' => $detailsArray['appointment_type'] ?? 'Consultation'
+                        'details' => $detailsArray,
                     ];
-                })
-                ->filter() // Remove any null entries
-                ->values(); // Re-index the array
+                } catch (\Exception $e) {
+                    Log::error('Error processing appointment #' . $appointment->id . ': ' . $e->getMessage());
+                    return null;
+                }
+            })
+            ->filter() // Remove any null entries
+            ->values(); // Re-index the array
+
+            Log::info('Formatted appointments count:', ['count' => $formattedAppointments->count()]);
 
             return Inertia::render('ClinicalStaff/Appointments', [
                 'user' => Auth::user(),
-                'appointments' => $appointments
+                'appointments' => $formattedAppointments
             ]);
         } catch (\Exception $e) {
-            Log::error('Error in AppointmentsController@index: ' . $e->getMessage());
+            Log::error('Error in AppointmentsController@index: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return Inertia::render('ClinicalStaff/Appointments', [
                 'user' => Auth::user(),
-                'appointments' => []
+                'appointments' => [],
+                'error' => 'Failed to load appointments. Please try refreshing the page.'
             ]);
         }
     }
@@ -120,15 +141,116 @@ class AppointmentsController extends Controller
      */
     public function updateStatus(Request $request, $id)
     {
-        $validated = $request->validate([
-            'status' => 'required|string|in:pending,confirmed,completed,cancelled',
-        ]);
+        try {
+            DB::beginTransaction();
 
-        $appointment = Appointment::findOrFail($id);
-        $appointment->status = $validated['status'];
-        $appointment->save();
+            $validated = $request->validate([
+                'status' => 'required|string|in:pending,confirmed,completed,cancelled',
+                'notes' => 'nullable|string',
+            ]);
 
-        return redirect()->back()->with('success', 'Appointment status updated successfully');
+            // Find appointment
+            $appointment = Appointment::findOrFail($id);
+            $oldStatus = $appointment->status;
+            $newStatus = $validated['status'];
+
+            // Update appointment status
+            $appointment->status = $newStatus;
+            if (isset($validated['notes']) && !empty($validated['notes'])) {
+                // Parse existing details
+                $details = [];
+                if ($appointment->details) {
+                    if (is_string($appointment->details)) {
+                        $details = json_decode($appointment->details, true) ?: [];
+                    } else {
+                        $details = (array) $appointment->details;
+                    }
+                }
+
+                // Add status change note
+                $details['status_notes'] = $validated['notes'];
+                $details['status_updated_by'] = 'staff';
+                $details['status_updated_at'] = now()->format('Y-m-d H:i:s');
+
+                $appointment->details = json_encode($details);
+            }
+            $appointment->save();
+
+            // Also update the corresponding record in patient_records table (if exists)
+            // First, extract the record ID from the reference number if available
+            $recordId = null;
+            if ($appointment->reference_number && preg_match('/APP(\d+)/', $appointment->reference_number, $matches)) {
+                $recordId = intval($matches[1]);
+            }
+
+            if ($recordId) {
+                $patientRecord = \App\Models\PatientRecord::find($recordId);
+                if ($patientRecord) {
+                    $patientRecord->status = $newStatus;
+                    $patientRecord->save();
+
+                    Log::info('Updated corresponding patient record', [
+                        'appointment_id' => $id,
+                        'patient_record_id' => $recordId,
+                        'status' => $newStatus
+                    ]);
+                }
+            }
+
+            // Create notifications if the status changed to confirmed
+            if ($oldStatus !== 'confirmed' && $newStatus === 'confirmed') {
+                // Get patient info
+                $patient = \App\Models\Patient::find($appointment->patient_id);
+                if ($patient && $patient->user_id) {
+                    // Notify patient
+                    \App\Models\Notification::create([
+                        'user_id' => $patient->user_id,
+                        'type' => 'appointment_confirmed',
+                        'title' => 'Appointment Confirmed',
+                        'message' => 'Your appointment scheduled for ' . date('F j, Y', strtotime($appointment->appointment_date)) . ' has been confirmed.',
+                        'related_id' => $appointment->id,
+                        'related_type' => 'appointment',
+                        'data' => json_encode([
+                            'appointment_id' => $appointment->id,
+                            'appointment_date' => $appointment->appointment_date,
+                            'confirmed_by' => 'staff'
+                        ])
+                    ]);
+                }
+
+                // Notify doctor if assigned
+                if ($appointment->assigned_doctor_id) {
+                    \App\Models\Notification::create([
+                        'user_id' => $appointment->assigned_doctor_id,
+                        'type' => 'appointment_confirmed_by_staff',
+                        'title' => 'Appointment Confirmed By Staff',
+                        'message' => 'Staff confirmed an appointment for ' . ($patient ? $patient->name : 'a patient') . ' on ' . date('F j, Y', strtotime($appointment->appointment_date)) . '.',
+                        'related_id' => $appointment->id,
+                        'related_type' => 'appointment',
+                        'data' => json_encode([
+                            'appointment_id' => $appointment->id,
+                            'appointment_date' => $appointment->appointment_date,
+                            'patient_id' => $appointment->patient_id,
+                            'confirmed_by' => 'staff'
+                        ])
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            $statusMessage = ucfirst($newStatus);
+            return redirect()->back()->with('success', "Appointment {$statusMessage} successfully");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error updating appointment status', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'Failed to update appointment status. Please try again.');
+        }
     }
 
     /**
