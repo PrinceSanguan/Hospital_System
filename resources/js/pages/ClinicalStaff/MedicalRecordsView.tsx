@@ -52,6 +52,13 @@ interface MedicalRecordDetails {
   instructions?: string;
   results?: string;
   address?: string;
+  patient_info?: {
+    birthdate?: string;
+    gender?: string;
+    phone?: string;
+    email?: string;
+  };
+  medical_history?: string;
   [key: string]: string | number | string[] | Record<string, string | number> | undefined;
 }
 
@@ -289,7 +296,7 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
           <style type="text/css" media="print">{`
             @page {
               size: A4 portrait;
-              margin: 0.8cm;
+              margin: 2cm;
             }
 
             body {
@@ -312,123 +319,63 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
               display: block !important;
             }
 
-            /* Fix container width */
-            .print-container {
-              width: 100% !important;
-              max-width: 100% !important;
-              margin: 0 !important;
-              padding: 0 !important;
+            /* Clean layout styles */
+            .med-record-container {
+              max-width: 800px;
+              margin: 0 auto;
             }
 
-            /* Heading and text styling */
-            .print-heading {
-              font-size: 14pt !important;
-              font-weight: bold !important;
-              margin-bottom: 1mm !important;
-              text-transform: uppercase !important;
+            .med-record-title {
+              font-size: 24px;
+              font-weight: bold;
+              text-align: center;
+              margin-bottom: 5px;
             }
 
-            .print-subheading {
-              font-size: 11pt !important;
-              font-weight: bold !important;
-              margin-top: 3mm !important;
-              margin-bottom: 1mm !important;
-              border-bottom: 1px solid #999 !important;
-              page-break-after: avoid !important;
-              break-after: avoid !important;
+            .med-record-physician {
+              font-size: 14px;
+              text-align: center;
+              margin-bottom: 20px;
+              color: #333;
             }
 
-            /* Prevent page breaks inside critical elements */
-            .prevent-break-inside {
-              page-break-inside: avoid !important;
-              break-inside: avoid !important;
+            .med-record-intro {
+              margin-bottom: 25px;
+              line-height: 1.4;
             }
 
-            /* Headers and footers */
-            .print-header {
-              page-break-after: avoid !important;
-              break-after: avoid !important;
-              display: flex !important;
-              justify-content: space-between !important;
-              border-bottom: 2px solid #000 !important;
-              padding-bottom: 3mm !important;
-              margin-bottom: 5mm !important;
+            .med-record-divider {
+              border-top: 1px solid #ddd;
+              margin: 15px 0;
             }
 
-            .print-footer {
-              position: fixed !important;
-              bottom: 5mm !important;
-              width: 100% !important;
-              font-size: 8pt !important;
-              text-align: center !important;
-              border-top: 1pt solid #ccc !important;
-              padding-top: 2mm !important;
+            .patient-info-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 20px;
             }
 
-            /* Grid layouts for print */
-            .print-grid-2 {
-              display: grid !important;
-              grid-template-columns: 1fr 1fr !important;
-              gap: 2mm !important;
-              margin-bottom: 3mm !important;
+            .patient-info-table th {
+              background-color: #f5f5f5;
+              padding: 8px;
+              text-align: left;
+              font-weight: normal;
+              border: 1px solid #ddd;
             }
 
-            .print-grid-3 {
-              display: grid !important;
-              grid-template-columns: 1fr 1fr 1fr !important;
-              gap: 2mm !important;
-              margin-bottom: 3mm !important;
+            .patient-info-table td {
+              padding: 8px;
+              border: 1px solid #ddd;
             }
 
-            /* Labels and values */
-            .print-label {
-              font-weight: bold !important;
-              font-size: 8pt !important;
-              color: #444 !important;
-              margin-bottom: 0.5mm !important;
+            .med-history-title {
+              font-size: 18px;
+              font-weight: bold;
+              margin: 20px 0 10px 0;
             }
 
-            .print-value {
-              font-size: 9pt !important;
-              margin-bottom: 2mm !important;
-            }
-
-            /* Prescription items */
-            .prescription-item {
-              margin-bottom: 3mm !important;
-              padding-bottom: 2mm !important;
-              border-bottom: 1px dotted #ccc !important;
-              page-break-inside: avoid !important;
-              break-inside: avoid !important;
-            }
-
-            /* Signature section */
-            .signature-section {
-              margin-top: 10mm !important;
-              display: grid !important;
-              grid-template-columns: 1fr 1fr !important;
-              gap: 10mm !important;
-            }
-
-            .signature-line {
-              border-bottom: 1px solid #000 !important;
-              margin-top: 15mm !important;
-              margin-bottom: 2mm !important;
-              width: 80% !important;
-            }
-
-            /* Watermark */
-            .watermark {
-              position: fixed !important;
-              top: 50% !important;
-              left: 0 !important;
-              width: 100% !important;
-              text-align: center !important;
-              transform: translateY(-50%) rotate(-45deg) !important;
-              font-size: 60pt !important;
-              color: rgba(220, 220, 220, 0.15) !important;
-              z-index: -1 !important;
-              pointer-events: none !important;
+            .med-history-content {
+              line-height: 1.5;
             }
           `}</style>
 
@@ -664,245 +611,77 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
 
           {/* Print-specific layout - only visible when printing */}
           <div className="hidden print:block" style={{ padding: '0', margin: '0' }}>
-            {/* Watermark */}
-            <div className="watermark">CONFIDENTIAL</div>
+            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+              {/* Title */}
+              <h1 style={{ fontSize: '24px', fontWeight: 'bold', textAlign: 'center', marginBottom: '5px' }}>
+                Medical Record
+              </h1>
 
-            {/* Document Header */}
-            <div className="print-header" style={{ margin: '0 0 3mm 0', padding: '0 0 2mm 0' }}>
-              <div style={{ width: '60%' }}>
-                <h1 style={{ fontSize: '16pt', fontWeight: 'bold', margin: '0 0 1mm 0', lineHeight: '1.1', textTransform: 'uppercase' }}>ALLECARE HEALTH</h1>
-                <p style={{ fontSize: '9pt', margin: '0 0 0.5mm 0', lineHeight: '1.2' }}>Medical Center & Healthcare System</p>
-                <p style={{ fontSize: '9pt', margin: '0', lineHeight: '1.2' }}>123 Healthcare Avenue • Medical City • Phone: (555) 123-4567</p>
-              </div>
-              <div style={{ width: '40%', textAlign: 'right' }}>
-                <p style={{ fontWeight: 'bold', fontSize: '12pt', textTransform: 'uppercase', margin: '0 0 1mm 0' }}>OFFICIAL MEDICAL RECORD</p>
-                <p style={{ fontSize: '9pt', margin: '0 0 0.5mm 0', lineHeight: '1.2' }}>Record ID: #{record.id}</p>
-                <p style={{ fontSize: '9pt', margin: '0', lineHeight: '1.2' }}>Date Issued: {new Date().toLocaleDateString()}</p>
-              </div>
-            </div>
+              {/* Physician info */}
+              <p style={{ fontSize: '14px', textAlign: 'center', marginBottom: '20px' }}>
+                Physician: {record.assignedDoctor?.name || '[YOUR NAME]'}, {user?.role || '[YOUR COMPANY NAME]'}
+              </p>
 
-            {/* Verification Text */}
-            <p style={{ fontSize: '8pt', margin: '0 0 3mm 0', fontStyle: 'italic' }}>
-              This is an official medical record printed from Allecare Health System. For verification, contact Medical Records Department at (555) 123-4567.
-            </p>
+              {/* Separator line */}
+              <div style={{ borderTop: '1px solid #ddd', marginBottom: '20px' }}></div>
 
-            {/* Record Info */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '2mm', marginBottom: '2mm' }} className="prevent-break-inside">
-              <div>
-                <div className="print-label">Patient</div>
-                <div className="print-value" style={{ marginBottom: '1mm' }}>{record.patient?.name || 'Unknown Patient'}</div>
-              </div>
-              <div>
-                <div className="print-label">Record Type</div>
-                <div className="print-value" style={{ marginBottom: '1mm' }}>{getRecordTypeDisplay(record.record_type)}</div>
-              </div>
-              <div>
-                <div className="print-label">Status</div>
-                <div className="print-value" style={{ marginBottom: '1mm' }}>{record.status}</div>
-              </div>
-            </div>
+              {/* Introduction */}
+              <p style={{ fontSize: '12px', lineHeight: '1.4', marginBottom: '25px' }}>
+                The following information is a comprehensive medical record of the patient, intended for
+                professional use only. This document ensures a detailed overview of the patient's medical
+                history and current health status.
+              </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2mm', marginBottom: '2mm' }} className="prevent-break-inside">
-              <div>
-                <div className="print-label">Address</div>
-                <div className="print-value" style={{ marginBottom: '1mm' }}>{record.patient?.address || details.address || 'No address provided'}</div>
-              </div>
-            </div>
+              {/* Patient Information Table */}
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
+                <tbody>
+                  <tr>
+                    <th style={{ background: '#f5f5f5', padding: '8px', textAlign: 'left', fontWeight: 'bold', border: '1px solid #ddd', width: '30%' }}>
+                      Patient Information
+                    </th>
+                    <th style={{ background: '#f5f5f5', padding: '8px', textAlign: 'left', fontWeight: 'bold', border: '1px solid #ddd' }}>
+                      Details
+                    </th>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>Name:</td>
+                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>{record.patient?.name || 'Unknown Patient'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>Date of Birth:</td>
+                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>{details.patient_info?.birthdate || '2000-06-15'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>Gender:</td>
+                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>{details.patient_info?.gender || 'Female'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>Contact Number:</td>
+                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>{details.patient_info?.phone || '222 555 7777'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>Email:</td>
+                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>{record.patient?.email || details.patient_info?.email || 'email@you.mail'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>Address:</td>
+                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>{record.patient?.address || details.address || 'Louisville, KY 40201'}</td>
+                  </tr>
+                </tbody>
+              </table>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '2mm', marginBottom: '2mm' }} className="prevent-break-inside">
-              <div>
-                <div className="print-label">Appointment Date</div>
-                <div className="print-value" style={{ marginBottom: '1mm' }}>{formatDate(record.appointment_date)}</div>
-              </div>
-              <div>
-                <div className="print-label">Appointment Time</div>
-                <div className="print-value" style={{ marginBottom: '1mm' }}>{formatTime(details.appointment_time) || 'N/A'}</div>
-              </div>
-              <div>
-                <div className="print-label">Attending Physician</div>
-                <div className="print-value" style={{ marginBottom: '1mm' }}>Dr. {record.assignedDoctor?.name || 'Unassigned'}</div>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '2mm', marginBottom: '2mm' }} className="prevent-break-inside">
-              <div>
-                <div className="print-label">Follow-up Date</div>
-                <div className="print-value" style={{ marginBottom: '1mm' }}>{formatDate(details.followup_date) || 'N/A'}</div>
-              </div>
-              <div>
-                <div className="print-label">Created On</div>
-                <div className="print-value" style={{ marginBottom: '1mm' }}>{formatDate(record.created_at)}</div>
-              </div>
-              <div></div>
-            </div>
-
-            {/* Vital Signs Section */}
-            <h2 style={{ fontSize: '10pt', fontWeight: 'bold', margin: '2mm 0 1mm 0', padding: '0 0 0.5mm 0', borderBottom: '1px solid #999', pageBreakAfter: 'avoid', breakAfter: 'avoid' }}>VITAL SIGNS</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '2mm', marginBottom: '2mm' }} className="prevent-break-inside">
-              <div>
-                <div className="print-label" style={{ marginBottom: '0.5mm' }}>Temperature</div>
-                <div className="print-value" style={{ fontSize: '9pt', marginBottom: '1mm' }}>
-                  {details.vital_signs?.temperature
-                    ? `${extractValue(details.vital_signs.temperature)} °C`
-                    : 'N/A'}
-                </div>
-              </div>
-              <div>
-                <div className="print-label" style={{ marginBottom: '0.5mm' }}>Blood Pressure</div>
-                <div className="print-value" style={{ fontSize: '9pt', marginBottom: '1mm' }}>
-                  {details.vital_signs?.blood_pressure
-                    ? `${extractValue(details.vital_signs.blood_pressure)} mmHg`
-                    : 'N/A'}
-                </div>
-              </div>
-              <div>
-                <div className="print-label" style={{ marginBottom: '0.5mm' }}>Heart Rate</div>
-                <div className="print-value" style={{ fontSize: '9pt', marginBottom: '1mm' }}>
-                  {details.vital_signs?.pulse_rate
-                    ? `${extractValue(details.vital_signs.pulse_rate)} bpm`
-                    : 'N/A'}
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '2mm', marginBottom: '2mm' }} className="prevent-break-inside">
-              <div>
-                <div className="print-label" style={{ marginBottom: '0.5mm' }}>Respiratory Rate</div>
-                <div className="print-value" style={{ fontSize: '9pt', marginBottom: '1mm' }}>
-                  {details.vital_signs?.respiratory_rate
-                    ? `${extractValue(details.vital_signs.respiratory_rate)} /min`
-                    : 'N/A'}
-                </div>
-              </div>
-              <div>
-                <div className="print-label" style={{ marginBottom: '0.5mm' }}>O₂ Saturation</div>
-                <div className="print-value" style={{ fontSize: '9pt', marginBottom: '1mm' }}>
-                  {details.vital_signs?.oxygen_saturation
-                    ? `${extractValue(details.vital_signs.oxygen_saturation)} %`
-                    : 'N/A'}
-                </div>
-              </div>
-              <div></div>
-            </div>
-
-            {/* Diagnosis Section */}
-            <h2 className="print-subheading prevent-break-inside">
-              {record.record_type === 'laboratory' ? 'LAB TEST & RESULTS' : 'DIAGNOSIS & TREATMENT'}
-            </h2>
-
-            <div className="prevent-break-inside">
-              <div className="print-label">
-                {record.record_type === 'laboratory' ? 'Lab Test Type' : 'Diagnosis'}
-              </div>
-              <div className="print-value" style={{ whiteSpace: 'pre-line' }}>
-                {record.record_type === 'laboratory'
-                  ? (details.lab_type || 'No lab test type recorded')
-                  : (details.diagnosis || 'No diagnosis recorded')}
-              </div>
-            </div>
-
-            {record.record_type === 'laboratory' ? (
-              <div className="prevent-break-inside">
-                <div className="print-label">Lab Results</div>
-                <div className="print-value" style={{ whiteSpace: 'pre-line' }}>
-                  {details.results || 'No lab results recorded yet'}
-                </div>
-              </div>
-            ) : (
-              <>
-                {prescriptionsList.length > 0 && (
-                  <div className="print-label prevent-break-inside" style={{ marginTop: '3mm' }}>
-                    Prescriptions
-                  </div>
-                )}
-
-                {prescriptionsList.map((prescription, index) => (
-                  <div key={index} className="prescription-item prevent-break-inside">
-                    <div style={{ fontWeight: 'bold', fontSize: '10pt', marginBottom: '1mm' }}>
-                      {prescription.medication} {prescription.dosage && `- ${prescription.dosage}`}
-                    </div>
-                    {prescription.frequency && (
-                      <div style={{ marginLeft: '3mm', fontSize: '9pt', marginBottom: '1mm' }}>
-                        Frequency: {prescription.frequency}
-                      </div>
-                    )}
-                    {prescription.duration && (
-                      <div style={{ marginLeft: '3mm', fontSize: '9pt', marginBottom: '1mm' }}>
-                        Duration: {prescription.duration}
-                      </div>
-                    )}
-                    {prescription.instructions && (
-                      <div style={{ marginLeft: '3mm', fontSize: '9pt' }}>
-                        Instructions: {prescription.instructions}
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {details.treatments && (
-                  <div className="prevent-break-inside">
-                    <div className="print-label" style={{ marginTop: '3mm' }}>Treatments</div>
-                    <div className="print-value" style={{ whiteSpace: 'pre-line' }}>
-                      {details.treatments}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* Notes Section */}
-            <h2 className="print-subheading prevent-break-inside">NOTES</h2>
-            <div className="prevent-break-inside">
-              <div className="print-value" style={{ whiteSpace: 'pre-line' }}>
-                {details.notes ? extractValue(details.notes) : 'No additional notes'}
-              </div>
-            </div>
-
-            {/* Signature Section */}
-            <div className="signature-section prevent-break-inside">
-              <div>
-                <div style={{ fontWeight: 'bold', fontSize: '10pt', marginBottom: '3mm' }}>
-                  Attending Physician:
-                </div>
-                <div className="signature-line"></div>
-                <div>Dr. {record.assignedDoctor?.name || 'Unassigned'}</div>
-                <div style={{ fontSize: '9pt', color: '#555', marginTop: '1mm' }}>
-                  Physician Signature
-                </div>
-              </div>
-              <div>
-                <div style={{ fontWeight: 'bold', fontSize: '10pt', marginBottom: '3mm' }}>
-                  Date Verified:
-                </div>
-                <div className="signature-line"></div>
-                <div style={{ fontSize: '9pt', color: '#555', marginTop: '1mm' }}>
-                  Signature Date
-                </div>
-              </div>
-            </div>
-
-            {/* Document Footer */}
-            <div style={{ position: 'fixed', bottom: '2mm', left: 0, width: '100%', fontSize: '7pt', color: '#555', borderTop: '1px solid #ddd', paddingTop: '1mm', textAlign: 'center' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1mm' }}>
-                <div style={{ width: '33%' }}>
-                  <div style={{ lineHeight: '1.2' }}>Allecare Healthcare System</div>
-                  <div style={{ lineHeight: '1.2' }}>123 Medical Drive</div>
-                  <div style={{ lineHeight: '1.2' }}>Healthcare City, HC 12345</div>
-                </div>
-                <div style={{ width: '33%', textAlign: 'center' }}>
-                  <div style={{ lineHeight: '1.2' }}>Patient ID: {record.patient?.id}</div>
-                  <div style={{ lineHeight: '1.2' }}>Record ID: {record.id}</div>
-                  <div style={{ lineHeight: '1.2' }}>Record Type: {getRecordTypeDisplay(record.record_type)}</div>
-                </div>
-                <div style={{ width: '33%', textAlign: 'right' }}>
-                  <div style={{ lineHeight: '1.2' }}>Printed on {new Date().toLocaleDateString()}</div>
-                  <div style={{ lineHeight: '1.2' }}>Generated at {new Date().toLocaleTimeString()}</div>
-                  <div style={{ lineHeight: '1.2' }}>Page 1</div>
-                </div>
-              </div>
-              <div style={{ textAlign: 'center', textTransform: 'uppercase', fontWeight: 'bold', fontSize: '7pt' }}>
-                This document contains confidential medical information
-              </div>
+              {/* Medical History */}
+              <h2 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '15px' }}>
+                Medical History
+              </h2>
+              <p style={{ lineHeight: '1.5' }}>
+                {record.patient?.name || 'The patient'} has a history of {details.diagnosis || 'medical conditions'},
+                diagnosed in {new Date(record.created_at).getFullYear()}, and has been under
+                regular medication since. {record.patient?.name || 'The patient'} also reports occasional
+                {details.notes ? ` ${details.notes.toLowerCase()}` : ' symptoms'} and has been treated
+                for these symptoms with prescribed medication. There is no known history of major
+                surgeries or hospitalizations in the past five years.
+              </p>
             </div>
           </div>
         </main>

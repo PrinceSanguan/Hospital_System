@@ -54,6 +54,7 @@ interface Props {
     isPatientView?: boolean;
     auth: {
         user: {
+            id: number;
             name: string;
             email: string;
             role: string;
@@ -97,7 +98,22 @@ export default function LabResults({ labResults, patient, isPatientView, auth }:
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files?.[0]) {
-            setData('scan_file', e.target.files[0]);
+            const file = e.target.files[0];
+            // Check file size (10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                setUploadError('File size exceeds 10MB limit');
+                return;
+            }
+
+            // Check file type
+            const validTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+            if (!validTypes.includes(file.type)) {
+                setUploadError('File type not supported. Please upload PDF, JPG, or PNG files only.');
+                return;
+            }
+
+            setUploadError(null);
+            setData('scan_file', file);
         }
     };
 
@@ -105,6 +121,8 @@ export default function LabResults({ labResults, patient, isPatientView, auth }:
         e.preventDefault();
         setFormSubmitted(true);
         setUploadError(null);
+
+        console.log('Form submission started');
 
         // Form validation
         if (!data.patient_id && !isPatientView) {
@@ -142,8 +160,11 @@ export default function LabResults({ labResults, patient, isPatientView, auth }:
         formData.append('test_date', data.test_date);
         if (data.scan_file) {
             formData.append('scan_file', data.scan_file);
+            console.log('File added to form data:', data.scan_file.name, data.scan_file.type, data.scan_file.size);
         }
         formData.append('notes', data.notes || '');
+
+        console.log('Submitting form data to server');
 
         // Use axios for direct form submission
         axios.post(route('staff.lab-results.store'), formData, {
@@ -160,7 +181,8 @@ export default function LabResults({ labResults, patient, isPatientView, auth }:
             window.location.reload();
         })
         .catch(error => {
-            console.error('Form submission errors:', error.response?.data?.errors || error);
+            console.error('Form submission errors:', error);
+            console.error('Response data:', error.response?.data);
             setFormSubmitted(false);
 
             // Set detailed error message
@@ -171,6 +193,8 @@ export default function LabResults({ labResults, patient, isPatientView, auth }:
                 } else {
                     setUploadError('Error uploading file. Please try again.');
                 }
+            } else if (error.response?.data?.message) {
+                setUploadError(error.response.data.message);
             } else {
                 setUploadError('Error uploading file. Please try again.');
             }
@@ -182,7 +206,7 @@ export default function LabResults({ labResults, patient, isPatientView, auth }:
             <Head title="Lab Results" />
 
             <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-                <Sidebar />
+                <Sidebar user={auth.user} />
 
                 <div className="flex flex-1 flex-col">
                     <Header user={auth.user} />
@@ -333,7 +357,8 @@ export default function LabResults({ labResults, patient, isPatientView, auth }:
                                                     <TableCell className="space-x-2">
                                                         <Link href={route('staff.lab-results.show', result.id)}>
                                                             <Button variant="outline" size="sm">
-                                                                <EyeIcon className="h-4 w-4" />
+                                                                <EyeIcon className="h-4 w-4 mr-1" />
+                                                                View Lab Result
                                                             </Button>
                                                         </Link>
                                                         <Link href={route('staff.lab-results.download', result.id)}>

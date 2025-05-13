@@ -284,6 +284,7 @@ Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staf
   Route::match(['put', 'post'], '/appointments/{id}/status', [AppointmentsController::class, 'updateStatus'])->name('appointments.status');
   Route::get('/appointments/{id}/pdf', [AppointmentsController::class, 'generatePdf'])->name('appointments.pdf');
   Route::get('/appointments/{id}/receipt', [AppointmentsController::class, 'createReceipt'])->name('appointments.receipt');
+  Route::get('/appointments/{id}/lab-results', [AppointmentsController::class, 'getLabResults'])->name('appointments.lab-results');
 
   // Patient Records Management
   Route::get('/patients', function() {

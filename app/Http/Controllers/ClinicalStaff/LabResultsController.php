@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class LabResultsController extends Controller
@@ -39,27 +40,36 @@ class LabResultsController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'patient_id' => 'required|exists:patients,id',
-            'test_type' => 'required|string|max:255',
-            'test_date' => 'required|date',
-            'scan_file' => 'required|file|max:10240', // 10MB max
-            'notes' => 'nullable|string',
-        ]);
+        try {
+            $validated = $request->validate([
+                'patient_id' => 'required|exists:patients,id',
+                'test_type' => 'required|string|max:255',
+                'test_date' => 'required|date',
+                'scan_file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240', // 10MB max
+                'notes' => 'nullable|string',
+            ]);
 
-        // Store the file
-        $path = $request->file('scan_file')->store('lab_results');
+            // Store the file
+            if (!$request->hasFile('scan_file') || !$request->file('scan_file')->isValid()) {
+                return response()->json(['message' => 'Invalid file upload. Please try again.'], 422);
+            }
 
-        $labResult = LabResult::create([
-            'patient_id' => $validated['patient_id'],
-            'test_type' => $validated['test_type'],
-            'test_date' => $validated['test_date'],
-            'file_path' => $path,
-            'notes' => $validated['notes'] ?? null,
-            'created_by' => Auth::id(),
-        ]);
+            $path = $request->file('scan_file')->store('lab_results');
 
-        return redirect()->back()->with('success', 'Lab result uploaded successfully');
+            $labResult = LabResult::create([
+                'patient_id' => $validated['patient_id'],
+                'test_type' => $validated['test_type'],
+                'test_date' => $validated['test_date'],
+                'file_path' => $path,
+                'notes' => $validated['notes'] ?? null,
+                'created_by' => Auth::id()
+            ]);
+
+            return redirect()->back()->with('success', 'Lab result uploaded successfully');
+        } catch (\Exception $e) {
+            Log::error('Lab result upload error: ' . $e->getMessage());
+            return response()->json(['message' => 'Server error: ' . $e->getMessage()], 500);
+        }
     }
 
     public function show(LabResult $labResult)

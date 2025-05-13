@@ -16,7 +16,7 @@ class LabResult extends Model
         'test_date',
         'file_path',
         'notes',
-        'uploaded_by'
+        'created_by'
     ];
 
     protected $casts = [
@@ -26,10 +26,5 @@ class LabResult extends Model
     public function patient(): BelongsTo
     {
         return $this->belongsTo(Patient::class);
-    }
-
-    public function uploader(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'uploaded_by');
     }
 }

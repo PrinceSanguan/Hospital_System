@@ -9,6 +9,7 @@ use App\Models\Appointment;
 use App\Models\Patient;
 use App\Models\User;
 use App\Models\Receipt;
+use App\Models\LabResult;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -86,6 +87,8 @@ class AppointmentsController extends Controller
                         'status' => $appointment->status,
                         'reason' => $appointment->reason ?? ($detailsArray['reason'] ?? 'Not specified'),
                         'details' => $detailsArray,
+                        'has_lab_results' => \App\Models\LabResult::where('patient_id', $patient->id)->exists(),
+                        'has_medical_record' => true,
                     ];
                 } catch (\Exception $e) {
                     Log::error('Error processing appointment #' . $appointment->id . ': ' . $e->getMessage());
@@ -348,5 +351,43 @@ class AppointmentsController extends Controller
 
         return redirect()->route('staff.appointments.index')
             ->with('success', 'Appointment updated successfully');
+    }
+
+    /**
+     * Get lab results for a specific appointment.
+     *
+     * @param int $id
+     * @return \Inertia\Response
+     */
+    public function getLabResults($id)
+    {
+        try {
+            // Find the appointment
+            $appointment = Appointment::with('patient')->findOrFail($id);
+
+            // Get all lab results for this patient
+            $labResults = LabResult::where('patient_id', $appointment->patient_id)
+                ->orderBy('test_date', 'desc')
+                ->get();
+
+            return Inertia::render('ClinicalStaff/LabResults', [
+                'user' => Auth::user(),
+                'labResults' => [
+                    'data' => $labResults
+                ],
+                'patient' => $appointment->patient,
+                'isPatientView' => true,
+                'appointmentId' => $id
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error in AppointmentsController@getLabResults: ' . $e->getMessage(), [
+                'appointment_id' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->route('staff.appointments.index')
+                ->with('error', 'Failed to retrieve lab results. ' . $e->getMessage());
+        }
     }
 }

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, parseISO } from 'date-fns';
-import { EyeIcon, PrinterIcon, PencilIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, PencilIcon, DocumentTextIcon, BeakerIcon } from '@heroicons/react/24/outline';
 import {
     Dialog,
     DialogContent,
@@ -102,7 +102,7 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
     const [typeFilter, setTypeFilter] = useState('all');
     const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
     const [showPrintDialog, setShowPrintDialog] = useState(false);
-    const [printType, setPrintType] = useState<'lab' | 'record' | 'receipt' | null>(null);
+    const [printType, setPrintType] = useState<'record' | 'prescription' | null>(null);
 
     // Sort appointments: Pending first, then Completed/Done
     useEffect(() => {
@@ -188,26 +188,16 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
         }
     };
 
-    // Open print dialog
-    const openPrintDialog = (appointment: Appointment, type: 'lab' | 'record' | 'receipt') => {
-        setSelectedAppointment(appointment);
-        setPrintType(type);
-        setShowPrintDialog(true);
-    };
-
     // Handle print document
     const handlePrintDocument = () => {
         if (!selectedAppointment || !printType) return;
 
         let url = '';
         switch(printType) {
-            case 'lab':
-                url = route('staff.lab-results.download', selectedAppointment.id);
-                break;
             case 'record':
                 url = route('staff.appointments.pdf', selectedAppointment.id);
                 break;
-            case 'receipt':
+            case 'prescription':
                 url = route('staff.receipts.download', selectedAppointment.id);
                 break;
         }
@@ -346,7 +336,7 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                                                                     <TooltipTrigger asChild>
                                                                         <Button asChild variant="ghost" size="icon">
                                                                             <Link href={route('staff.appointments.show', appointment.id)}>
-                                                                                <EyeIcon className="h-4 w-4" />
+                                                                                <EyeIcon className="h-4 w-4 mr-1" />
                                                                             </Link>
                                                                         </Button>
                                                                     </TooltipTrigger>
@@ -355,38 +345,39 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                                                                     </TooltipContent>
                                                                 </Tooltip>
 
-                                                                {/* Print Button */}
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            onClick={() => openPrintDialog(appointment, 'record')}
-                                                                        >
-                                                                            <PrinterIcon className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>
-                                                                        <p>Print Record</p>
-                                                                    </TooltipContent>
-                                                                </Tooltip>
-
                                                                 {/* Edit Button */}
                                                                 <Tooltip>
                                                                     <TooltipTrigger asChild>
                                                                         <Button asChild variant="ghost" size="icon">
-                                                                            <Link href={route('staff.appointments.edit', appointment.id)}>
+                                                                            <Link href={route('staff.clinical.info.edit', appointment.id)}>
                                                                                 <PencilIcon className="h-4 w-4" />
                                                                             </Link>
                                                                         </Button>
                                                                     </TooltipTrigger>
                                                                     <TooltipContent>
-                                                                        <p>Edit Record</p>
+                                                                        <p>Edit Medical Record</p>
                                                                     </TooltipContent>
                                                                 </Tooltip>
 
-                                                                {/* Receipt Button */}
-                                                                <Tooltip>
+
+                                                                {/* Lab Results Button */}
+                                                                {appointment.has_lab_results && (
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Button asChild variant="ghost" size="icon">
+                                                                                <Link href={route('staff.appointments.lab-results', appointment.id)}>
+                                                                                    <BeakerIcon className="h-4 w-4" />
+                                                                                </Link>
+                                                                            </Button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>
+                                                                            <p>View Lab Results</p>
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                )}
+
+                                                                                                                                {/* Receipt Button */}
+                                                                                                                                <Tooltip>
                                                                     <TooltipTrigger asChild>
                                                                         <Button
                                                                             variant="ghost"
@@ -436,16 +427,14 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>
-                            {printType === 'lab' ? 'Print Lab Results' :
-                             printType === 'record' ? 'Print Medical Record' : 'Print Receipt'}
+                            {printType === 'record' ? 'Print Medical Record' : 'Print Receipt'}
                         </DialogTitle>
                     </DialogHeader>
 
                     <div className="py-4">
                         <p className="text-sm text-gray-500 mb-4">
                             You are about to print the
-                            {printType === 'lab' ? ' lab results' :
-                             printType === 'record' ? ' medical record' : ' receipt'}
+                            {printType === 'record' ? ' medical record' : ' receipt'}
                             for {selectedAppointment?.patient.name}.
                         </p>
 
