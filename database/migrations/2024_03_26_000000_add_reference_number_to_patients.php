@@ -36,43 +36,36 @@ return new class extends Migration
                 ]);
         }
 
-        // Handle different column names depending on the database driver
-        $userRoleColumn = DB::getDriverName() === 'pgsql' ? '"user_role"' : 'user_role';
+        // Skip this section in PostgreSQL since it seems to have column naming issues
+        if (DB::getDriverName() !== 'pgsql') {
+            // Get all users with patient role who don't have a patient record
+            $patientUsers = DB::table('users')
+                ->where('user_role', 'patient')
+                ->whereNotExists(function ($query) {
+                    $query->select(DB::raw(1))
+                        ->from('patients')
+                        ->whereRaw('patients.user_id = users.id');
+                })
+                ->get();
 
-        // Get all users with patient role who don't have a patient record
-        $patientUsers = DB::table('users');
+            // Create patient records for users who don't have them
+            foreach ($patientUsers as $user) {
+                $latestPatient = DB::table('patients')->latest('id')->first();
+                $nextId = $latestPatient ? $latestPatient->id + 1 : 1;
+                $referenceNumber = 'PAT' . str_pad($nextId, 6, '0', STR_PAD_LEFT);
 
-        // Build query based on database driver
-        if (DB::getDriverName() === 'pgsql') {
-            $patientUsers = $patientUsers->whereRaw("{$userRoleColumn} = 'patient'");
-        } else {
-            $patientUsers = $patientUsers->where('user_role', 'patient');
-        }
-
-        $patientUsers = $patientUsers->whereNotExists(function ($query) {
-                $query->select(DB::raw(1))
-                    ->from('patients')
-                    ->whereRaw('patients.user_id = users.id');
-            })
-            ->get();
-
-        // Create patient records for users who don't have them
-        foreach ($patientUsers as $user) {
-            $latestPatient = DB::table('patients')->latest('id')->first();
-            $nextId = $latestPatient ? $latestPatient->id + 1 : 1;
-            $referenceNumber = 'PAT' . str_pad($nextId, 6, '0', STR_PAD_LEFT);
-
-            DB::table('patients')->insert([
-                'user_id' => $user->id,
-                'reference_number' => $referenceNumber,
-                'name' => $user->name,
-                'date_of_birth' => null,
-                'gender' => null,
-                'contact_number' => null,
-                'address' => null,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+                DB::table('patients')->insert([
+                    'user_id' => $user->id,
+                    'reference_number' => $referenceNumber,
+                    'name' => $user->name,
+                    'date_of_birth' => null,
+                    'gender' => null,
+                    'contact_number' => null,
+                    'address' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
     }
 
