@@ -64,7 +64,7 @@ interface DoctorsProps {
     name: string;
     specialty: string;
     availability: string[];
-    image: string;
+    profile_image: string | null;
     schedules?: Array<{
       id: number;
       day_of_week: number;
@@ -179,7 +179,11 @@ export default function Doctors({
       }`}>
         <div className="flex h-16 items-center justify-center border-b px-4">
           <Link href="/patient/dashboard" className="flex items-center">
-            <Stethoscope className="h-6 w-6 text-blue-600" />
+            <img
+              src="/images/logo_famcare.jpg"
+              alt="Famcare Logo"
+              className="h-6 w-auto mr-2"
+            />
             <span className="ml-2 text-xl font-semibold text-gray-900">Famcare Health</span>
           </Link>
         </div>
@@ -333,7 +337,7 @@ export default function Doctors({
                   <div className="relative h-40 bg-gradient-to-r from-blue-100 to-blue-50">
                     <div className="absolute bottom-0 left-0 right-0 flex items-end p-4">
                       <Avatar className="h-20 w-20 border-4 border-white">
-                        <AvatarImage src={doctor.image || "https://ui.shadcn.com/avatars/01.png"} alt={doctor.name} />
+                        <AvatarImage src={doctor.profile_image || ""} alt={doctor.name} />
                         <AvatarFallback className="text-lg">{doctor.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <div className="ml-4 pb-1">

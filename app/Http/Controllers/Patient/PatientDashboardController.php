@@ -494,7 +494,11 @@ class PatientDashboardController extends Controller
                         'id' => $doctor->id,
                         'name' => $doctor->name,
                         'specialty' => $doctor->doctorProfile?->specialty ?? '', // Changed from 'General Practitioner' to empty string
-                        'image' => $doctor->profile_photo ?? '/placeholder-avatar.jpg',
+                        'profile_image' => $doctor->doctorProfile?->profile_image ?
+                            (str_starts_with($doctor->doctorProfile->profile_image, 'images/')
+                                ? asset($doctor->doctorProfile->profile_image)
+                                : asset('storage/' . $doctor->doctorProfile->profile_image))
+                            : null,
                         'availability' => $doctor->availability ?? [],
                         'schedules' => $doctor->schedules,
                         'services' => $doctor->services,

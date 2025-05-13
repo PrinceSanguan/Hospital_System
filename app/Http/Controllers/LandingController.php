@@ -74,15 +74,18 @@ class LandingController extends Controller
         // Get doctors from database
         try {
             $doctors = User::where('user_role', User::ROLE_DOCTOR)
-                ->with(['schedules', 'services'])
+                ->with(['doctorProfile', 'schedules', 'services'])
                 ->get()
                 ->map(function ($doctor) {
-
                     return [
                         'id' => $doctor->id,
                         'name' => $doctor->name,
-                        'specialty' => $doctor->specialty ?? 'General Practitioner',
-                        'image' => $doctor->profile_photo ?? '/placeholder-avatar.jpg',
+                        'specialty' => $doctor->doctorProfile?->specialization ?? 'General Practitioner',
+                        'image' => $doctor->doctorProfile?->profile_image ?
+                            (str_starts_with($doctor->doctorProfile->profile_image, 'images/')
+                                ? asset($doctor->doctorProfile->profile_image)
+                                : asset('storage/' . $doctor->doctorProfile->profile_image))
+                            : asset('placeholder-avatar.jpg'),
                         'availability' => $doctor->availability ?? [],
                         'schedules' => $doctor->schedules,
                         'services' => $doctor->services,
@@ -90,7 +93,6 @@ class LandingController extends Controller
                 });
         } catch (\Exception $e) {
             Log::error('Error loading doctors: ' . $e->getMessage());
-
             $doctors = [];
         }
 

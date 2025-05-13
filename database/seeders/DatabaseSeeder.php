@@ -20,6 +20,9 @@ class DatabaseSeeder extends Seeder
     {
         // Create admin, doctors, and patients
         $this->createUsers();
+
+        // Update doctor profile images
+        $this->call(DoctorProfileImagesSeeder::class);
     }
 
     /**
@@ -44,7 +47,7 @@ class DatabaseSeeder extends Seeder
         $doctor1 = User::firstOrCreate(
             ['email' => 'dr.tubog@farmcare.com'],
             [
-                'name' => 'Dr. Rogelia Bantayanon-Tubog',
+                'name' => 'Rogelia Bantayanon-Tubog',
                 'email_verified_at' => now(),
                 'password' => Hash::make('password'),
                 'remember_token' => Str::random(10),
@@ -55,7 +58,7 @@ class DatabaseSeeder extends Seeder
         Doctor::firstOrCreate(
             ['user_id' => $doctor1->id],
             [
-                'name' => 'Dr. Rogelia Bantayanon-Tubog',
+                'name' => 'Rogelia Bantayanon-Tubog',
                 'specialization' => 'Occupational Health Physician, BCOM',
                 'license_number' => 'DRCM' . mt_rand(10000, 99999),
                 'contact_number' => '+63' . mt_rand(9000000000, 9999999999)
@@ -67,7 +70,7 @@ class DatabaseSeeder extends Seeder
         $doctor2 = User::firstOrCreate(
             ['email' => 'dr.bandian@farmcare.com'],
             [
-                'name' => 'Dr. Blas Bandian',
+                'name' => 'Blas Bandian',
                 'email_verified_at' => now(),
                 'password' => Hash::make('password'),
                 'remember_token' => Str::random(10),
@@ -78,7 +81,7 @@ class DatabaseSeeder extends Seeder
         Doctor::firstOrCreate(
             ['user_id' => $doctor2->id],
             [
-                'name' => 'Dr. Blas Bandian',
+                'name' => 'Blas Bandian',
                 'specialization' => 'Diplomate, Family Medicine',
                 'license_number' => 'DRCM' . mt_rand(10000, 99999),
                 'contact_number' => '+63' . mt_rand(9000000000, 9999999999)
@@ -90,7 +93,7 @@ class DatabaseSeeder extends Seeder
         $doctor3 = User::firstOrCreate(
             ['email' => 'dr.degracia@farmcare.com'],
             [
-                'name' => 'Dr. Kathy Narvaez-De Gracia',
+                'name' => 'Kathy Narvaez-De Gracia',
                 'email_verified_at' => now(),
                 'password' => Hash::make('password'),
                 'remember_token' => Str::random(10),
@@ -101,7 +104,7 @@ class DatabaseSeeder extends Seeder
         Doctor::firstOrCreate(
             ['user_id' => $doctor3->id],
             [
-                'name' => 'Dr. Kathy Narvaez-De Gracia',
+                'name' => 'Kathy Narvaez-De Gracia',
                 'specialization' => 'General Practitioner',
                 'license_number' => 'DRCM' . mt_rand(10000, 99999),
                 'contact_number' => '+63' . mt_rand(9000000000, 9999999999)

@@ -66,7 +66,11 @@ class DoctorProfileController extends Controller
                 'years_of_experience' => $doctor->doctorProfile?->years_of_experience,
                 'languages_spoken' => $doctor->doctorProfile?->languages_spoken,
                 'education' => $doctor->doctorProfile?->education,
-                'profile_image' => $doctor->doctorProfile?->profile_image ? asset('storage/' . $doctor->doctorProfile->profile_image) : null,
+                'profile_image' => $doctor->doctorProfile?->profile_image ?
+                    (str_starts_with($doctor->doctorProfile->profile_image, 'images/')
+                        ? asset($doctor->doctorProfile->profile_image)
+                        : asset('storage/' . $doctor->doctorProfile->profile_image))
+                    : null,
                 'is_visible' => $doctor->doctorProfile?->is_visible
             ],
             'services' => $doctor->services
@@ -102,7 +106,11 @@ class DoctorProfileController extends Controller
                 'years_of_experience' => $profile->years_of_experience,
                 'languages_spoken' => $profile->languages_spoken,
                 'education' => $profile->education,
-                'profile_image' => $profile->profile_image ? asset('storage/' . $profile->profile_image) : null,
+                'profile_image' => $profile->profile_image ?
+                    (str_starts_with($profile->profile_image, 'images/')
+                        ? asset($profile->profile_image)
+                        : asset('storage/' . $profile->profile_image))
+                    : null,
                 'is_visible' => $profile->is_visible
             ],
             'services' => $services
@@ -183,7 +191,11 @@ class DoctorProfileController extends Controller
                 'years_of_experience' => $profile->years_of_experience,
                 'languages_spoken' => $profile->languages_spoken,
                 'education' => $profile->education,
-                'profile_image' => $profile->profile_image ? asset('storage/' . $profile->profile_image) : null,
+                'profile_image' => $profile->profile_image ?
+                    (str_starts_with($profile->profile_image, 'images/')
+                        ? asset($profile->profile_image)
+                        : asset('storage/' . $profile->profile_image))
+                    : null,
                 'is_visible' => $profile->is_visible
             ],
             'services' => $user->services,
@@ -236,7 +248,11 @@ class DoctorProfileController extends Controller
                     'qualifications' => $doctor->doctorProfile?->qualifications,
                     'about' => $doctor->doctorProfile?->about,
                     'years_of_experience' => $doctor->doctorProfile?->years_of_experience,
-                    'profile_image' => $doctor->doctorProfile?->profile_image ? asset('storage/' . $doctor->doctorProfile->profile_image) : null,
+                    'profile_image' => $doctor->doctorProfile?->profile_image ?
+                        (str_starts_with($doctor->doctorProfile->profile_image, 'images/')
+                            ? asset($doctor->doctorProfile->profile_image)
+                            : asset('storage/' . $doctor->doctorProfile->profile_image))
+                        : null,
                     'services' => $doctor->services
                 ];
             });
@@ -273,7 +289,11 @@ class DoctorProfileController extends Controller
                 'years_of_experience' => $profile->years_of_experience,
                 'languages_spoken' => $profile->languages_spoken,
                 'education' => $profile->education,
-                'profile_image' => $profile->profile_image ? asset('storage/' . $profile->profile_image) : null,
+                'profile_image' => $profile->profile_image ?
+                    (str_starts_with($profile->profile_image, 'images/')
+                        ? asset($profile->profile_image)
+                        : asset('storage/' . $profile->profile_image))
+                    : null,
                 'is_visible' => $profile->is_visible
             ],
             'services' => $user->services
@@ -308,7 +328,11 @@ class DoctorProfileController extends Controller
                 'years_of_experience' => $profile->years_of_experience,
                 'languages_spoken' => $profile->languages_spoken,
                 'education' => $profile->education,
-                'profile_image' => $profile->profile_image ? asset('storage/' . $profile->profile_image) : null,
+                'profile_image' => $profile->profile_image ?
+                    (str_starts_with($profile->profile_image, 'images/')
+                        ? asset($profile->profile_image)
+                        : asset('storage/' . $profile->profile_image))
+                    : null,
                 'is_visible' => $profile->is_visible
             ]
         ]);

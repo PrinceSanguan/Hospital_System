@@ -22,6 +22,19 @@ interface HospitalService {
   is_active: boolean;
 }
 
+interface Doctor {
+  id: number;
+  name: string;
+  specialty: string;
+  image: string;
+  profile_image?: string;
+  availability: string[];
+  services?: Array<{
+    id: number;
+    name: string;
+  }>;
+}
+
 interface DoctorsProps {
   user: {
     name: string;
@@ -50,7 +63,7 @@ interface DoctorsProps {
       price: number;
     }>;
   }>;
-  
+
   notifications: Array<{
     id: number;
     title: string;
@@ -83,12 +96,12 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
   const [isLoading, setIsLoading] = useState(true);
   const reloadAttempts = useRef(0);
   const maxReloadAttempts = 3;
-  
+
   useEffect(() => {
     // Immediately set loading to false when component is mounted
     // This ensures we don't get stuck in an infinite loading state
     setIsLoading(false);
-    
+
     const checkLoadingState = () => {
       if (document.readyState === 'complete') {
         console.log('Page loaded successfully');
@@ -104,22 +117,22 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
         setIsLoading(false);
       }
     };
-    
+
     // Add a safety timeout to handle cases where loading gets stuck
     const loadingTimeout = setTimeout(() => {
       if (isLoading) {
         checkLoadingState();
       }
     }, 5000); // Only wait 5 seconds before trying a reload
-    
+
     return () => clearTimeout(loadingTimeout);
   }, [isLoading]);
-  
+
   // Exit loading state as soon as the first render is complete
   useEffect(() => {
     setIsLoading(false);
   }, []);
-  
+
   // If loading timed out, show fallback content
   if (isLoading) {
     return (
@@ -132,7 +145,7 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
       </div>
     );
   }
-  
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navbar */}
@@ -142,7 +155,11 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <Link href="/" className="flex items-center">
-                  <Stethoscope className="h-8 w-8 text-blue-600" />
+                  <img
+                    src="/images/logo_famcare.jpg"
+                    alt="Famcare Logo"
+                    className="h-8 w-auto mr-2"
+                  />
                   <span className="ml-2 text-xl font-bold text-blue-800">Famcare</span>
                 </Link>
               </div>
@@ -410,64 +427,56 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
             <p className="mx-auto max-w-2xl text-gray-600">Meet our team of experienced and caring medical professionals</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {doctors && doctors.length > 0 ? (
               doctors.map((doctor) => (
                 <motion.div
                   key={doctor.id}
-                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
+                  className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <div className="h-48 overflow-hidden">
-                    <img 
-                      src={doctor.image} 
-                      alt={doctor.name} 
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = "https://ui.shadcn.com/avatars/01.png";
-                      }}
-                    />
-                  </div>
-                  <div className="p-5">
-                    <h3 className="font-bold text-lg text-gray-900">{doctor.name}</h3>
-                    <p className="text-sm text-gray-600 mb-3">{doctor.specialty}</p>
-                    
-                    {/* Availability Tags */}
-                    <div className="mb-3">
-                      <p className="text-sm font-medium text-gray-700 mb-2">Available on:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {doctor.availability.map((day) => (
-                          <span key={`${doctor.id}-${day}`} className="px-2 py-1 bg-blue-50 text-blue-600 rounded-md text-xs">
-                            {day}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* Doctor Services */}
-                    {doctor.services && doctor.services.length > 0 && (
+                  <div className="flex">
+                    {/* Left side - Doctor information */}
+                    <div className="flex-1 p-4">
+                      <h3 className="font-bold text-lg text-gray-900 mb-1">{doctor.name}</h3>
+                      <p className="text-xs text-gray-600 mb-3">{doctor.specialty}</p>
+
+                      {/* Availability Tags */}
                       <div className="mb-4">
-                        <p className="text-sm font-medium text-gray-700 mb-2">Services:</p>
-                        <div className="text-sm text-gray-600">
-                          {doctor.services.slice(0, 2).map((service, idx) => (
-                            <div key={service.id} className="mb-1">
-                              • {service.name}
-                            </div>
+                        <div className="flex flex-wrap gap-1">
+                          {doctor.availability.slice(0, 3).map((day: string) => (
+                            <span key={`${doctor.id}-${day}`} className="px-2 py-1 bg-blue-50 text-blue-600 rounded-md text-xs">
+                              {day}
+                            </span>
                           ))}
-                          {doctor.services.length > 2 && (
-                            <div className="text-blue-600 text-xs">+{doctor.services.length - 2} more</div>
+                          {doctor.availability.length > 3 && (
+                            <span className="px-2 py-1 bg-gray-50 text-gray-600 rounded-md text-xs">
+                              +{doctor.availability.length - 3}
+                            </span>
                           )}
                         </div>
                       </div>
-                    )}
-                    
-                    <Button asChild variant="outline" size="sm" className="w-full">
-                      <Link href={isAuthenticated ? route('patient.appointments.book', {doctor_id: doctor.id}) : route('auth.login')} className="flex items-center justify-center">
-                        Book Appointment <ChevronRight className="ml-1 h-4 w-4" />
-                      </Link>
-                    </Button>
+
+                      <Button asChild variant="outline" size="sm" className="w-full">
+                        <Link href={isAuthenticated ? route('patient.appointments.book', {doctor_id: doctor.id}) : route('auth.login')} className="flex items-center justify-center">
+                          Book Appointment <ChevronRight className="ml-1 h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </div>
+
+                    {/* Right side - Doctor image - vertical divider then image */}
+                    <div className="flex-shrink-0 w-1/3 border-l border-gray-100 relative">
+                      <img
+                        src={doctor.profile_image || doctor.image}
+                        alt={doctor.name}
+                        className="w-full h-full object-cover object-center"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = "https://ui.shadcn.com/avatars/01.png";
+                        }}
+                      />
+                    </div>
                   </div>
                 </motion.div>
               ))
@@ -480,7 +489,7 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
               </div>
             )}
           </div>
-          
+
           {/* Call to Action */}
           <div className="mt-16 text-center">
             <h3 className="mb-4 text-xl font-semibold text-gray-900">Need specialized care?</h3>
@@ -504,12 +513,12 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
             {/* Available Doctors */}
             <div className="mb-12">
               <h3 className="mb-6 text-xl font-semibold text-gray-900">Available Doctors</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {doctors.map((doctor) => (
                   <div key={doctor.id} className="p-4 border rounded-lg shadow-sm bg-white flex flex-col">
                     <div className="flex items-center space-x-3 mb-3">
-                      <div className="flex-shrink-0 h-12 w-12 rounded-full overflow-hidden">
-                        <img src={doctor.image} alt={doctor.name} className="h-full w-full object-cover"
+                      <div className="flex-shrink-0 h-16 w-16 rounded-full overflow-hidden border-2 border-blue-100">
+                        <img src={doctor.profile_image || doctor.image} alt={doctor.name} className="h-full w-full object-cover object-center"
                              onError={(e) => {
                                (e.target as HTMLImageElement).src = "https://ui.shadcn.com/avatars/01.png";
                              }}
@@ -518,7 +527,7 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
                     <div>
                       <h3 className="font-bold text-lg">{doctor.name}</h3>
                       <p className="text-sm text-gray-600">{doctor.specialty}</p>
-                      </div>
+                    </div>
                     </div>
                     <div className="mt-2">
                       <p className="text-sm font-medium text-gray-700 mb-2">Available on:</p>
@@ -565,8 +574,8 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
                       <tr key={doctor.id}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden">
-                              <img src={doctor.image} alt={doctor.name} className="h-full w-full object-cover"
+                            <div className="flex-shrink-0 h-12 w-12 rounded-full overflow-hidden border-2 border-blue-100">
+                              <img src={doctor.profile_image || doctor.image} alt={doctor.name} className="h-full w-full object-cover object-center"
                                    onError={(e) => {
                                      (e.target as HTMLImageElement).src = "https://ui.shadcn.com/avatars/01.png";
                                    }}
