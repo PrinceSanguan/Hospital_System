@@ -75,9 +75,16 @@ interface MedicalRecord {
   id: number;
   patient: Patient;
   assignedDoctor: Doctor;
+  patient_id?: number;
+  doctor_id?: number;
+  assigned_doctor_id?: number;
   record_type: string;
   appointment_date: string;
   status: string;
+  reason?: string;
+  notes?: string;
+  fee?: string | number;
+  reference_number?: string;
   details: string | MedicalRecordDetails;
   vital_signs?: string | Record<string, string | number>;
   prescriptions?: string | string[];
@@ -207,41 +214,45 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
 
   // Function to determine the assigned physician name
   const getAssignedPhysician = () => {
-    // First check if there's a direct assignedDoctor in the record
+    console.log('Looking for physician in record:', record);
+
+    // Check for assigned_doctor_id field first (from the appointments table)
+    if (record.assigned_doctor_id) {
+      return {
+        name: record.assignedDoctor?.name || `Doctor #${record.assigned_doctor_id}`,
+        email: record.assignedDoctor?.email,
+        specialty: record.assignedDoctor?.specialty || 'Assigned Specialist',
+        id: record.assigned_doctor_id
+      };
+    }
+
+    // Then check normal doctor_id field
+    if (record.doctor_id) {
+      return {
+        name: record.assignedDoctor?.name || `Doctor #${record.doctor_id}`,
+        email: record.assignedDoctor?.email,
+        specialty: record.assignedDoctor?.specialty || 'Primary Doctor',
+        id: record.doctor_id
+      };
+    }
+
+    // Use assignedDoctor field if available
     if (record.assignedDoctor?.name) {
-            return {
+      return {
         name: record.assignedDoctor.name,
         email: record.assignedDoctor.email,
-        specialty: record.assignedDoctor.specialty
+        specialty: record.assignedDoctor.specialty,
+        id: record.assignedDoctor.id
       };
     }
 
-    // Check if doctor info might be in the appointment details
-    if (typeof details.doctor_id === 'number' || typeof details.doctor_name === 'string') {
+    // Check appointment details
+    if (details.appointment_time) {
       return {
-        name: details.doctor_name as string || `Doctor #${details.doctor_id}`,
-        email: details.doctor_email as string || undefined,
-        specialty: details.doctor_specialty as string || undefined
-      };
-    }
-
-    // Check if we can infer the doctor from the record type or other fields
-    if (record.record_type === 'appointment' && details.doctor) {
-      const doctorInfo = details.doctor as Record<string, unknown>;
-      return {
-        name: typeof doctorInfo === 'string' ? doctorInfo as string :
-             (doctorInfo.name as string) || 'Booking Doctor',
-        email: doctorInfo.email as string | undefined,
-        specialty: doctorInfo.specialty as string | undefined
-      };
-    }
-
-    // If we have an appointment date but no doctor, it might still be pending assignment
-    if (record.appointment_date) {
-      return {
-        name: user?.name || 'Pending Assignment',
-        email: user?.email,
-        specialty: 'Current Staff'
+        name: 'Scheduled Doctor',
+        email: undefined,
+        specialty: `Appointment on ${formatDate(record.appointment_date)} at ${details.appointment_time}`,
+        id: undefined
       };
     }
 
@@ -249,7 +260,8 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
     return {
       name: 'Attending Physician',
       email: undefined,
-      specialty: undefined
+      specialty: undefined,
+      id: undefined
     };
   };
 
@@ -387,6 +399,11 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
                       )}
                     </div>
 
+                    <div>
+                      <h3 className="text-sm text-gray-500 mb-1">Follow-up Date</h3>
+                      <p className="font-medium">{formatDate(details.followup_date) || 'N/A'}</p>
+                    </div>
+
                     <div className="flex gap-2 mt-8 md:justify-end">
                       <Button variant="outline" onClick={handlePrint} className="flex items-center gap-1">
                         <Printer className="h-4 w-4" />
@@ -412,12 +429,14 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
               <h1 className="text-2xl font-bold">Medical Record</h1>
               <p className="text-sm mt-1">
                 Physician: <span className="text-blue-700 font-medium">Dr. {physicianInfo.name}</span>
-                {physicianInfo.specialty && <span className="text-xs ml-1">({physicianInfo.specialty})</span>},
-                {' '}{user?.role || 'Healthcare Provider'}
+                {physicianInfo.specialty && <span className="text-xs ml-1">({physicianInfo.specialty})</span>}
               </p>
               {physicianInfo.email && (
                 <p className="text-xs text-gray-600 mt-0.5">{physicianInfo.email}</p>
               )}
+              <p className="text-sm mt-2">
+                Patient: <span className="font-medium">{record.patient?.name || 'Unknown Patient'}</span>
+              </p>
             </div>
 
             {/* Horizontal line */}
@@ -465,6 +484,10 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
                   <td className="p-3 border border-gray-300">Created Date:</td>
                   <td className="p-3 border border-gray-300">{formatDate(record.patient?.created_at) || formatDate(record.created_at) || 'Not available'}</td>
                   </tr>
+                  <tr>
+                    <td className="p-3 border border-gray-300">Follow-up Date:</td>
+                    <td className="p-3 border border-gray-300">{formatDate(details.followup_date) || 'N/A'}</td>
+                  </tr>
                 </tbody>
               </table>
 
@@ -492,6 +515,26 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
                   </p>
                 )}
               </div>
+            </div>
+
+            {/* Additional appointment details */}
+            <div className="mt-4 text-sm">
+              <p className="mb-1">
+                <span className="font-medium">Reference Number:</span> {record.reference_number || 'Not assigned'}
+              </p>
+              <p className="mb-1">
+                <span className="font-medium">Status:</span> <span className="capitalize">{record.status || 'Unknown'}</span>
+              </p>
+              {record.reason && (
+                <p className="mb-1">
+                  <span className="font-medium">Reason:</span> <span className="capitalize">{record.reason}</span>
+                </p>
+              )}
+              {record.fee && (
+                <p className="mb-1">
+                  <span className="font-medium">Fee:</span> {typeof record.fee === 'number' ? `$${record.fee.toFixed(2)}` : record.fee}
+                </p>
+              )}
             </div>
           </div>
         </main>

@@ -241,8 +241,8 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
         {/* Print-specific styles */}
         <style type="text/css" media="print">{`
           @page {
-            size: A4;
-            margin: 1cm;
+            size: A4 portrait;
+            margin: 2cm;
           }
           body {
             font-family: 'Arial', sans-serif;
@@ -252,37 +252,20 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
             padding: 0;
           }
           .print-watermark {
-            display: block;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 5em;
-            color: rgba(200, 200, 200, 0.2);
-            z-index: 1000;
-            pointer-events: none;
+            display: none;
           }
-          .print-header {
-            border-bottom: 1px solid #ddd;
-            padding-bottom: 1rem;
-            margin-bottom: 1rem;
-          }
-          .print-footer {
-            border-top: 1px solid #ddd;
-            padding-top: 1rem;
-            margin-top: 1rem;
-            font-size: 0.75rem;
-          }
-          .print-page-break {
-            page-break-after: always;
-          }
-          /* Hide all UI elements not needed for printing */
+          /* Hide screen-only elements */
           .no-print {
             display: none !important;
           }
+          /* Show print-only elements */
+          .hidden.print\\:block {
+            display: block !important;
+          }
         `}</style>
 
-        <div className="hidden print:block print-watermark">
+        {/* Remove watermark for cleaner output */}
+        <div className="hidden print:hidden print-watermark">
           CONFIDENTIAL
         </div>
 
@@ -352,79 +335,153 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
             </div>
           )}
 
-          {/* Medical Record Card - Matches exactly with the image */}
+          {/* Replace the medical record card with the clinical staff print view */}
           <Card className={`border rounded-md overflow-hidden ${showPrintPreview ? 'shadow-xl' : ''} print:shadow-none print:border-none print:mt-0`}>
             <CardContent className="p-6">
-              {/* Header - Exactly as in the image */}
-              <div className="text-center mb-2">
-                <h1 className="text-2xl font-bold">Medical Record</h1>
-                <p className="text-sm">Physician: {record.assignedDoctor?.name ? `Dr. ${record.assignedDoctor.name}` : '[YOUR NAME]'}, {user?.name || '[YOUR COMPANY NAME]'}</p>
+              {/* Regular view content - visible on screen only */}
+              <div className="print:hidden">
+                {/* Header - Exactly as in the image */}
+                <div className="text-center mb-2">
+                  <h1 className="text-2xl font-bold">Medical Record</h1>
+                  <p className="text-sm">Physician: {record.assignedDoctor?.name ? `Dr. ${record.assignedDoctor.name}` : 'Healthcare Provider'}</p>
+                </div>
+
+                {/* Horizontal line */}
+                <div className="border-t border-gray-300 my-4"></div>
+
+                {/* Introduction text */}
+                <div className="text-sm mb-8">
+                  <p>The following information is a comprehensive medical record of the patient, intended for professional use only. This document ensures a detailed overview of the patient's medical history and current health status.</p>
+                </div>
+
+                {/* Patient Info Table */}
+                <table className="w-full border-collapse mb-8">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left p-3 w-1/3 border border-gray-300 font-medium bg-gray-50">Patient Information</th>
+                      <th className="text-left p-3 w-2/3 border border-gray-300 font-medium bg-gray-50">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Name:</td>
+                      <td className="p-3 border border-gray-300">{user?.name || 'Patient'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Date of Birth:</td>
+                      <td className="p-3 border border-gray-300">{formatDate(details.date_of_birth) || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Gender:</td>
+                      <td className="p-3 border border-gray-300">{details.gender || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Contact Number:</td>
+                      <td className="p-3 border border-gray-300">{details.contact_number || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Email:</td>
+                      <td className="p-3 border border-gray-300">{user?.email || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Address:</td>
+                      <td className="p-3 border border-gray-300">{details.address || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Follow-up Date:</td>
+                      <td className="p-3 border border-gray-300">{formatDate(details.followup_date) || 'N/A'}</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
 
-              {/* Horizontal line */}
-              <div className="border-t border-gray-300 my-4"></div>
-
-              {/* Introduction text - Exactly as in the image */}
-              <div className="text-sm mb-8">
-                <p>The following information is a comprehensive medical record of the patient, intended for professional use only. This document ensures a detailed overview of the patient's medical history and current health status.</p>
-              </div>
-
-              {/* Patient Information Table - Exactly as in the image */}
-              <table className="w-full border-collapse mb-8">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="text-left p-3 w-1/2 border border-gray-300 font-medium">Patient Information</th>
-                    <th className="text-left p-3 w-1/2 border border-gray-300 font-medium">Details</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-t border-gray-300">
-                    <td className="p-3 border-l border-r border-gray-300">Name:</td>
-                    <td className="p-3 border-r border-gray-300">{user?.name || 'Erin Cassin'}</td>
-                  </tr>
-                  <tr className="border-t border-gray-300">
-                    <td className="p-3 border-l border-r border-gray-300">Date of Birth:</td>
-                    <td className="p-3 border-r border-gray-300">{formatDate(details.date_of_birth) || '2050-06-15'}</td>
-                  </tr>
-                  <tr className="border-t border-gray-300">
-                    <td className="p-3 border-l border-r border-gray-300">Gender:</td>
-                    <td className="p-3 border-r border-gray-300">{details.gender || 'Female'}</td>
-                  </tr>
-                  <tr className="border-t border-gray-300">
-                    <td className="p-3 border-l border-r border-gray-300">Contact Number:</td>
-                    <td className="p-3 border-r border-gray-300">{details.contact_number || '222 555 7777'}</td>
-                  </tr>
-                  <tr className="border-t border-gray-300">
-                    <td className="p-3 border-l border-r border-gray-300">Email:</td>
-                    <td className="p-3 border-r border-gray-300">{user?.email || 'erin@you.mail'}</td>
-                  </tr>
-                  <tr className="border-t border-b border-gray-300">
-                    <td className="p-3 border-l border-r border-gray-300">Address:</td>
-                    <td className="p-3 border-r border-gray-300">{details.address || 'Louisville, KY 40201'}</td>
-                  </tr>
-                </tbody>
-              </table>
-
-              {/* Medical History Section - Exactly as in the image */}
-              <div className="mb-8">
-                <h2 className="text-xl font-bold mb-4">Medical History</h2>
-                <div className="text-sm">
-                  {details.medical_history ? (
-                    <p className="whitespace-pre-line">{renderValue(details.medical_history)}</p>
-                  ) : details.diagnosis ? (
-                    <p className="whitespace-pre-line">{renderValue(details.diagnosis)}</p>
-                  ) : (
-                    <p>
-                      {user?.name || 'Erin Cassin'} has a history of hypertension, diagnosed in 2025, and has been under
-                      regular medication since. She also reports occasional migraines and has been treated
-                      for these symptoms with prescribed medication. There is no known history of major
-                      surgeries or hospitalizations in the past five years.
-                    </p>
+              {/* PRINT VIEW - hidden on screen, visible when printing */}
+              <div className="hidden print:block mx-auto" style={{ maxWidth: '800px' }}>
+                {/* Title */}
+                <div className="text-center">
+                  <h1 className="text-2xl font-bold">Medical Record</h1>
+                  <p className="text-sm mt-1">
+                    Physician: <span className="text-blue-700 font-medium">
+                      {record.assignedDoctor?.name ? `Dr. ${record.assignedDoctor.name}` : 'Healthcare Provider'}
+                    </span>
+                  </p>
+                  {record.assignedDoctor?.email && (
+                    <p className="text-xs text-gray-600 mt-0.5">{record.assignedDoctor.email}</p>
                   )}
+                  <p className="text-sm mt-2">
+                    Patient: <span className="font-medium">{user?.name || 'Patient'}</span>
+                  </p>
+                </div>
+
+                {/* Horizontal line */}
+                <div className="border-t border-gray-300 my-4"></div>
+
+                {/* Introduction */}
+                <div className="text-sm mb-4">
+                  <p>The following information is a comprehensive medical record of the patient, intended for professional use only. This document ensures a detailed overview of the patient's medical history and current health status.</p>
+                </div>
+
+                {/* Patient Information Table */}
+                <table className="w-full border-collapse mb-8">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left p-3 w-1/3 border border-gray-300 font-medium bg-gray-50">Patient Information</th>
+                      <th className="text-left p-3 w-2/3 border border-gray-300 font-medium bg-gray-50">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Name:</td>
+                      <td className="p-3 border border-gray-300">{user?.name || 'Patient'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Date of Birth:</td>
+                      <td className="p-3 border border-gray-300">{formatDate(details.date_of_birth) || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Gender:</td>
+                      <td className="p-3 border border-gray-300">{details.gender || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Contact Number:</td>
+                      <td className="p-3 border border-gray-300">{details.contact_number || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Email:</td>
+                      <td className="p-3 border border-gray-300">{user?.email || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Address:</td>
+                      <td className="p-3 border border-gray-300">{details.address || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Follow-up Date:</td>
+                      <td className="p-3 border border-gray-300">{formatDate(details.followup_date) || 'N/A'}</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* Medical History Section */}
+                <div className="mb-8">
+                  <h2 className="text-xl font-bold mb-2">Medical History</h2>
+                  <div>
+                    {details.medical_history ? (
+                      <p className="whitespace-pre-line">{details.medical_history}</p>
+                    ) : details.diagnosis ? (
+                      <p className="whitespace-pre-line">{details.diagnosis}</p>
+                    ) : (
+                      <p>
+                        {user?.name} has a history of hypertension, diagnosed in 2025, and has been under
+                        regular medication since. Patient also reports occasional migraines and has been treated
+                        for these symptoms with prescribed medication. There is no known history of major
+                        surgeries or hospitalizations in the past five years.
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Hide all other sections when printing to match the image template */}
+              {/* Rest of the existing content - only visible on screen */}
               <div className="print:hidden">
                 {!isLabRecord && (
                   <>
