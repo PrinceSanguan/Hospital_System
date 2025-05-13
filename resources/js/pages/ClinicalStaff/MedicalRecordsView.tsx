@@ -83,17 +83,6 @@ interface MedicalRecord {
   prescriptions?: string | string[];
   created_at: string;
   updated_at: string;
-  appointment?: {
-    id?: number;
-    doctor_id?: number;
-    doctor_name?: string;
-    doctor_email?: string;
-    doctor_specialty?: string;
-    date?: string;
-    time?: string;
-    status?: string;
-  };
-  appointment_id?: number;
 }
 
 interface MedicalRecordsViewProps {
@@ -218,79 +207,41 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
 
   // Function to determine the assigned physician name
   const getAssignedPhysician = () => {
-    // Look for appointment data that might contain doctor information
-    console.log('Looking for appointment doctor data:', record);
-
-    // Check if the record has an appointment relationship or field
-    if (record.appointment || record.appointment_id) {
-      const appointmentData = record.appointment || {};
-      console.log('Found appointment data:', appointmentData);
-
-      // Try to extract doctor info from appointment
-      if (appointmentData.doctor_id || appointmentData.doctor_name) {
-        return {
-          name: appointmentData.doctor_name || `Doctor #${appointmentData.doctor_id}`,
-          email: appointmentData.doctor_email,
-          specialty: appointmentData.doctor_specialty || 'Appointed Doctor'
-        };
-      }
-    }
-
-    // Check if appointment information is in the details
-    if (details.appointment_id || details.doctor_id) {
-      console.log('Found appointment details:', details);
-      return {
-        name: details.doctor_name as string || `Doctor #${details.doctor_id}`,
-        email: details.doctor_email as string,
-        specialty: details.doctor_specialty as string || 'Booked Doctor'
-      };
-    }
-
     // First check if there's a direct assignedDoctor in the record
     if (record.assignedDoctor?.name) {
-      return {
+            return {
         name: record.assignedDoctor.name,
         email: record.assignedDoctor.email,
         specialty: record.assignedDoctor.specialty
       };
     }
 
-    // For medical records specifically, try to find doctor in type-specific fields
-    if (record.record_type && details) {
-      // For prescription records, look for prescribing doctor
-      if (record.record_type.includes('prescription')) {
-        return {
-          name: details.prescriber_name as string || 'Prescribing Doctor',
-          email: details.prescriber_email as string,
-          specialty: 'Prescribing Physician'
-        };
-      }
-
-      // For checkup/exam records
-      if (record.record_type.includes('checkup') || record.record_type.includes('exam')) {
-        return {
-          name: details.examining_doctor as string || 'Examining Doctor',
-          email: details.doctor_email as string,
-          specialty: 'Examining Physician'
-        };
-      }
-    }
-
-    // For John Doe (patient ID 7) - hardcode the doctor based on database
-    if (record.patient?.id === 7 || record.patient?.name === 'John Doe') {
+    // Check if doctor info might be in the appointment details
+    if (typeof details.doctor_id === 'number' || typeof details.doctor_name === 'string') {
       return {
-        name: 'John Smith',
-        email: 'dr.smith@example.com',
-        specialty: 'General Physician'
+        name: details.doctor_name as string || `Doctor #${details.doctor_id}`,
+        email: details.doctor_email as string || undefined,
+        specialty: details.doctor_specialty as string || undefined
       };
     }
 
-    // For Joshua Gencianeo (patient ID 8) - hardcode the doctor based on database
-    if (record.patient?.id === 8 || record.patient?.name === 'Joshua Gencianeo') {
+    // Check if we can infer the doctor from the record type or other fields
+    if (record.record_type === 'appointment' && details.doctor) {
+      const doctorInfo = details.doctor as Record<string, unknown>;
       return {
-        name: 'Maria Santos',
-        email: 'dr.santos@example.com',
-        specialty: 'Family Medicine'
+        name: typeof doctorInfo === 'string' ? doctorInfo as string :
+             (doctorInfo.name as string) || 'Booking Doctor',
+        email: doctorInfo.email as string | undefined,
+        specialty: doctorInfo.specialty as string | undefined
+      };
+    }
+
+    // If we have an appointment date but no doctor, it might still be pending assignment
+    if (record.appointment_date) {
+      return {
+        name: user?.name || 'Pending Assignment',
+        email: user?.email,
+        specialty: 'Current Staff'
       };
     }
 
@@ -298,7 +249,7 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
     return {
       name: 'Attending Physician',
       email: undefined,
-      specialty: 'General Medicine'
+      specialty: undefined
     };
   };
 
@@ -365,14 +316,14 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
           {/* Header Actions - hide when printing */}
           <div className="flex items-center mb-6 print:hidden">
             <Button variant="ghost" asChild className="mr-4 p-0">
-              <Link href={route('staff.clinical.info')}>
-                <ChevronLeft className="h-4 w-4" />
-              </Link>
-            </Button>
+                  <Link href={route('staff.clinical.info')}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Link>
+                </Button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                Medical Record
-              </h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  Medical Record
+                </h1>
               <p className="text-gray-500 dark:text-gray-400">
                 Viewing medical record from {formatDate(record.appointment_date)}
               </p>
@@ -435,10 +386,7 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
                         <p className="text-xs text-gray-500 mt-1">{physicianInfo.email}</p>
                       )}
                     </div>
-                    <div>
-                      <h3 className="text-sm text-gray-500 mb-1">Follow-up Date</h3>
-                      <p className="font-medium">{formatDate(details.followup_date) || 'N/A'}</p>
-                    </div>
+
                     <div className="flex gap-2 mt-8 md:justify-end">
                       <Button variant="outline" onClick={handlePrint} className="flex items-center gap-1">
                         <Printer className="h-4 w-4" />
@@ -459,7 +407,7 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
 
           {/* Print-specific layout - updated to match the image template exactly */}
           <div className="hidden print:block mx-auto" style={{ maxWidth: '800px' }}>
-            {/* Title */}
+              {/* Title */}
             <div className="text-center">
               <h1 className="text-2xl font-bold">Medical Record</h1>
               <p className="text-sm mt-1">
@@ -475,12 +423,12 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
             {/* Horizontal line */}
             <div className="border-t border-gray-300 my-4"></div>
 
-            {/* Introduction */}
+              {/* Introduction */}
             <div className="text-sm mb-4">
               <p>The following information is a comprehensive medical record of the patient, intended for professional use only. This document ensures a detailed overview of the patient's medical history and current health status.</p>
             </div>
 
-            {/* Patient Information Table */}
+              {/* Patient Information Table */}
             <table className="w-full border-collapse mb-8">
               <thead className="bg-gray-50">
                 <tr>
@@ -488,37 +436,37 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
                   <th className="text-left p-3 w-2/3 border border-gray-300 font-medium bg-gray-50">Details</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr>
+                <tbody>
+                  <tr>
                   <td className="p-3 border border-gray-300">Name:</td>
                   <td className="p-3 border border-gray-300">{record.patient?.name || 'Unknown Patient'}</td>
-                </tr>
-                <tr>
+                  </tr>
+                  <tr>
                   <td className="p-3 border border-gray-300">Date of Birth:</td>
                   <td className="p-3 border border-gray-300">{details.patient_info?.birthdate || formatDate(record.patient?.date_of_birth) || 'Not provided'}</td>
-                </tr>
-                <tr>
+                  </tr>
+                  <tr>
                   <td className="p-3 border border-gray-300">Gender:</td>
                   <td className="p-3 border border-gray-300">{details.patient_info?.gender || record.patient?.gender || 'Not provided'}</td>
-                </tr>
-                <tr>
+                  </tr>
+                  <tr>
                   <td className="p-3 border border-gray-300">Contact Number:</td>
                   <td className="p-3 border border-gray-300">{details.patient_info?.phone || record.patient?.contact_number || 'Not provided'}</td>
-                </tr>
-                <tr>
+                  </tr>
+                  <tr>
                   <td className="p-3 border border-gray-300">Email:</td>
                   <td className="p-3 border border-gray-300">{record.patient?.email || details.patient_info?.email || 'Not provided'}</td>
-                </tr>
-                <tr>
+                  </tr>
+                  <tr>
                   <td className="p-3 border border-gray-300">Address:</td>
                   <td className="p-3 border border-gray-300 bg-blue-50">{patientAddress()}</td>
-                </tr>
-                <tr>
+                  </tr>
+                  <tr>
                   <td className="p-3 border border-gray-300">Created Date:</td>
                   <td className="p-3 border border-gray-300">{formatDate(record.patient?.created_at) || formatDate(record.created_at) || 'Not available'}</td>
-                </tr>
-              </tbody>
-            </table>
+                  </tr>
+                </tbody>
+              </table>
 
             {/* Medical History Section */}
             <div className="mb-8">

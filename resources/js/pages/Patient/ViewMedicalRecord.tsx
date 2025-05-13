@@ -228,10 +228,6 @@ export default function ViewMedicalRecord({ user, record, request }: ViewMedical
                       <h3 className="font-semibold text-sm text-gray-500">Attending Physician</h3>
                       <p className="font-medium text-lg">Dr. {record.assignedDoctor?.name || 'Unassigned'}</p>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-sm text-gray-500">Follow-up Date</h3>
-                      <p className="font-medium">{formatDate(details.followup_date)}</p>
-                    </div>
                   </div>
                 </div>
 
