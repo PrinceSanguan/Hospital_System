@@ -23,6 +23,22 @@
     @viteReactRefresh
     @vite(['resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])
     @inertiaHead
+
+    @vite(['resources/css/app.css', 'resources/js/app.tsx'])
+
+    {{-- Debug information for Vite in non-production environments --}}
+    @if(app()->environment(['local', 'staging', 'development']) || app()->hasDebugModeEnabled())
+        <script>
+            // Display Vite loading debug info
+            console.log('Vite Debug Info:', {
+                'env': '{{ app()->environment() }}',
+                'manifest_path': '{{ public_path('build/manifest.json') }}',
+                'manifest_exists': {{ file_exists(public_path('build/manifest.json')) ? 'true' : 'false' }},
+                'vite_hot_exists': {{ file_exists(public_path('hot')) ? 'true' : 'false' }},
+                'public_build_dir_exists': {{ is_dir(public_path('build')) ? 'true' : 'false' }}
+            });
+        </script>
+    @endif
 </head>
 
 <body class="font-sans antialiased">

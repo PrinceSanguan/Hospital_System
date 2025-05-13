@@ -11,6 +11,7 @@ export default defineConfig({
             ssr: 'resources/js/ssr.tsx',
             refresh: true,
             buildDirectory: 'build',
+            hotFile: process.env.CI ? undefined : 'hot',
         }),
         react(),
         tailwindcss(),
@@ -25,11 +26,9 @@ export default defineConfig({
     },
     build: {
         manifest: true,
-        rollupOptions: {
-            output: {
-                manualChunks: undefined,
-            },
-        },
         outDir: 'public/build',
+        assetsDir: '',
+        emptyOutDir: true,
     },
+    logLevel: 'info',
 });

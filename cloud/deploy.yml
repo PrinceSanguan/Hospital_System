@@ -1,14 +1,25 @@
 pull_requests: true
 run_deploy_script: true
 laravel:
-  script:
-    - 'cloud/deploy'
+  build:
+    - 'npm ci --no-audit'
+    - 'npm run build'
+    - 'composer install --no-dev --optimize-autoloader'
+  deploy:
+    - 'php artisan migrate --force'
+    - 'php artisan config:cache'
+    - 'php artisan route:cache'
+    - 'php artisan view:cache'
+    - 'php artisan storage:link'
+    - 'bash cloud/post-deploy'
 source: /
 destination: /var/www/html
 exclude:
   - .git
   - .github
   - node_modules
+  - vendor
+  - tests
 hooks:
   build:
     - command: npm ci --no-audit
