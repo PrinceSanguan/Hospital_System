@@ -32,6 +32,7 @@ class Kernel extends ConsoleKernel
 
     protected $commands = [
         Commands\CheckTableExists::class,
+        Commands\FixViteManifest::class,
         // ... other commands ...
     ];
 }

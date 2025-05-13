@@ -5,26 +5,26 @@ set -x # Echo commands
 
 cd /var/www/html
 
-# Verify that the Vite manifest exists
+echo "Running Vite manifest fix command..."
+php artisan vite:fix-manifest --force
+
+# Verify that the Vite manifest exists (should be created by the command, this is a double-check)
 if [ ! -f public/build/manifest.json ]; then
-    echo "❌ Vite manifest file is missing! Creating a minimal manifest..."
+    echo "❌ Artisan command failed! Manually creating Vite manifest file..."
 
     # Create the build directory if it doesn't exist
-    mkdir -p public/build
+    mkdir -p public/build/assets
 
     # Create a minimal Vite manifest that will work with Laravel
     cat > public/build/manifest.json << 'EOF'
 {
   "resources/css/app.css": {
-    "file": "assets/app-AbCdEf.css",
+    "file": "assets/app-fallback.css",
     "isEntry": true,
     "src": "resources/css/app.css"
   },
   "resources/js/app.tsx": {
-    "css": [
-      "assets/app-AbCdEf.css"
-    ],
-    "file": "assets/app-XyZaBc.js",
+    "file": "assets/app-fallback.js",
     "isEntry": true,
     "src": "resources/js/app.tsx"
   }
@@ -32,17 +32,18 @@ if [ ! -f public/build/manifest.json ]; then
 EOF
 
     # Create placeholder asset files with minimal content
-    mkdir -p public/build/assets
-    echo "/* Emergency fallback CSS */" > public/build/assets/app-AbCdEf.css
-    echo "// Emergency fallback JS" > public/build/assets/app-XyZaBc.js
+    echo "/* Emergency fallback CSS */" > public/build/assets/app-fallback.css
+    echo "// Emergency fallback JS" > public/build/assets/app-fallback.js
 
-    echo "✅ Emergency fallback manifest and assets created!"
+    echo "✅ Emergency fallback manifest and assets created manually!"
 else
-    echo "✅ Vite manifest file found!"
+    echo "✅ Vite manifest file verified!"
     ls -la public/build/
 fi
 
 # Ensure permissions are correct
 chmod -R 755 public/build
 chmod 644 public/build/manifest.json
+chmod 644 public/build/assets/app-fallback.css
+chmod 644 public/build/assets/app-fallback.js
 echo "✅ Permissions set correctly on build directory!"
