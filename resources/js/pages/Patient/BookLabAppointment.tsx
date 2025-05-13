@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { PatientLayout } from '@/layouts/PatientLayout';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,6 @@ import {
   CardTitle,
   CardFooter,
 } from '@/components/ui/card';
-import { ChevronLeft, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface User {
@@ -49,9 +48,59 @@ export default function BookLabAppointment({ user, doctors }: BookLabAppointment
     notes: '',
   });
 
+  // State for booked time slots
+  const [bookedTimeSlots, setBookedTimeSlots] = useState<string[]>([]);
+  const availableTimes = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00'];
+
+  // Fetch booked time slots when doctor or date changes
+  useEffect(() => {
+    if (data.assigned_doctor_id && data.appointment_date) {
+      fetchBookedTimeSlots(data.assigned_doctor_id, data.appointment_date);
+    }
+  }, [data.assigned_doctor_id, data.appointment_date]);
+
+  // Fetch booked time slots from API
+  const fetchBookedTimeSlots = async (doctorId: string, date: string) => {
+    try {
+      const response = await fetch(`${route('patient.appointments.check-booked-slots')}?doctor_id=${doctorId}&date=${date}`);
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('Booked time slots:', result.bookedTimeSlots);
+        setBookedTimeSlots(result.bookedTimeSlots);
+      } else {
+        console.error('Error fetching booked time slots:', result.message);
+        setBookedTimeSlots([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch booked time slots:', error);
+      setBookedTimeSlots([]);
+    }
+  };
+
+  // Check if a time slot is booked
+  const isTimeSlotBooked = (time: string): boolean => {
+    return bookedTimeSlots.includes(time);
+  };
+
+  // Format time for display
+  const formatTimeForDisplay = (time: string): string => {
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours);
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${period}`;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    post(route('patient.lab-appointments.store'));
+    post(route('patient.lab-appointments.store'), {
+      onSuccess: () => {
+        alert('Laboratory appointment request submitted successfully!');
+        // Redirect to the patient dashboard
+        window.location.href = route('patient.dashboard');
+      }
+    });
   };
 
   const labTypeOptions = [
@@ -75,7 +124,6 @@ export default function BookLabAppointment({ user, doctors }: BookLabAppointment
             <div className="flex items-center gap-2 mb-2">
               <Button variant="ghost" size="sm" asChild className="p-0">
                 <Link href={route('patient.appointments.index')}>
-                  <ChevronLeft className="h-4 w-4" />
                   Back to Appointments
                 </Link>
               </Button>
@@ -91,8 +139,7 @@ export default function BookLabAppointment({ user, doctors }: BookLabAppointment
           <Card>
             <form onSubmit={handleSubmit}>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-blue-500" />
+                <CardTitle>
                   New Laboratory Appointment Request
                 </CardTitle>
                 <CardDescription>
@@ -172,12 +219,36 @@ export default function BookLabAppointment({ user, doctors }: BookLabAppointment
                     <Label htmlFor="appointment_time">
                       Preferred Time <span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                      id="appointment_time"
-                      type="time"
-                      value={data.appointment_time}
-                      onChange={(e) => setData('appointment_time', e.target.value)}
-                    />
+                    <div className="grid grid-cols-3 gap-2">
+                      {availableTimes.map((time) => {
+                        const isBooked = isTimeSlotBooked(time);
+                        return (
+                          <Button
+                            key={time}
+                            type="button"
+                            variant={data.appointment_time === time ? 'default' : 'outline'}
+                            className={`text-xs ${
+                              isBooked
+                                ? 'bg-gray-200 border-gray-300 text-gray-500 cursor-not-allowed hover:bg-gray-200 hover:text-gray-500'
+                                : ''
+                            }`}
+                            onClick={() => {
+                              if (!isBooked) {
+                                setData('appointment_time', time);
+                              }
+                            }}
+                            disabled={isBooked}
+                          >
+                            {formatTimeForDisplay(time)}
+                            {isBooked && (
+                              <span className="ml-1 text-xs text-rose-500 font-medium">
+                                (Occupied)
+                              </span>
+                            )}
+                          </Button>
+                        );
+                      })}
+                    </div>
                     {errors.appointment_time && (
                       <p className="text-sm text-red-500">{errors.appointment_time}</p>
                     )}

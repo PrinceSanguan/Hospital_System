@@ -709,4 +709,45 @@ class PatientDashboardController extends Controller
             'doctors' => $doctors,
         ]);
     }
+
+    /**
+     * Get booked time slots for a specific doctor and date
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getBookedTimeSlots(Request $request)
+    {
+        $request->validate([
+            'doctor_id' => 'required|exists:users,id',
+            'date' => 'required|date_format:Y-m-d',
+        ]);
+
+        try {
+            // Find all appointments for this doctor on the selected date
+            $bookedAppointments = PatientRecord::where('assigned_doctor_id', $request->doctor_id)
+                ->whereDate('appointment_date', $request->date)
+                ->whereIn('status', ['pending', 'confirmed']) // Only include pending and confirmed appointments
+                ->get();
+
+            // Extract the appointment times from the details JSON
+            $bookedTimeSlots = [];
+            foreach ($bookedAppointments as $appointment) {
+                $details = json_decode($appointment->details, true);
+                if (isset($details['appointment_time'])) {
+                    $bookedTimeSlots[] = $details['appointment_time'];
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'bookedTimeSlots' => $bookedTimeSlots
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving booked time slots: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

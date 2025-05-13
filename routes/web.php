@@ -365,9 +365,10 @@ Route::middleware([PatientMiddleware::class])->prefix('patient')->name('patient.
   Route::get('/dashboard', [PatientDashboardController::class, 'index'])->name('dashboard');
 
   // Appointments
-  Route::post('/appointments', [PatientDashboardController::class, 'store'])->name('appointments.store');
   Route::get('/appointments', [PatientDashboardController::class, 'listAppointments'])->name('appointments.index');
   Route::get('/appointments/book', [PatientDashboardController::class, 'bookAppointment'])->name('appointments.book');
+  Route::post('/appointments', [PatientDashboardController::class, 'store'])->name('appointments.store');
+  Route::get('/appointments/check-booked-slots', [PatientDashboardController::class, 'getBookedTimeSlots'])->name('appointments.check-booked-slots');
   Route::get('/appointments/{id}', [PatientDashboardController::class, 'viewAppointment'])->name('appointments.show');
 
   // Medical Records

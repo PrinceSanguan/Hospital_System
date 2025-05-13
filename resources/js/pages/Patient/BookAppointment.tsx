@@ -6,15 +6,15 @@ import {
   Clock,
   Stethoscope,
   Bell,
-  Home,
-  FileText,
-  Menu,
-  UserCircle,
-  Upload,
-  Check,
+  HomeIcon as Home,
+  FileIcon as FileText,
+  MenuIcon as Menu,
+  CircleUserIcon as UserCircle,
+  UploadIcon as Upload,
+  CheckIcon as Check,
   X,
   AlertCircle,
-  Loader2
+  Loader2Icon as Loader2
 } from 'lucide-react';
 import { format, differenceInYears } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
@@ -153,6 +153,7 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [noRecordsChecked, setNoRecordsChecked] = useState(false);
+  const [bookedTimeSlots, setBookedTimeSlots] = useState<string[]>([]);
 
   // Set the pre-selected doctor on component mount
   useEffect(() => {
@@ -290,6 +291,9 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
         console.log('No matching schedules found - using default time slots');
         const defaultSlots = ['9:00 AM', '10:00 AM', '11:00 AM', '1:00 PM', '2:00 PM', '3:00 PM'];
         setAvailableTimeSlots(defaultSlots);
+
+        // After setting available time slots, fetch booked slots
+        fetchBookedTimeSlots(selectedDoctor.id, dateString);
         return;
       }
       setAvailableTimeSlots([]);
@@ -322,6 +326,28 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
 
     console.log('Generated time slots:', slots);
     setAvailableTimeSlots(slots);
+
+    // After setting available time slots, fetch booked slots
+    fetchBookedTimeSlots(selectedDoctor.id, dateString);
+  };
+
+  // Fetch booked time slots for the selected doctor and date
+  const fetchBookedTimeSlots = async (doctorId: number, date: string) => {
+    try {
+      const response = await fetch(`${route('patient.appointments.check-booked-slots')}?doctor_id=${doctorId}&date=${date}`);
+      const data = await response.json();
+
+      if (data.success) {
+        console.log('Booked time slots:', data.bookedTimeSlots);
+        setBookedTimeSlots(data.bookedTimeSlots);
+      } else {
+        console.error('Error fetching booked time slots:', data.message);
+        setBookedTimeSlots([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch booked time slots:', error);
+      setBookedTimeSlots([]);
+    }
   };
 
   // Handle doctor selection
@@ -344,6 +370,11 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
 
   // Handle time slot selection
   const handleTimeSlotSelect = (timeSlot: string) => {
+    // Don't allow selection if the time slot is already booked
+    if (isTimeSlotBooked(timeSlot)) {
+      return;
+    }
+
     setSelectedTimeSlot(timeSlot);
 
     // Parse the 12-hour time format to 24-hour format that the backend expects
@@ -363,6 +394,25 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
     console.log(`Selected time: ${timeSlot}, formatted for backend: ${formattedTime}`);
 
     setData('appointment_time', formattedTime);
+  };
+
+  // Check if a time slot is already booked
+  const isTimeSlotBooked = (timeSlot: string): boolean => {
+    // Convert display format to 24-hour format for comparison
+    const [time, period] = timeSlot.split(' ');
+    const [hourStr, minuteStr] = time.split(':');
+    let hour = parseInt(hourStr, 10);
+    const minute = parseInt(minuteStr, 10);
+
+    if (period === 'PM' && hour !== 12) {
+      hour += 12;
+    } else if (period === 'AM' && hour === 12) {
+      hour = 0;
+    }
+
+    const formattedTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`;
+
+    return bookedTimeSlots.includes(formattedTime);
   };
 
   // Handle birthdate selection
@@ -454,15 +504,10 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
     post(route('patient.appointments.store'), {
       onSuccess: () => {
         console.log('Appointment successfully booked!');
+        // Show alert and redirect to dashboard
         alert('Appointment successfully booked!');
-        reset();
-        setDate(undefined);
-        setSelectedTimeSlot(null);
-        setSelectedDoctor(null);
-        setBirthdate(undefined);
-        setCalculatedBMI(null);
-        setCalculatedAge(null);
-        setUploadedFiles([]); // Clear uploaded files after successful submission
+        // Redirect to the patient dashboard
+        router.visit(route('patient.dashboard'));
       },
       onError: (errors) => {
         console.error('Appointment booking failed with errors:', errors);
@@ -1180,18 +1225,31 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
                               </label>
                               <div className="grid grid-cols-3 gap-2">
                                 {availableTimeSlots.length > 0 ? (
-                                  availableTimeSlots.map((timeSlot) => (
-                                    <Button
-                                      key={timeSlot}
-                                      type="button"
-                                      variant={selectedTimeSlot === timeSlot ? 'default' : 'outline'}
-                                      className="flex items-center justify-center"
-                                      onClick={() => handleTimeSlotSelect(timeSlot)}
-                                    >
-                                      <Clock className="mr-1 h-3 w-3" />
-                                      {timeSlot}
-                                    </Button>
-                                  ))
+                                  availableTimeSlots.map((timeSlot) => {
+                                    const isBooked = isTimeSlotBooked(timeSlot);
+                                    return (
+                                      <Button
+                                        key={timeSlot}
+                                        type="button"
+                                        variant={selectedTimeSlot === timeSlot ? 'default' : 'outline'}
+                                        className={`flex items-center justify-center ${
+                                          isBooked
+                                            ? 'bg-gray-200 border-gray-300 text-gray-500 cursor-not-allowed hover:bg-gray-200 hover:text-gray-500'
+                                            : ''
+                                        }`}
+                                        onClick={() => handleTimeSlotSelect(timeSlot)}
+                                        disabled={isBooked}
+                                      >
+                                        <Clock className="mr-1 h-3 w-3" />
+                                        {timeSlot}
+                                        {isBooked && (
+                                          <span className="ml-1 text-xs text-rose-500 font-medium">
+                                            (Occupied)
+                                          </span>
+                                        )}
+                                      </Button>
+                                    );
+                                  })
                                 ) : (
                                   <p className="col-span-3 text-center text-gray-500 py-4">
                                     No available time slots for this date
