@@ -3,3 +3,30 @@ run_deploy_script: true
 laravel:
   script:
     - 'cloud/deploy'
+source: /
+destination: /var/www/html
+exclude:
+  - .git
+  - .github
+  - node_modules
+hooks:
+  build:
+    - command: npm ci --no-audit
+      display: "Installing NPM dependencies"
+    - command: npm run build
+      display: "Building frontend assets"
+    - command: composer install --no-dev --optimize-autoloader
+      display: "Installing Composer dependencies"
+  deploy:
+    - command: php artisan migrate --force
+      display: "Running migrations"
+    - command: php artisan config:cache
+      display: "Caching configuration"
+    - command: php artisan route:cache
+      display: "Caching routes"
+    - command: php artisan view:cache
+      display: "Caching views"
+    - command: php artisan storage:link
+      display: "Linking storage"
+    - command: bash cloud/post-deploy
+      display: "Verifying Vite manifest"

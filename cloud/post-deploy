@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+# Verify that the Vite manifest exists
+if [ -f /var/www/html/public/build/manifest.json ]; then
+    echo "✅ Vite manifest file found!"
+    ls -la /var/www/html/public/build/
+else
+    echo "❌ ERROR: Vite manifest file is missing!"
+    echo "Checking build directory contents:"
+    ls -la /var/www/html/public/build/ || echo "Build directory does not exist"
+
+    echo "Creating build directory if it doesn't exist"
+    mkdir -p /var/www/html/public/build
+
+    echo "Running Vite build again to create the manifest"
+    cd /var/www/html && npm run build
+
+    # Check if the manifest was created successfully
+    if [ -f /var/www/html/public/build/manifest.json ]; then
+        echo "✅ Vite manifest file created successfully!"
+    else
+        echo "❌ ERROR: Failed to create Vite manifest file!"
+    fi
+fi

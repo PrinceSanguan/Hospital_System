@@ -10,6 +10,7 @@ export default defineConfig({
             input: ['resources/css/app.css', 'resources/js/app.tsx'],
             ssr: 'resources/js/ssr.tsx',
             refresh: true,
+            buildDirectory: 'build',
         }),
         react(),
         tailwindcss(),
@@ -21,5 +22,14 @@ export default defineConfig({
         alias: {
             'ziggy-js': resolve(__dirname, 'vendor/tightenco/ziggy'),
         },
+    },
+    build: {
+        manifest: true,
+        rollupOptions: {
+            output: {
+                manualChunks: undefined,
+            },
+        },
+        outDir: 'public/build',
     },
 });
