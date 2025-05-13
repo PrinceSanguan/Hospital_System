@@ -10,9 +10,6 @@ import { Head, Link } from '@inertiajs/react';
 import { EyeIcon, UserGroupIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import toast from 'react-hot-toast';
 import axios from 'axios';
 
@@ -66,10 +63,6 @@ export default function StaffDashboard({
     },
     appointments = []
 }: DashboardProps) {
-    const [showDenyDialog, setShowDenyDialog] = useState(false);
-    const [denyAppointmentId, setDenyAppointmentId] = useState<number | null>(null);
-    const [denyNote, setDenyNote] = useState('');
-    const [isDenySubmitting, setIsDenySubmitting] = useState(false);
     const [dashboardAppointments, setDashboardAppointments] = useState<Appointment[]>(appointments);
 
     // Format date
@@ -92,7 +85,7 @@ export default function StaffDashboard({
             case 'completed':
                 return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
             case 'cancelled':
-                return <Badge className="bg-red-100 text-red-800">Cancelled</Badge>;
+                return <Badge className="bg-red-600 text-white">Cancelled</Badge>;
             default:
                 return <Badge>{status}</Badge>;
         }
@@ -130,49 +123,9 @@ export default function StaffDashboard({
         }
     };
 
-    // Handle opening the deny dialog
+    // Update openDenyDialog to directly handle the cancellation
     const openDenyDialog = (id: number) => {
-        setDenyAppointmentId(id);
-        setDenyNote('');
-        setShowDenyDialog(true);
-    };
-
-    // Handle the appointment denial with notes
-    const handleDenyAppointment = async () => {
-        if (!denyAppointmentId || !denyNote.trim()) return;
-        
-        setIsDenySubmitting(true);
-        try {
-            const response = await axios.post(route('staff.appointments.status', denyAppointmentId), {
-                status: 'cancelled',
-                notes: denyNote
-            });
-
-            if (response.data.success) {
-                // Update the state with the new array
-                setDashboardAppointments(
-                    dashboardAppointments.map(appointment => {
-                        if (appointment.id === denyAppointmentId) {
-                            return {
-                                ...appointment,
-                                status: 'cancelled'
-                            };
-                        }
-                        return appointment;
-                    })
-                );
-                
-                toast.success('Appointment cancelled successfully');
-                setShowDenyDialog(false);
-            } else {
-                toast.error('Failed to cancel appointment');
-            }
-        } catch (error) {
-            console.error('Error cancelling appointment:', error);
-            toast.error('An error occurred while cancelling the appointment');
-        } finally {
-            setIsDenySubmitting(false);
-        }
+        handleStatusUpdate(id, 'cancelled');
     };
 
     return (
@@ -314,7 +267,7 @@ export default function StaffDashboard({
                                                                                 </Button>
                                                                             </TooltipTrigger>
                                                                             <TooltipContent>
-                                                                                <p>Deny with note</p>
+                                                                                <p>Deny appointment</p>
                                                                             </TooltipContent>
                                                                         </Tooltip>
                                                                     </TooltipProvider>
@@ -360,46 +313,6 @@ export default function StaffDashboard({
                     </div>
                 </main>
             </div>
-
-            {/* Deny Appointment Dialog */}
-            <Dialog open={showDenyDialog} onOpenChange={setShowDenyDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Deny Appointment</DialogTitle>
-                    </DialogHeader>
-
-                    <div className="py-4">
-                        <p className="text-sm text-gray-500 mb-4">
-                            Please provide a reason for denying this appointment. This note will be visible to the patient.
-                        </p>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="denyNote">Denial Reason</Label>
-                            <Textarea
-                                id="denyNote"
-                                placeholder="Enter reason for denial..."
-                                value={denyNote}
-                                onChange={(e) => setDenyNote(e.target.value)}
-                                rows={4}
-                                className="w-full"
-                            />
-                        </div>
-                    </div>
-
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowDenyDialog(false)}>
-                            Cancel
-                        </Button>
-                        <Button 
-                            variant="destructive" 
-                            onClick={handleDenyAppointment}
-                            disabled={!denyNote.trim() || isDenySubmitting}
-                        >
-                            {isDenySubmitting ? 'Processing...' : 'Deny Appointment'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }

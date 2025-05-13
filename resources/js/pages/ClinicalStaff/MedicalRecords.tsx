@@ -114,6 +114,11 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
   const [prescriptions, setPrescriptions] = useState<{ [key: number]: Prescription[] }>({});
   const [loading, setLoading] = useState<{ [key: number]: boolean }>({});
 
+  // Filter out cancelled records
+  const filteredRecords = medicalRecords.data.filter(record => 
+    record.status.toLowerCase() !== 'cancelled'
+  );
+
   const confirmDelete = (id: number) => {
     setRecordToDelete(id);
     setDeleteDialog(true);
@@ -165,7 +170,7 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
       case 'pending':
         return <Badge variant="outline" className="text-orange-500 border-orange-500">Pending</Badge>;
       case 'cancelled':
-        return <Badge variant="destructive">Cancelled</Badge>;
+        return <Badge className="bg-red-600 text-white">Cancelled</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -267,8 +272,8 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {medicalRecords.data.length > 0 ? (
-                      medicalRecords.data.map((record) => (
+                    {filteredRecords.length > 0 ? (
+                      filteredRecords.map((record) => (
                         <TableRow key={record.id}>
                           <TableCell>{formatDate(record.appointment_date)}</TableCell>
                           <TableCell className="font-medium">{record.patient?.name || 'Unknown Patient'}</TableCell>

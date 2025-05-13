@@ -156,21 +156,23 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @foreach($prescriptions as $medicine)
                     <tr>
-                        <td>{{ $prescription->medication }}</td>
-                        <td>{{ $prescription->dosage }}</td>
-                        <td>{{ $prescription->frequency }}</td>
-                        <td>{{ $prescription->duration }}</td>
+                        <td>{{ $medicine->medication }}</td>
+                        <td>{{ $medicine->dosage }}</td>
+                        <td>{{ $medicine->frequency }}</td>
+                        <td>{{ $medicine->duration }}</td>
                     </tr>
+                    @if($medicine->instructions)
+                    <tr>
+                        <td colspan="4" style="padding-left: 20px; font-style: italic; font-size: 11px; background-color: #f9f9f9; border-bottom: 1px dashed #ccc;">
+                            <strong>Instructions:</strong> {{ $medicine->instructions }}
+                        </td>
+                    </tr>
+                    @endif
+                    @endforeach
                 </tbody>
             </table>
-
-            @if($prescription->instructions)
-            <div class="instructions">
-                <h4>Instructions:</h4>
-                <p>{{ $prescription->instructions }}</p>
-            </div>
-            @endif
         </div>
 
         <div class="footer">

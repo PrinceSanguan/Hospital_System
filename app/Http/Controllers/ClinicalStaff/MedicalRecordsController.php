@@ -263,10 +263,17 @@ class MedicalRecordsController extends Controller
      */
     public function downloadPrescription($id)
     {
-        $prescription = Prescription::with(['patient', 'doctor', 'record'])->findOrFail($id);
-
+        // Get the original prescription to get record_id and other details
+        $originalPrescription = Prescription::with(['patient', 'doctor', 'record'])->findOrFail($id);
+        
+        // Get all prescriptions for the same record
+        $allPrescriptions = Prescription::where('record_id', $originalPrescription->record_id)
+            ->orderBy('created_at', 'asc')
+            ->get();
+            
         $data = [
-            'prescription' => $prescription,
+            'prescription' => $originalPrescription, // Keep for backward compatibility
+            'prescriptions' => $allPrescriptions,    // Add all prescriptions
             'clinic_name' => 'Famcare Medical Clinic',
             'clinic_address' => '123 Healthcare Street, Medical District',
             'clinic_contact' => '+1 (555) 123-4567',
@@ -275,7 +282,7 @@ class MedicalRecordsController extends Controller
 
         $pdf = PDF::loadView('pdf.prescription', $data);
 
-        return $pdf->download('prescription_' . $prescription->reference_number . '.pdf');
+        return $pdf->download('prescription_' . $originalPrescription->reference_number . '.pdf');
     }
 
     /**
