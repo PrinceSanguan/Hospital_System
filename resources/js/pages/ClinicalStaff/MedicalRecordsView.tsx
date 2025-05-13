@@ -7,7 +7,7 @@ import {
   Card,
   CardContent,
 } from '@/components/ui/card';
-import { ChevronLeft, Printer, ClipboardList, Download } from 'lucide-react';
+import { ChevronLeft, Printer, ClipboardList } from 'lucide-react';
 import { format } from 'date-fns';
 import axios from 'axios';
 
