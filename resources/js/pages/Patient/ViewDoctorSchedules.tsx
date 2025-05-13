@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Head, Link, usePage } from '@inertiajs/inertia-react';
-import { Card, Table, Alert, Tabs, Tab, Row, Col, Badge } from 'react-bootstrap';
-import PatientLayout from '@/Layouts/PatientLayout';
+import { Head, Link, usePage } from '@inertiajs/react';
+import { Card, Table, Alert, Row, Col, Badge } from 'react-bootstrap';
+import { PatientLayout } from '@/layouts/PatientLayout';
 import axios from 'axios';
 
 interface Doctor {
@@ -30,10 +30,15 @@ interface Props {
     success?: string;
     error?: string;
   };
+  user: {
+    name: string;
+    email: string;
+    role: string;
+  };
 }
 
 const ViewDoctorSchedules: React.FC = () => {
-  const { doctors, flash } = usePage<Props>().props;
+  const { doctors, flash, user } = usePage<Props>().props;
   const [selectedDoctor, setSelectedDoctor] = useState<number | null>(null);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -100,7 +105,7 @@ const ViewDoctorSchedules: React.FC = () => {
   }, {} as Record<string, Schedule[]>);
 
   return (
-    <PatientLayout>
+    <PatientLayout user={user}>
       <Head title="Doctor Schedules" />
 
       <div className="container py-4">
