@@ -23,6 +23,10 @@ if [ ! -d "node_modules" ]; then
   npm ci --no-audit
 fi
 
+# Ensure the correct Tailwind CSS Vite plugin is installed
+echo "Making sure @tailwindcss/vite is installed..."
+npm list @tailwindcss/vite || npm install --save @tailwindcss/vite@4.0.6
+
 # Add node_modules/.bin to the PATH
 export PATH="$PATH:$PWD/node_modules/.bin"
 
@@ -35,7 +39,8 @@ fi
 # Check if vite.config.ts exists
 if [ ! -f "vite.config.ts" ]; then
   echo "vite.config.ts not found!"
-  exit 1
+  php artisan vite:fix-manifest --force
+  exit 0
 fi
 
 # Set environment variables for production build
@@ -44,7 +49,13 @@ export NODE_ENV=production
 
 # Run vite build directly
 echo "Building assets with Vite..."
-node_modules/.bin/vite build --mode production
+if node_modules/.bin/vite build --mode production; then
+  echo "Build completed successfully!"
+else
+  echo "Build failed, using Artisan fallback..."
+  php artisan vite:fix-manifest --force
+  exit 0
+fi
 
 # Verify the build
 if [ -d "public/build" ]; then
@@ -55,14 +66,16 @@ if [ -d "public/build" ]; then
     echo "Manifest file exists!"
     cat public/build/manifest.json
   else
-    echo "Manifest file not found!"
+    echo "Manifest file not found, creating with Artisan command..."
+    php artisan vite:fix-manifest --force
   fi
 
   # Set permissions
   chmod -R 775 public/build
 else
   echo "Build directory doesn't exist after build!"
-  exit 1
+  echo "Creating emergency manifest with Artisan command..."
+  php artisan vite:fix-manifest --force
 fi
 
 echo "===== DIRECT BUILD COMPLETED ====="

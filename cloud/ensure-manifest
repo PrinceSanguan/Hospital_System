@@ -1,68 +1,114 @@
 #!/usr/bin/env bash
 
-# This script ensures that the Vite manifest file is in the correct location
-# It's meant to be run after the build process on Laravel Cloud
+# This script ensures the manifest.json file exists
+# If it doesn't, it creates a fallback version
 
 set -e # Exit on error
-set -x # Echo commands
 
-echo "===== ENSURING VITE MANIFEST FILE EXISTS ====="
+MANIFEST_PATH="public/build/manifest.json"
+FALLBACK_JS="public/build/assets/app-fallback.js"
+FALLBACK_CSS="public/build/assets/app-fallback.css"
 
-# Define the expected paths
-BUILT_MANIFEST_PATH="public/build/manifest.json"
-BUILT_ASSETS_DIR="public/build/assets"
+echo "Checking for Vite manifest file..."
 
-# Check if the manifest file exists in the build directory
-if [ -f "$BUILT_MANIFEST_PATH" ]; then
-    echo "✅ Manifest file found at $BUILT_MANIFEST_PATH"
-    cat "$BUILT_MANIFEST_PATH"
-else
-    echo "❌ Manifest file not found at $BUILT_MANIFEST_PATH"
+if [ ! -f "$MANIFEST_PATH" ]; then
+  echo "Manifest file not found, creating fallback..."
 
-    # Create the build directory if it doesn't exist
-    if [ ! -d "public/build" ]; then
-        echo "Creating build directory..."
-        mkdir -p public/build
-    fi
+  # Create directories if they don't exist
+  mkdir -p public/build/assets
 
-    # Create assets directory if it doesn't exist
-    if [ ! -d "$BUILT_ASSETS_DIR" ]; then
-        echo "Creating assets directory..."
-        mkdir -p "$BUILT_ASSETS_DIR"
-    fi
-
-    # Create fallback assets
-    echo "Creating fallback asset files..."
-    echo "/* Emergency CSS fallback - created on $(date) */" > "$BUILT_ASSETS_DIR/app-fallback.css"
-    echo "console.log('Emergency JS fallback loaded - created on $(date)'); console.warn('Vite assets failed to build - using emergency fallback');" > "$BUILT_ASSETS_DIR/app-fallback.js"
-
-    # Create a minimal manifest file
-    echo "Creating minimal manifest file..."
-    cat > "$BUILT_MANIFEST_PATH" << EOF
+  # Create fallback manifest
+  cat > "$MANIFEST_PATH" << EOF
 {
-  "resources/css/app.css": {
-    "file": "assets/app-fallback.css",
-    "isEntry": true,
-    "src": "resources/css/app.css"
-  },
-  "resources/js/app.tsx": {
-    "file": "assets/app-fallback.js",
-    "isEntry": true,
-    "src": "resources/js/app.tsx"
-  }
+    "resources/css/app.css": {
+        "file": "assets/app-fallback.css",
+        "isEntry": true,
+        "src": "resources/css/app.css"
+    },
+    "resources/js/app.tsx": {
+        "file": "assets/app-fallback.js",
+        "isEntry": true,
+        "src": "resources/js/app.tsx"
+    }
 }
 EOF
 
-    echo "✅ Created fallback manifest file:"
-    cat "$BUILT_MANIFEST_PATH"
+  # Create fallback CSS if it doesn't exist
+  if [ ! -f "$FALLBACK_CSS" ]; then
+    cat > "$FALLBACK_CSS" << EOF
+/* Emergency fallback CSS file */
+body:before {
+  content: "Warning: Using fallback assets - contact system administrator";
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #ffff99;
+  color: #333;
+  padding: 10px;
+  text-align: center;
+  font-family: sans-serif;
+  z-index: 9999;
+}
+EOF
+  fi
+
+  # Create fallback JS if it doesn't exist
+  if [ ! -f "$FALLBACK_JS" ]; then
+    cat > "$FALLBACK_JS" << EOF
+/**
+ * Emergency fallback JavaScript file
+ * This file is used when the Vite build process fails
+ */
+
+console.warn('FALLBACK ASSETS LOADED: The Vite build process failed and fallback assets are being used.');
+console.info('Please contact the system administrator if this issue persists.');
+
+// Basic functionality to show an error message to the user
+document.addEventListener('DOMContentLoaded', function() {
+  // Check if we're in a fallback state
+  const isFallback = true;
+
+  if (isFallback) {
+    // Create an error message element
+    const errorMsg = document.createElement('div');
+    errorMsg.style.position = 'fixed';
+    errorMsg.style.bottom = '20px';
+    errorMsg.style.right = '20px';
+    errorMsg.style.backgroundColor = '#f8d7da';
+    errorMsg.style.color = '#721c24';
+    errorMsg.style.padding = '10px 15px';
+    errorMsg.style.borderRadius = '4px';
+    errorMsg.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+    errorMsg.style.zIndex = '9999';
+    errorMsg.textContent = 'The application is running in fallback mode. Some features may be limited.';
+
+    // Add a close button
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '×';
+    closeBtn.style.marginLeft = '10px';
+    closeBtn.style.background = 'none';
+    closeBtn.style.border = 'none';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.fontWeight = 'bold';
+    closeBtn.onclick = function() {
+      errorMsg.remove();
+    };
+
+    errorMsg.appendChild(closeBtn);
+    document.body.appendChild(errorMsg);
+  }
+});
+EOF
+  fi
+
+  # Make files accessible
+  chmod 644 "$MANIFEST_PATH" "$FALLBACK_CSS" "$FALLBACK_JS"
+
+  echo "Fallback files created successfully"
+else
+  echo "Manifest file exists:"
+  cat "$MANIFEST_PATH"
 fi
 
-# Set proper permissions
-echo "Setting proper permissions..."
-chmod -R 775 public/build
-chmod 664 "$BUILT_MANIFEST_PATH"
-if [ -d "$BUILT_ASSETS_DIR" ]; then
-    chmod 664 "$BUILT_ASSETS_DIR"/*
-fi
-
-echo "===== VITE MANIFEST CHECK COMPLETED ====="
+echo "Manifest check completed"

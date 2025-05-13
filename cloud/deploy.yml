@@ -15,10 +15,16 @@ prod:
   build-steps:
     - "echo 'Making build scripts executable...'"
     - "chmod +x cloud/direct-build cloud/ensure-manifest cloud/post-deploy"
+    - "echo 'Cleaning npm cache and reinstalling deps...'"
+    - "npm cache clean --force || true"
+    - "rm -rf node_modules || true"
+    - "npm install"
     - "echo 'Running direct build script...'"
     - "bash cloud/direct-build"
     - "echo 'Running manifest check script...'"
     - "bash cloud/ensure-manifest"
+    - "echo 'Final confirmation with artisan command...'"
+    - "php artisan vite:fix-manifest || true"
 
   # Explicitly include the public/build directory
   directory-include:
