@@ -13,16 +13,12 @@ prod:
 
   # Set up and build the frontend assets
   build-steps:
-    - "echo 'Setting up Node.js and NPM...'"
-    - "nvm install 20 && nvm use 20"
-    - "echo 'Installing NPM dependencies...'"
-    - "npm ci --no-audit"
-    - "echo 'Building frontend assets...'"
-    - "npm run build:cloud"
-    - "echo 'Verifying build...'"
-    - "ls -la public/build/"
-    - "echo 'Fixing manifest permissions...'"
-    - "chmod -R 775 public/build"
+    - "echo 'Making build scripts executable...'"
+    - "chmod +x cloud/direct-build cloud/ensure-manifest cloud/post-deploy"
+    - "echo 'Running direct build script...'"
+    - "bash cloud/direct-build"
+    - "echo 'Running manifest check script...'"
+    - "bash cloud/ensure-manifest"
 
   # Explicitly include the public/build directory
   directory-include:
