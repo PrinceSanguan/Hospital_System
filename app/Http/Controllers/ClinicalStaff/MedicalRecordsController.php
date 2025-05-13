@@ -110,7 +110,7 @@ class MedicalRecordsController extends Controller
     public function show($id)
     {
         $user = Auth::user();
-        $record = PatientRecord::with(['patient', 'assignedDoctor'])
+        $record = PatientRecord::with(['patient', 'assignedDoctor.doctorProfile'])
             ->where('id', $id)
             ->firstOrFail();
 

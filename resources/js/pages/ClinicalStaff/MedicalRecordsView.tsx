@@ -26,12 +26,23 @@ interface SidebarUser {
   role?: string;
 }
 
+interface DoctorProfile {
+  id?: number;
+  doctor_id?: number;
+  specialization?: string;
+  qualifications?: string;
+  years_of_experience?: number;
+  phone_number?: string;
+  address?: string;
+}
+
 interface Doctor {
   id: number;
   name: string;
   email?: string;
-  specialty?: string;
+  user_role?: string;
   user_id?: number;
+  doctorProfile?: DoctorProfile;
 }
 
 interface Patient {
@@ -212,61 +223,6 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
     return 'No address provided';
   };
 
-  // Function to determine the assigned physician name
-  const getAssignedPhysician = () => {
-    console.log('Looking for physician in record:', record);
-
-    // Check for assigned_doctor_id field first (from the appointments table)
-    if (record.assigned_doctor_id) {
-            return {
-        name: record.assignedDoctor?.name || `Doctor #${record.assigned_doctor_id}`,
-        email: record.assignedDoctor?.email,
-        specialty: record.assignedDoctor?.specialty || 'Assigned Specialist',
-        id: record.assigned_doctor_id
-      };
-    }
-
-    // Then check normal doctor_id field
-    if (record.doctor_id) {
-      return {
-        name: record.assignedDoctor?.name || `Doctor #${record.doctor_id}`,
-        email: record.assignedDoctor?.email,
-        specialty: record.assignedDoctor?.specialty || 'Primary Doctor',
-        id: record.doctor_id
-      };
-    }
-
-    // Use assignedDoctor field if available
-    if (record.assignedDoctor?.name) {
-      return {
-        name: record.assignedDoctor.name,
-        email: record.assignedDoctor.email,
-        specialty: record.assignedDoctor.specialty,
-        id: record.assignedDoctor.id
-      };
-    }
-
-    // Check appointment details
-    if (details.appointment_time) {
-      return {
-        name: 'Scheduled Doctor',
-        email: undefined,
-        specialty: `Appointment on ${formatDate(record.appointment_date)} at ${details.appointment_time}`,
-        id: undefined
-      };
-    }
-
-    // Last resort fallback
-    return {
-      name: 'Attending Physician',
-      email: undefined,
-      specialty: undefined,
-      id: undefined
-    };
-  };
-
-  const physicianInfo = getAssignedPhysician();
-
   // Handler for print button
   const handlePrint = () => {
     setTimeout(() => {
@@ -389,17 +345,6 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
                   {/* Right Column */}
                   <div className="space-y-6">
                     <div>
-                      <h3 className="text-sm text-gray-500 mb-1">Attending Physician</h3>
-                      <p className="font-medium text-blue-600">
-                        Dr. {physicianInfo.name}
-                        {physicianInfo.specialty && <span className="text-xs ml-1 text-gray-500">({physicianInfo.specialty})</span>}
-                      </p>
-                      {physicianInfo.email && (
-                        <p className="text-xs text-gray-500 mt-1">{physicianInfo.email}</p>
-                      )}
-                    </div>
-
-                    <div>
                       <h3 className="text-sm text-gray-500 mb-1">Follow-up Date</h3>
                       <p className="font-medium">{formatDate(details.followup_date) || 'N/A'}</p>
                     </div>
@@ -427,13 +372,6 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
               {/* Title */}
             <div className="text-center">
               <h1 className="text-2xl font-bold">Medical Record</h1>
-              <p className="text-sm mt-1">
-                Physician: <span className="text-blue-700 font-medium">Dr. {physicianInfo.name}</span>
-                {physicianInfo.specialty && <span className="text-xs ml-1">({physicianInfo.specialty})</span>}
-              </p>
-              {physicianInfo.email && (
-                <p className="text-xs text-gray-600 mt-0.5">{physicianInfo.email}</p>
-              )}
               <p className="text-sm mt-2">
                 Patient: <span className="font-medium">{record.patient?.name || 'Unknown Patient'}</span>
               </p>
