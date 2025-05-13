@@ -27,15 +27,31 @@ class StaffDashboardController extends Controller
             ->where('status', 'pending')
             ->count();
 
-        // Get today's appointments
-        $todayAppointments = PatientRecord::with(['patient', 'assignedDoctor'])
-            ->whereDate('appointment_date', today())
-            ->orderBy('appointment_date', 'asc')
-            ->take(10)
-            ->get();
+        // Get all appointments instead of just today's
+        $allAppointments = PatientRecord::with(['patient:id,name', 'assignedDoctor:id,name'])
+            ->orderBy('appointment_date', 'desc')
+            ->take(15)
+            ->get()
+            ->map(function ($appointment) {
+                return [
+                    'id' => $appointment->id,
+                    'patient' => [
+                        'id' => $appointment->patient->id,
+                        'name' => $appointment->patient->name,
+                    ],
+                    'appointment_date' => $appointment->appointment_date,
+                    'status' => $appointment->status,
+                    'doctor' => $appointment->assignedDoctor ? [
+                        'id' => $appointment->assignedDoctor->id,
+                        'name' => $appointment->assignedDoctor->name,
+                    ] : null,
+                    'reason' => json_decode($appointment->details)?->reason ?? null,
+                ];
+            });
 
         return Inertia::render('ClinicalStaff/Dashboard', [
             'user' => [
+                'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
@@ -45,7 +61,7 @@ class StaffDashboardController extends Controller
                 'todayAppointments' => $todayAppointmentsCount,
                 'pendingLabResults' => $pendingLabResultsCount,
             ],
-            'todayAppointments' => $todayAppointments,
+            'appointments' => $allAppointments,
         ]);
     }
 }

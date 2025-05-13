@@ -1,12 +1,34 @@
 import { Header } from '@/components/clinicalstaff/header';
 import { Sidebar } from '@/components/clinicalstaff/sidebar';
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Users, FileText } from "lucide-react";
+import { Calendar } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { format, parseISO } from 'date-fns';
+import { Link } from '@inertiajs/react';
+import { EyeIcon, UserGroupIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { Button } from "@/components/ui/button";
 
 interface User {
+    id: number;
     name: string;
     email: string;
     role?: string;
+}
+
+interface Appointment {
+    id: number;
+    patient: {
+        id: number;
+        name: string;
+    };
+    appointment_date: string;
+    status: string;
+    doctor?: {
+        id: number;
+        name: string;
+    };
+    reason?: string;
 }
 
 interface DashboardProps {
@@ -16,13 +38,45 @@ interface DashboardProps {
         todayAppointments: number;
         pendingLabResults: number;
     };
+    appointments?: Appointment[];
 }
 
-export default function StaffDashboard({ user, stats = {
-    totalPatients: 8,
-    todayAppointments: 0,
-    pendingLabResults: 0
-} }: DashboardProps) {
+export default function StaffDashboard({
+    user,
+    stats = {
+        totalPatients: 8,
+        todayAppointments: 0,
+        pendingLabResults: 0
+    },
+    appointments = []
+}: DashboardProps) {
+
+    // Format date
+    const formatDate = (dateString: string) => {
+        try {
+            const date = parseISO(dateString);
+            return format(date, 'MMM dd, yyyy');
+        } catch {
+            return dateString;
+        }
+    };
+
+    // Get status badge
+    const getStatusBadge = (status: string) => {
+        switch (status.toLowerCase()) {
+            case 'pending':
+                return <Badge variant="outline">Pending</Badge>;
+            case 'confirmed':
+                return <Badge className="bg-blue-100 text-blue-800">Confirmed</Badge>;
+            case 'completed':
+                return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
+            case 'cancelled':
+                return <Badge className="bg-red-100 text-red-800">Cancelled</Badge>;
+            default:
+                return <Badge>{status}</Badge>;
+        }
+    };
+
     return (
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
             {/* Sidebar Component */}
@@ -53,7 +107,7 @@ export default function StaffDashboard({ user, stats = {
                                             <p className="text-3xl font-bold">{stats.totalPatients}</p>
                                         </div>
                                         <div className="rounded-full bg-blue-100 p-3 text-blue-600">
-                                            <Users size={20} />
+                                            <UserGroupIcon className="h-5 w-5" />
                                         </div>
                                     </div>
                                 </CardContent>
@@ -81,28 +135,61 @@ export default function StaffDashboard({ user, stats = {
                                             <p className="text-3xl font-bold">{stats.pendingLabResults}</p>
                                         </div>
                                         <div className="rounded-full bg-yellow-100 p-3 text-yellow-600">
-                                            <FileText size={20} />
+                                            <DocumentTextIcon className="h-5 w-5" />
                                         </div>
                                     </div>
                                 </CardContent>
                             </Card>
                         </div>
 
-                        {/* Today's Appointments Section */}
+                        {/* All Appointments Section */}
                         <Card>
                             <CardContent className="p-6">
-                                <h2 className="mb-4 text-xl font-semibold">Today's Appointments</h2>
-                                {stats.todayAppointments > 0 ? (
-                                    <div className="divide-y">
-                                        {/* Appointments would be listed here */}
-                                        <p>Appointment list would appear here</p>
-                                    </div>
+                                <h2 className="mb-4 text-xl font-semibold">All Appointments</h2>
+                                {appointments.length > 0 ? (
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Patient</TableHead>
+                                                <TableHead>Date</TableHead>
+                                                <TableHead>Doctor</TableHead>
+                                                <TableHead>Reason</TableHead>
+                                                <TableHead>Status</TableHead>
+                                                <TableHead className="text-right">Action</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {appointments.map((appointment) => (
+                                                <TableRow key={appointment.id}>
+                                                    <TableCell>{appointment.patient.name}</TableCell>
+                                                    <TableCell>{formatDate(appointment.appointment_date)}</TableCell>
+                                                    <TableCell>{appointment.doctor ? `Dr. ${appointment.doctor.name}` : 'Unassigned'}</TableCell>
+                                                    <TableCell>{appointment.reason || 'Not specified'}</TableCell>
+                                                    <TableCell>{getStatusBadge(appointment.status)}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Button asChild variant="ghost" size="icon">
+                                                            <Link href={route('staff.appointments.show', appointment.id)}>
+                                                                <EyeIcon className="h-4 w-4" />
+                                                            </Link>
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
                                 ) : (
                                     <div className="flex items-center justify-center p-6 text-gray-500">
                                         <Calendar className="mr-2 h-5 w-5" />
-                                        <span>No appointments scheduled for today</span>
+                                        <span>No appointments found in the system</span>
                                     </div>
                                 )}
+                                <div className="mt-4 text-right">
+                                    <Button asChild variant="outline">
+                                        <Link href={route('staff.appointments.index')}>
+                                            View All Appointments
+                                        </Link>
+                                    </Button>
+                                </div>
                             </CardContent>
                         </Card>
                     </div>
