@@ -28,4 +28,6 @@ declare module 'lucide-react' {
   export const AlertCircle: LucideIcon;
   export const Info: LucideIcon;
   export const Bell: LucideIcon;
-} 
+  export const ChevronLeft: LucideIcon;
+  export const Printer: LucideIcon;
+}
