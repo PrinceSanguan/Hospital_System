@@ -78,7 +78,7 @@ export default function Records({ user, records }: RecordsProps) {
       case 'pending':
         return <Badge variant="outline" className="text-orange-500 border-orange-500">Pending</Badge>;
       case 'cancelled':
-        return <Badge variant="destructive">Cancelled</Badge>;
+        return <Badge className="bg-red-600 text-white">Cancelled</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }

@@ -94,7 +94,7 @@ export function PatientLayout({ children, user }: PatientLayoutProps) {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href={route('auth.logout')} method="post" className="flex w-full cursor-pointer items-center gap-2">
+                  <Link href={route('auth.logout')} method="post" as="button" className="flex w-full cursor-pointer items-center gap-2">
                     <LogOut size={16} />
                     Logout
                   </Link>
