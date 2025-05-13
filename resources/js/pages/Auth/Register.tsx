@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useState } from 'react';
+import { Alert } from '@/components/ui/alert';
 
 export default function Register() {
   const [activeTab, setActiveTab] = useState(0);
@@ -20,12 +21,17 @@ export default function Register() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Form submitted with data:", data);
 
     // Use the post method from Inertia with the route and options
     post(route('auth.register.store'), {
       onSuccess: () => {
+        console.log("Registration successful");
         // Optionally reset the form after successful submission
         reset();
+      },
+      onError: (errors) => {
+        console.error("Registration failed with errors:", errors);
       },
       // Preserve the scroll position
       preserveScroll: true,
@@ -89,6 +95,13 @@ export default function Register() {
             <div className="text-center mb-6">
               <h2 className="text-xl sm:text-2xl font-bold text-blue-800 transition-all">Create a Patient Account</h2>
             </div>
+
+            {/* Display global errors if any */}
+            {errors.database && (
+              <Alert className="mb-4 bg-red-50 text-red-700 border border-red-200 p-3 rounded-md">
+                {String(errors.database)}
+              </Alert>
+            )}
 
             {/* Tab Navigation */}
             <div className="flex border-b mb-6">

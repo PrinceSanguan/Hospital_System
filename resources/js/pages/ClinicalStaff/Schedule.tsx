@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Header } from '@/components/clinicalstaff/header';
 import { UserData } from '@/types';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -28,11 +26,9 @@ import {
 } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2 } from 'lucide-react';
-import { Sidebar } from '@/components/clinicalstaff/sidebar';
+import { X } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import { Alert } from '@/components/ui/alert';
-import { Layout } from '@/components/layouts/layout';
 
 interface ScheduleData {
   id: number;
@@ -48,6 +44,10 @@ interface ScheduleData {
 interface Props {
   user: UserData;
   schedules: ScheduleData[];
+  flash?: {
+    success?: string;
+    error?: string;
+  };
 }
 
 interface TimeSlot {
@@ -67,7 +67,7 @@ interface ScheduleFormData {
   notes: string;
 }
 
-const Schedule: React.FC<Props> = ({ user, schedules }) => {
+const Schedule: React.FC<Props> = ({ schedules, flash }) => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -296,7 +296,7 @@ const Schedule: React.FC<Props> = ({ user, schedules }) => {
             resetForm();
             setIsSubmitting(false);
           },
-          onError: (errors) => {
+          onError: (errors: Record<string, string>) => {
             console.error('Error updating schedule:', errors);
             setErrors(errors);
             setIsSubmitting(false);
@@ -309,7 +309,7 @@ const Schedule: React.FC<Props> = ({ user, schedules }) => {
             resetForm();
             setIsSubmitting(false);
           },
-          onError: (errors) => {
+          onError: (errors: Record<string, string>) => {
             console.error('Error creating schedules:', errors);
             setErrors(errors);
             setIsSubmitting(false);
@@ -386,7 +386,7 @@ const Schedule: React.FC<Props> = ({ user, schedules }) => {
   };
 
   return (
-    <Layout>
+    <div className="min-h-screen bg-gray-100">
       <Head title="Manage Your Schedule" />
 
       <div className="container py-4">
@@ -396,178 +396,198 @@ const Schedule: React.FC<Props> = ({ user, schedules }) => {
             <Link href={route('staff.doctor-schedules.index')} className="btn btn-outline-primary me-2">
               <i className="bi bi-calendar-plus"></i> Manage Doctor Schedules
             </Link>
-            <Button variant="primary" onClick={() => setShowDialog(true)}>
+            <Button onClick={() => setShowDialog(true)}>
               <i className="bi bi-plus"></i> Add Schedule
             </Button>
           </div>
         </div>
 
-        {flash.success && (
-          <Alert variant="success" className="mb-4">
+        {flash?.success && (
+          <Alert className="mb-4">
             {flash.success}
           </Alert>
         )}
 
-        <Tabs
-          activeKey={activeTab}
-          onSelect={(k) => k && setActiveTab(k)}
-          className="mb-4"
-        >
-          <Tab eventKey="calendar" title="Calendar View">
-            <Card>
-              <Card.Body>
-                <div className="alert alert-info mb-4">
-                  <strong>Your Schedule</strong> - Calendar view of your availability. Click on a date to add or edit your schedule for that day.
-                  <br />
-                  <small>
-                    <strong>Note:</strong> You can manage doctor schedules by clicking the "Manage Doctor Schedules" button above.
-                  </small>
-                </div>
+        <div className="mb-4">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                className={`border-transparent px-3 py-2 ${activeTab === 'calendar'
+                  ? 'border-b-2 border-blue-500 text-blue-600'
+                  : 'text-gray-500 hover:text-gray-700'}`}
+                onClick={() => setActiveTab('calendar')}
+              >
+                Calendar View
+              </button>
+              <button
+                className={`border-transparent px-3 py-2 ${activeTab === 'list'
+                  ? 'border-b-2 border-blue-500 text-blue-600'
+                  : 'text-gray-500 hover:text-gray-700'}`}
+                onClick={() => setActiveTab('list')}
+              >
+                List View
+              </button>
+            </nav>
+          </div>
 
-                <div className="flex flex-col items-center">
-                  <Calendar
-                    mode="single"
-                    selected={undefined}
-                    onSelect={(date: Date | undefined) => {
-                      if (date) {
-                        // When a date is clicked, open the dialog to add times for that date
-                        openDialogWithDate(date);
-                      }
-                    }}
-                    className="rounded-md border cursor-pointer"
-                    classNames={{
-                      day_today: "bg-primary/10 text-primary font-bold",
-                    }}
-                    modifiers={{
-                      booked: (date) => {
-                        const dateStr = format(date, 'yyyy-MM-dd');
-                        const dayOfWeek = date.getDay();
-
-                        // Check if there's a specific schedule for this date
-                        const hasSpecificSchedule = schedules.some(s => s.specific_date === dateStr);
-
-                        // Check if there's a recurring schedule for this day of the week
-                        const hasRecurringSchedule = schedules.some(s => s.day_of_week === dayOfWeek && !s.specific_date);
-
-                        return hasSpecificSchedule || hasRecurringSchedule;
-                      }
-                    }}
-                    modifiersStyles={{
-                      booked: { backgroundColor: '#ecfdf5', color: '#065f46', fontWeight: 'bold' }
-                    }}
-                  />
-                  <div className="text-sm text-gray-500 mt-4">
-                    <p className="mb-2">
-                      <span className="inline-block w-3 h-3 bg-green-100 rounded-full mr-2"></span>
-                      Green dates have scheduled availability
-                    </p>
-                    <p className="mb-2">
-                      <span className="inline-block w-3 h-3 bg-primary/10 rounded-full mr-2"></span>
-                      Today's date
-                    </p>
-                    <p className="font-medium text-center mt-3">Click on any date to add or edit your schedule</p>
+          {activeTab === 'calendar' && (
+            <div className="mt-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="alert alert-info mb-4">
+                    <strong>Your Schedule</strong> - Calendar view of your availability. Click on a date to add or edit your schedule for that day.
+                    <br />
+                    <small>
+                      <strong>Note:</strong> You can manage doctor schedules by clicking the "Manage Doctor Schedules" button above.
+                    </small>
                   </div>
-                </div>
-              </Card.Body>
-            </Card>
-          </Tab>
 
-          <Tab eventKey="list" title="List View">
-            <Card>
-              <CardHeader>
-                <CardTitle>Schedule List</CardTitle>
-                <CardDescription>
-                  All your scheduled days and time slots
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Day</TableHead>
-                      <TableHead>Hours</TableHead>
-                      <TableHead>Max Appointments</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Notes</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {Object.keys(groupedSchedules).length === 0 ? (
+                  <div className="flex flex-col items-center">
+                    <Calendar
+                      mode="single"
+                      selected={undefined}
+                      onSelect={(date: Date | undefined) => {
+                        if (date) {
+                          // When a date is clicked, open the dialog to add times for that date
+                          openDialogWithDate(date);
+                        }
+                      }}
+                      className="rounded-md border cursor-pointer"
+                      classNames={{
+                        day_today: "bg-primary/10 text-primary font-bold",
+                      }}
+                      modifiers={{
+                        booked: (date) => {
+                          const dateStr = format(date, 'yyyy-MM-dd');
+                          const dayOfWeek = date.getDay();
+
+                          // Check if there's a specific schedule for this date
+                          const hasSpecificSchedule = schedules.some(s => s.specific_date === dateStr);
+
+                          // Check if there's a recurring schedule for this day of the week
+                          const hasRecurringSchedule = schedules.some(s => s.day_of_week === dayOfWeek && !s.specific_date);
+
+                          return hasSpecificSchedule || hasRecurringSchedule;
+                        }
+                      }}
+                      modifiersStyles={{
+                        booked: { backgroundColor: '#ecfdf5', color: '#065f46', fontWeight: 'bold' }
+                      }}
+                    />
+                    <div className="text-sm text-gray-500 mt-4">
+                      <p className="mb-2">
+                        <span className="inline-block w-3 h-3 bg-green-100 rounded-full mr-2"></span>
+                        Green dates have scheduled availability
+                      </p>
+                      <p className="mb-2">
+                        <span className="inline-block w-3 h-3 bg-primary/10 rounded-full mr-2"></span>
+                        Today's date
+                      </p>
+                      <p className="font-medium text-center mt-3">Click on any date to add or edit your schedule</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {activeTab === 'list' && (
+            <div className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Schedule List</CardTitle>
+                  <CardDescription>
+                    All your scheduled days and time slots
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center text-sm text-gray-500">
-                          No schedules found. Add your first schedule using the "Add Schedule" button.
-                        </TableCell>
+                        <TableHead>Day</TableHead>
+                        <TableHead>Hours</TableHead>
+                        <TableHead>Max Appointments</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Notes</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    ) : (
-                      Object.entries(groupedSchedules).map(([dateKey, dateSchedules]) => {
-                        // Get date information from the first schedule in the group
-                        const firstSchedule = dateSchedules[0];
-                        const isSpecificDate = !!firstSchedule.specific_date;
-                        const displayDate = isSpecificDate
-                          ? format(new Date(firstSchedule.specific_date!), 'MMM d, yyyy')
-                          : dayNames[firstSchedule.day_of_week];
+                    </TableHeader>
+                    <TableBody>
+                      {Object.keys(groupedSchedules).length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-sm text-gray-500">
+                            No schedules found. Add your first schedule using the "Add Schedule" button.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        Object.entries(groupedSchedules).map(([dateKey, dateSchedules]) => {
+                          // Get date information from the first schedule in the group
+                          const firstSchedule = dateSchedules[0];
+                          const isSpecificDate = !!firstSchedule.specific_date;
+                          const displayDate = isSpecificDate
+                            ? format(new Date(firstSchedule.specific_date!), 'MMM d, yyyy')
+                            : dayNames[firstSchedule.day_of_week];
 
-                        // Format all time slots for this date
-                        const timeSlots = dateSchedules.map(schedule =>
-                          `${formatTimeToAmPm(schedule.start_time)} - ${formatTimeToAmPm(schedule.end_time)}`
-                        ).join(', ');
+                          // Format all time slots for this date
+                          const timeSlots = dateSchedules.map(schedule =>
+                            `${formatTimeToAmPm(schedule.start_time)} - ${formatTimeToAmPm(schedule.end_time)}`
+                          ).join(', ');
 
-                        return (
-                          <TableRow key={dateKey}>
-                            <TableCell className="font-medium">
-                              {displayDate}
-                            </TableCell>
-                            <TableCell>
-                              {timeSlots}
-                            </TableCell>
-                            <TableCell>{firstSchedule.max_appointments}</TableCell>
-                            <TableCell>
-                              <Badge className={firstSchedule.is_available ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                                {firstSchedule.is_available ? 'Available' : 'Unavailable'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="max-w-xs truncate">
-                              {firstSchedule.notes || '-'}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                {dateSchedules.map(schedule => (
-                                  <div key={schedule.id} className="flex gap-1">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleEdit(schedule)}
-                                      className="h-7 px-2 text-xs"
-                                      title="Edit this time slot"
-                                    >
-                                      {formatTimeToAmPm(schedule.start_time)}
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleDelete(schedule.id)}
-                                      className="h-7 w-7 p-0 text-red-600 hover:text-red-800"
-                                      title="Delete this time slot"
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                ))}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </Tab>
-        </Tabs>
+                          return (
+                            <TableRow key={dateKey}>
+                              <TableCell className="font-medium">
+                                {displayDate}
+                              </TableCell>
+                              <TableCell>
+                                {timeSlots}
+                              </TableCell>
+                              <TableCell>{firstSchedule.max_appointments}</TableCell>
+                              <TableCell>
+                                <Badge className={firstSchedule.is_available ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                                  {firstSchedule.is_available ? 'Available' : 'Unavailable'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="max-w-xs truncate">
+                                {firstSchedule.notes || '-'}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  {dateSchedules.map(schedule => (
+                                    <div key={schedule.id} className="flex gap-1">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleEdit(schedule)}
+                                        className="h-7 px-2 text-xs"
+                                        title="Edit this time slot"
+                                      >
+                                        {formatTimeToAmPm(schedule.start_time)}
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleDelete(schedule.id)}
+                                        className="h-7 w-7 p-0 text-red-600 hover:text-red-800"
+                                        title="Delete this time slot"
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
 
-        {/* Add/Edit Schedule Dialog */}
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
           <DialogContent className="w-full max-w-[95%] sm:max-w-[500px] md:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -655,7 +675,6 @@ const Schedule: React.FC<Props> = ({ user, schedules }) => {
                 </div>
               )}
 
-              {/* Time Slots by Date */}
               {formData.dateTimeSlots.length > 0 && (
                 <div className="space-y-6">
                   {formData.dateTimeSlots.map((dateTimeSlot, dateIndex) => (
@@ -675,7 +694,7 @@ const Schedule: React.FC<Props> = ({ user, schedules }) => {
                             onClick={() => removeDate(dateIndex)}
                             className="h-6 w-6"
                           >
-                            <Trash2 className="h-4 w-4 text-red-500" />
+                            <X className="h-4 w-4 text-red-500" />
                           </Button>
                         )}
                       </div>
@@ -694,7 +713,7 @@ const Schedule: React.FC<Props> = ({ user, schedules }) => {
                             onClick={() => addTimeSlot(dateIndex)}
                             className="h-7 text-xs px-2 py-1"
                           >
-                            <Plus className="h-3 w-3 mr-1" /> Add Time
+                            <X className="h-3 w-3 mr-1" /> Add Time
                           </Button>
                         </div>
 
@@ -711,7 +730,7 @@ const Schedule: React.FC<Props> = ({ user, schedules }) => {
                                     onClick={() => removeTimeSlot(dateIndex, timeSlotIndex)}
                                     className="h-5 w-5"
                                   >
-                                    <Trash2 className="h-3 w-3 text-red-500" />
+                                    <X className="h-3 w-3 text-red-500" />
                                   </Button>
                                 )}
                               </div>
@@ -838,7 +857,7 @@ const Schedule: React.FC<Props> = ({ user, schedules }) => {
           </DialogContent>
         </Dialog>
       </div>
-    </Layout>
+    </div>
   );
 };
 

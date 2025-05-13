@@ -10,6 +10,7 @@ use Inertia\Inertia;
 use App\Models\Patient;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class RegisterController extends Controller
 {
@@ -24,20 +25,31 @@ class RegisterController extends Controller
     public function store(Request $request)
     {
         try {
-            // Check database connection
+            // Check database connection and log the database information
             $connection = DB::connection()->getPdo();
-            Log::info("Connected to database: " . config('database.default'));
+            $dbDriver = config('database.default');
+            Log::info("Connected to database driver: " . $dbDriver);
+            Log::info("Database name: " . config("database.connections.{$dbDriver}.database"));
 
             // Validate request
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|email|unique:users,email',
-                'password' => 'required|min:6|confirmed',
-                'date_of_birth' => 'required|date|before:today',
-                'gender' => 'required|in:male,female,other',
-                'phone' => 'required|string|max:20',
-                'address' => 'required|string|max:500',
-            ]);
+            try {
+                $validated = $request->validate([
+                    'name' => 'required|string|max:255',
+                    'email' => 'required|email|unique:users,email',
+                    'password' => 'required|min:6|confirmed',
+                    'date_of_birth' => 'required|date|before:today',
+                    'gender' => 'required|in:male,female,other',
+                    'phone' => 'required|string|max:20',
+                    'address' => 'required|string|max:500',
+                ]);
+
+                Log::info("Validation passed", ['email' => $validated['email']]);
+            } catch (ValidationException $e) {
+                Log::error("Validation failed", [
+                    'errors' => $e->errors(),
+                ]);
+                throw $e;
+            }
 
             // Start transaction to ensure both user and patient are created or neither
             DB::beginTransaction();
@@ -51,8 +63,10 @@ class RegisterController extends Controller
                     'user_role' => User::ROLE_PATIENT, // Automatically set as patient
                 ]);
 
+                Log::info("User created successfully", ['user_id' => $user->id]);
+
                 // Create a new patient record
-                $this->createPatient($user, [
+                $patient = $this->createPatient($user, [
                     'name' => $validated['name'],
                     'email' => $validated['email'],
                     'phone' => $validated['phone'],
@@ -61,8 +75,11 @@ class RegisterController extends Controller
                     'gender' => $validated['gender'],
                 ]);
 
+                Log::info("Patient record created successfully", ['patient_id' => $patient->id]);
+
                 // Commit transaction
                 DB::commit();
+                Log::info("Transaction committed successfully");
 
                 // Redirect to login or dashboard
                 return redirect()->route('auth.login')->with('success', 'Account created successfully! Please log in to continue.');
@@ -70,17 +87,25 @@ class RegisterController extends Controller
             } catch (\Exception $e) {
                 // Rollback transaction if there was an error
                 DB::rollBack();
-                Log::error('Registration error: ' . $e->getMessage());
+                Log::error('Registration error: ' . $e->getMessage(), [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ]);
 
                 return back()->withErrors([
-                    'database' => 'An error occurred while creating your account. Please try again.'
+                    'database' => 'An error occurred while creating your account: ' . $e->getMessage()
                 ])->withInput();
             }
         } catch (\Exception $e) {
-            Log::error('Database connection error: ' . $e->getMessage());
+            Log::error('Database connection error: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
 
             return back()->withErrors([
-                'database' => 'Unable to connect to the database. Please try again later.'
+                'database' => 'Unable to connect to the database: ' . $e->getMessage()
             ])->withInput();
         }
     }
@@ -92,20 +117,19 @@ class RegisterController extends Controller
             $nextId = $latestPatient ? $latestPatient->id + 1 : 1;
             $referenceNumber = 'PAT' . str_pad($nextId, 6, '0', STR_PAD_LEFT);
 
-            // Check database connection type
-            $isPostgres = config('database.default') === 'pgsql';
-
-            // Create patient with the right field names depending on the database
+            // Create patient data
             $patientData = [
                 'user_id' => $user->id,
                 'reference_number' => $referenceNumber,
                 'name' => $data['name'],
                 'date_of_birth' => $data['date_of_birth'] ?? null,
                 'gender' => $data['gender'] ?? null,
-                // Use contact_number field name but ensure data maps correctly
                 'contact_number' => $data['phone'] ?? null,
                 'address' => $data['address'] ?? null,
             ];
+
+            // Log the patient data being created
+            Log::info('Attempting to create patient', $patientData);
 
             // Create the patient and log for debugging
             $patient = Patient::create($patientData);
@@ -115,6 +139,8 @@ class RegisterController extends Controller
         } catch (\Exception $e) {
             Log::error('Error creating patient: ' . $e->getMessage(), [
                 'user_id' => $user->id,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
             throw $e; // Re-throw to be caught by the transaction
