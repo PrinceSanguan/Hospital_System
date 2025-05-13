@@ -24,7 +24,41 @@ import {
 import { ChevronLeft } from 'lucide-react';
 import { format } from 'date-fns';
 
+// Sample medications for dropdown
+const MEDICATIONS = [
+  "Acetaminophen", "Ibuprofen", "Aspirin", "Amoxicillin", "Ciprofloxacin",
+  "Metformin", "Atorvastatin", "Lisinopril", "Amlodipine", "Omeprazole",
+  "Metoprolol", "Levothyroxine", "Simvastatin", "Losartan", "Gabapentin",
+  "Hydrochlorothiazide", "Sertraline", "Fluoxetine", "Escitalopram", "Citalopram",
+  "Pantoprazole", "Montelukast", "Albuterol", "Prednisone", "Tramadol"
+];
+
+// Frequency options for dropdown
+const FREQUENCY_OPTIONS = [
+  "Once daily",
+  "Twice daily",
+  "Three times a day",
+  "Four times a day",
+  "Every 4 hours",
+  "Every 6 hours",
+  "Every 8 hours",
+  "Every 12 hours",
+  "As needed",
+  "Before meals",
+  "After meals",
+  "At bedtime",
+  "Others"
+];
+
+// Dosage options for dropdown
+const DOSAGE_OPTIONS = [
+  "5mg", "10mg", "20mg", "25mg", "50mg", "100mg", "200mg", "250mg", "500mg",
+  "1g", "2g", "5ml", "10ml", "15ml", "20ml", "1 tablet", "2 tablets",
+  "1 capsule", "2 capsules", "1 tsp", "2 tsp", "1 tbsp"
+];
+
 interface User {
+  id: number;
   name: string;
   email: string;
   role?: string;
@@ -42,14 +76,22 @@ interface Patient {
   email: string;
 }
 
+interface Prescription {
+  medication: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions: string;
+}
+
 interface MedicalRecordDetails {
   appointment_time?: string;
   vital_signs?: Record<string, string | number>;
   diagnosis?: string;
-  prescriptions?: string[];
+  prescriptions?: Prescription[] | string[];
   notes?: string;
   followup_date?: string;
-  [key: string]: string | number | string[] | Record<string, string | number> | undefined;
+  [key: string]: string | number | string[] | Prescription[] | Record<string, string | number> | undefined;
 }
 
 interface MedicalRecord {
@@ -86,6 +128,56 @@ export default function MedicalRecordsEdit({ user, record, patients, doctors }: 
 
   const details = parseDetails();
 
+  // Convert prescriptions to the structured format if they are strings
+  const convertPrescriptions = (): Prescription[] => {
+    if (!details.prescriptions) return [createEmptyPrescription()];
+
+    if (typeof details.prescriptions[0] === 'string') {
+      // If we have string prescriptions, convert them to structured format
+      return (details.prescriptions as string[]).map(prescStr => {
+        try {
+          // Try to parse the string as JSON
+          const parsed = JSON.parse(prescStr);
+          if (typeof parsed === 'object') {
+            return {
+              medication: parsed.medication || '',
+              dosage: parsed.dosage || '',
+              frequency: parsed.frequency || '',
+              duration: parsed.duration || '',
+              instructions: parsed.instructions || ''
+            };
+          }
+        } catch {
+          // If parsing fails, just use the string as medication name
+          return {
+            medication: prescStr,
+            dosage: '',
+            frequency: '',
+            duration: '',
+            instructions: ''
+          };
+        }
+
+        return createEmptyPrescription();
+      });
+    } else if (Array.isArray(details.prescriptions)) {
+      // Already in structured format
+      return details.prescriptions as Prescription[];
+    }
+
+    return [createEmptyPrescription()];
+  };
+
+  const createEmptyPrescription = (): Prescription => {
+    return {
+      medication: '',
+      dosage: '',
+      frequency: '',
+      duration: '',
+      instructions: ''
+    };
+  };
+
   // Initialize form with existing data
   const { data, setData, put, processing, errors } = useForm({
     patient_id: record.patient?.id.toString() || '',
@@ -103,8 +195,7 @@ export default function MedicalRecordsEdit({ user, record, patients, doctors }: 
       respiratory_rate: details.vital_signs?.respiratory_rate?.toString() || '',
       oxygen_saturation: details.vital_signs?.oxygen_saturation?.toString() || ''
     },
-    prescriptions: details.prescriptions && details.prescriptions.length > 0 ?
-      details.prescriptions : [''],
+    prescriptions: convertPrescriptions(),
     followup_date: details.followup_date || ''
   });
 
@@ -114,7 +205,7 @@ export default function MedicalRecordsEdit({ user, record, patients, doctors }: 
   };
 
   const addPrescription = () => {
-    setData('prescriptions', [...data.prescriptions, '']);
+    setData('prescriptions', [...data.prescriptions, createEmptyPrescription()]);
   };
 
   const removePrescription = (index: number) => {
@@ -123,9 +214,12 @@ export default function MedicalRecordsEdit({ user, record, patients, doctors }: 
     setData('prescriptions', updatedPrescriptions);
   };
 
-  const updatePrescription = (index: number, value: string) => {
+  const updatePrescription = (index: number, field: keyof Prescription, value: string) => {
     const updatedPrescriptions = [...data.prescriptions];
-    updatedPrescriptions[index] = value;
+    updatedPrescriptions[index] = {
+      ...updatedPrescriptions[index],
+      [field]: value
+    };
     setData('prescriptions', updatedPrescriptions);
   };
 
@@ -400,23 +494,94 @@ export default function MedicalRecordsEdit({ user, record, patients, doctors }: 
                     </div>
 
                     {data.prescriptions.map((prescription, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <Input
-                          placeholder="Enter prescription details"
-                          value={prescription}
-                          onChange={(e) => updatePrescription(index, e.target.value)}
-                          className="flex-1"
-                        />
+                      <div key={index} className="border p-4 rounded-md">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div className="space-y-2">
+                            <Label>Medication</Label>
+                            <Select
+                              value={prescription.medication}
+                              onValueChange={(value) => updatePrescription(index, 'medication', value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select medication" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {MEDICATIONS.map((med) => (
+                                  <SelectItem key={med} value={med}>
+                                    {med}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Dosage</Label>
+                            <Select
+                              value={prescription.dosage}
+                              onValueChange={(value) => updatePrescription(index, 'dosage', value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select dosage" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {DOSAGE_OPTIONS.map((dosage) => (
+                                  <SelectItem key={dosage} value={dosage}>
+                                    {dosage}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div className="space-y-2">
+                            <Label>Frequency</Label>
+                            <Select
+                              value={prescription.frequency}
+                              onValueChange={(value) => updatePrescription(index, 'frequency', value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select frequency" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {FREQUENCY_OPTIONS.map((freq) => (
+                                  <SelectItem key={freq} value={freq}>
+                                    {freq}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Duration</Label>
+                            <Input
+                              placeholder="e.g. 7 days"
+                              value={prescription.duration}
+                              onChange={(e) => updatePrescription(index, 'duration', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2 mb-2">
+                          <Label>Instructions</Label>
+                          <Textarea
+                            placeholder="Enter special instructions"
+                            value={prescription.instructions}
+                            onChange={(e) => updatePrescription(index, 'instructions', e.target.value)}
+                            rows={2}
+                          />
+                        </div>
                         {data.prescriptions.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removePrescription(index)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            Remove
-                          </Button>
+                          <div className="flex justify-end">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removePrescription(index)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              Remove
+                            </Button>
+                          </div>
                         )}
                       </div>
                     ))}

@@ -264,6 +264,10 @@ Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staf
   Route::delete('/clinical-info/{id}', [MedicalRecordsController::class, 'destroy'])->name('clinical.info.destroy');
   Route::get('/patients/{patientId}/history', [MedicalRecordsController::class, 'patientHistory'])->name('patients.history');
 
+  // Prescription Management
+  Route::get('/prescriptions/record/{recordId}', [MedicalRecordsController::class, 'getPrescriptions'])->name('prescriptions.record');
+  Route::get('/prescriptions/{id}/download', [MedicalRecordsController::class, 'downloadPrescription'])->name('prescriptions.download');
+
   // Lab Records Management
   Route::get('/lab-records', [LabRecordsController::class, 'index'])->name('lab.records');
   Route::get('/lab-records/create', [LabRecordsController::class, 'create'])->name('lab.records.create');

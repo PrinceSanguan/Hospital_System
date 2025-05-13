@@ -26,8 +26,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from '@/components/ui/badge';
-import { Plus, FileEdit, FileSearch, Trash, X } from 'lucide-react';
+import {
+  Plus,
+  FileEdit,
+  FileSearch,
+  Trash,
+  X,
+  Download,
+} from 'lucide-react';
 import { format } from 'date-fns';
+import axios from 'axios';
 
 interface User {
   id: number;
@@ -56,6 +64,21 @@ interface RecordDetails {
   lab_type?: string;
   results?: string;
   [key: string]: string | number | string[] | Record<string, string | number> | undefined;
+}
+
+interface Prescription {
+  id: number;
+  patient_id: number;
+  record_id: number;
+  doctor_id: number;
+  medication: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions: string;
+  prescription_date: string;
+  reference_number: string;
+  status: string;
 }
 
 interface MedicalRecord {
@@ -88,6 +111,8 @@ interface MedicalRecordsProps {
 export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsProps) {
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState<number | null>(null);
+  const [prescriptions, setPrescriptions] = useState<{ [key: number]: Prescription[] }>({});
+  const [loading, setLoading] = useState<{ [key: number]: boolean }>({});
 
   const confirmDelete = (id: number) => {
     setRecordToDelete(id);
@@ -104,6 +129,33 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
       window.location.href = route('staff.clinical.info.destroy', recordToDelete);
     }
     closeDeleteDialog();
+  };
+
+  const handleDownloadPrescription = async (recordId: number) => {
+    try {
+      setLoading({ ...loading, [recordId]: true });
+
+      // Check if we already have the prescriptions for this record
+      if (!prescriptions[recordId]) {
+        // Fetch prescriptions for this record
+        const response = await axios.get(route('staff.prescriptions.record', recordId));
+        setPrescriptions({ ...prescriptions, [recordId]: response.data });
+      }
+
+      const recordPrescriptions = prescriptions[recordId] || [];
+
+      if (recordPrescriptions.length > 0) {
+        // If we have prescriptions, download the first one
+        window.open(route('staff.prescriptions.download', recordPrescriptions[0].id), '_blank');
+      } else {
+        alert('No prescriptions found for this record');
+      }
+    } catch (error) {
+      console.error('Error fetching prescriptions:', error);
+      alert('Failed to download prescription');
+    } finally {
+      setLoading({ ...loading, [recordId]: false });
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -242,6 +294,15 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
                                 <Link href={route('staff.clinical.info.edit', record.id)}>
                                   <FileEdit className="h-4 w-4" />
                                 </Link>
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDownloadPrescription(record.id)}
+                                disabled={loading[record.id]}
+                                className="text-blue-500 hover:text-blue-700 font-medium"
+                              >
+                                Rx
                               </Button>
                               <Button
                                 variant="ghost"

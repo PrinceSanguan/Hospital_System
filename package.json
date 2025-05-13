@@ -63,7 +63,7 @@
         "framer-motion": "^12.6.3",
         "globals": "^15.14.0",
         "laravel-vite-plugin": "^1.0",
-        "lucide-react": "^0.475.0",
+        "lucide-react": "0.474.0",
         "react": "^19.0.0",
         "react-bootstrap": "^2.10.10",
         "react-day-picker": "^9.6.7",

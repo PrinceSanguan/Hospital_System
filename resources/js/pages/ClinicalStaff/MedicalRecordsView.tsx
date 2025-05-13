@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { Header } from '@/components/clinicalstaff/header';
 import { Sidebar } from '@/components/clinicalstaff/sidebar';
@@ -7,8 +7,9 @@ import {
   Card,
   CardContent,
 } from '@/components/ui/card';
-import { ChevronLeft, Printer, ClipboardList } from 'lucide-react';
+import { ChevronLeft, Printer, ClipboardList, Download } from 'lucide-react';
 import { format } from 'date-fns';
+import axios from 'axios';
 
 // Define a separate user interface for the component
 interface ComponentUser {
@@ -103,12 +104,58 @@ interface MedicalRecord {
   updated_at: string;
 }
 
+interface Prescription {
+  id: number;
+  patient_id: number;
+  record_id: number;
+  doctor_id: number;
+  medication: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions: string;
+  prescription_date: string;
+  reference_number: string;
+  status: string;
+}
+
 interface MedicalRecordsViewProps {
   user: ComponentUser;
   record: MedicalRecord;
 }
 
 export default function MedicalRecordsView({ user, record }: MedicalRecordsViewProps) {
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+
+  // Fetch prescriptions when the component mounts
+  useEffect(() => {
+    if (record.record_type === 'prescription') {
+      fetchPrescriptions();
+    }
+  }, [record.id]);
+
+  const fetchPrescriptions = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(route('staff.prescriptions.record', record.id));
+      setPrescriptions(response.data);
+    } catch (error) {
+      console.error('Error fetching prescriptions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownloadPrescription = () => {
+    if (prescriptions.length > 0) {
+      // Download the first prescription
+      window.open(route('staff.prescriptions.download', prescriptions[0].id), '_blank');
+    } else {
+      alert('No prescriptions found for this record');
+    }
+  };
+
   // Get record type display name
   const getRecordTypeDisplay = (recordType: string): string => {
     switch (recordType.toLowerCase()) {
@@ -354,6 +401,16 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
                         <Printer className="h-4 w-4" />
                         Print
                       </Button>
+                      {record.record_type === 'prescription' && (
+                        <Button
+                          variant="outline"
+                          onClick={handleDownloadPrescription}
+                          className="bg-blue-500 hover:bg-blue-600 text-white font-medium"
+                          disabled={loading || prescriptions.length === 0}
+                        >
+                          Rx
+                        </Button>
+                      )}
                       <Button asChild className="flex items-center gap-1">
                         <Link href={route('staff.clinical.info.edit', record.id)}>
                           <ClipboardList className="h-4 w-4" />
