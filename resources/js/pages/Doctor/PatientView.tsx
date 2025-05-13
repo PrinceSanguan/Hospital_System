@@ -3,12 +3,19 @@ import { Head, Link } from '@inertiajs/react';
 import DoctorLayout from '@/layouts/DoctorLayout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { UserData } from '@/types';
-import { ArrowLeft, Calendar, Edit, FileText } from 'lucide-react';
+import { Calendar } from 'lucide-react';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { Badge } from "@/components/ui/badge";
 
+interface User {
+    id: number;
+    name: string;
+    email: string;
+    role?: string;
+}
+
 interface PatientViewProps {
-  user: UserData;
+  user: User;
   patient: {
     id: number;
     name: string;
@@ -76,27 +83,13 @@ const PatientView = ({ user, patient }: PatientViewProps) => {
             <div className="mb-6">
               <Button asChild variant="outline" className="mb-4">
                 <Link href={route('doctor.patients.index')}>
-                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  <ArrowLeftIcon className="h-4 w-4 mr-2" />
                   Back to Patients
                 </Link>
               </Button>
 
               <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-semibold text-gray-900">Patient Profile: {patient.name}</h1>
-                <div className="flex space-x-2">
-                  <Button asChild>
-                    <Link href={route('doctor.records.index', { search: patient.name })}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      View Records
-                    </Link>
-                  </Button>
-                <Button asChild>
-                  <Link href="#">
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit Patient
-                  </Link>
-                </Button>
-                </div>
               </div>
             </div>
 
