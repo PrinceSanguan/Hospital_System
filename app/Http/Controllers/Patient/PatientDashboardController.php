@@ -134,13 +134,25 @@ class PatientDashboardController extends Controller
             'user_id' => Auth::id()
         ]);
 
+        // Check database connection first
+        try {
+            DB::connection()->getPdo();
+            Log::info('Database connection established');
+        } catch (\Exception $e) {
+            Log::error('Database connection failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->back()->withErrors(['error' => 'Database connection error. Please try again later.']);
+        }
+
         $request->validate([
             'doctor_id' => 'required|exists:users,id',
             'appointment_date' => 'required|date',
             'appointment_time' => 'required|string',
             'reason' => 'required|string',
             'notes' => 'nullable|string',
-            'service_id' => 'nullable|exists:doctor_services,id',
+            'service_id' => 'nullable|numeric',
             // Patient information - make these optional to allow direct booking
             'name' => 'required|string',
             'birthdate' => 'required|date',
@@ -174,6 +186,12 @@ class PatientDashboardController extends Controller
                 'time' => $request->appointment_time,
                 'combined' => $appointmentDateTime
             ]);
+
+            // Validate the doctor exists
+            if (!$doctor) {
+                Log::error('Doctor not found', ['doctor_id' => $request->doctor_id]);
+                throw new \Exception("Doctor with ID {$request->doctor_id} not found");
+            }
 
             // Store additional information in details field
             $details = [
@@ -243,13 +261,24 @@ class PatientDashboardController extends Controller
 
             // Add service if selected
             if ($request->service_id) {
-                $service = DoctorService::findOrFail($request->service_id);
-                $details['service'] = [
-                    'id' => $service->id,
-                    'name' => $service->name,
-                    'price' => $service->price,
-                    'duration_minutes' => $service->duration_minutes,
-                ];
+                try {
+                    $service = DoctorService::find($request->service_id);
+                    if ($service) {
+                        $details['service'] = [
+                            'id' => $service->id,
+                            'name' => $service->name,
+                            'price' => $service->price,
+                            'duration_minutes' => $service->duration_minutes,
+                        ];
+                    } else {
+                        Log::warning('Service not found', ['service_id' => $request->service_id]);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error retrieving service', [
+                        'service_id' => $request->service_id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
             }
 
             // 1. Create the patient record (appointment)
@@ -258,7 +287,22 @@ class PatientDashboardController extends Controller
             $patientRecord->assigned_doctor_id = $doctor->id;
             $patientRecord->record_type = 'medical_checkup';
             $patientRecord->status = 'pending';
-            $patientRecord->appointment_date = $appointmentDateTime;
+
+            // Format the appointment date properly
+            try {
+                $parsedDate = new \DateTime($appointmentDateTime);
+                $patientRecord->appointment_date = $parsedDate->format('Y-m-d H:i:s');
+                Log::info('Setting appointment date', [
+                    'appointment_date' => $patientRecord->appointment_date,
+                    'original_input' => $appointmentDateTime
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error parsing appointment date', [
+                    'input' => $appointmentDateTime,
+                    'error' => $e->getMessage()
+                ]);
+                throw new \Exception('Invalid appointment date format: ' . $appointmentDateTime);
+            }
 
             // If service_id is provided, associate it with the appointment
             if ($request->has('service_id') && !empty($request->service_id)) {
@@ -269,28 +313,94 @@ class PatientDashboardController extends Controller
             $patientRecord->details = json_encode($details);
             $patientRecord->save();
 
+            Log::info('Created patient record', [
+                'record_id' => $patientRecord->id,
+                'patient_id' => $user->id,
+                'doctor_id' => $doctor->id
+            ]);
+
             // 2. Create entry in the appointments table as well for staff view
             // First check if the user has a corresponding patient record
             $patientData = Patient::where('user_id', $user->id)->first();
 
             if (!$patientData) {
-                Log::error('No patient record found for user', ['user_id' => $user->id]);
-                throw new \Exception('Patient record not found for user');
+                // Instead of throwing an exception, create a new Patient record
+                Log::info('Creating new patient record for user', ['user_id' => $user->id]);
+
+                $patientData = new Patient();
+                $patientData->user_id = $user->id;
+                $patientData->name = $user->name;
+                $patientData->reference_number = 'PAT' . str_pad($user->id, 6, '0', STR_PAD_LEFT);
+
+                // Extract data from the patient info in the request
+                $patientData->date_of_birth = $request->birthdate;
+                $patientData->address = $request->address;
+
+                // If gender is provided in the request, use it, otherwise default to null
+                $patientData->gender = $request->gender ?? null;
+                $patientData->contact_number = $user->phone ?? null;
+
+                $patientData->save();
+
+                Log::info('Created new patient record', ['patient_id' => $patientData->id]);
             }
 
             // Now create the appointment entry
             $appointment = new \App\Models\Appointment();
             $appointment->patient_id = $patientData->id;
-            $appointment->doctor_id = $doctor->id;
-            $appointment->assigned_doctor_id = $doctor->id;
-            $appointment->appointment_date = $appointmentDateTime;
+
+            // Get the correct doctor_id from the doctors table instead of using user_id
+            $doctorRecord = \App\Models\Doctor::where('user_id', $doctor->id)->first();
+
+            if (!$doctorRecord) {
+                // If no doctor record exists, create one
+                Log::info('Creating new doctor record for user', ['user_id' => $doctor->id]);
+
+                $doctorRecord = new \App\Models\Doctor();
+                $doctorRecord->user_id = $doctor->id;
+                $doctorRecord->name = $doctor->name;
+                $doctorRecord->specialization = $doctor->doctorProfile?->specialty ?? 'General Practitioner';
+                $doctorRecord->license_number = $doctor->doctorProfile?->license_number ?? null;
+                $doctorRecord->contact_number = $doctor->phone ?? null;
+                $doctorRecord->save();
+
+                Log::info('Created new doctor record', ['doctor_id' => $doctorRecord->id]);
+            }
+
+            // Use the correct doctor ID from the doctors table
+            $appointment->doctor_id = $doctorRecord->id;
+            $appointment->assigned_doctor_id = $doctor->id; // Keep the user_id for assigned_doctor
+
+            // Format appointment date the same way
+            $appointment->appointment_date = $patientRecord->appointment_date;
+
             $appointment->status = 'pending';
             $appointment->reason = $request->reason;
-            $appointment->notes = $request->notes;
+            $appointment->notes = $request->notes ?? '';
             $appointment->details = json_encode($details);
             $appointment->record_type = 'medical_checkup';
             $appointment->reference_number = 'APP' . str_pad($patientRecord->id, 6, '0', STR_PAD_LEFT);
-            $appointment->save();
+
+            try {
+                $appointment->save();
+
+                Log::info('Created appointment record', [
+                    'appointment_id' => $appointment->id,
+                    'patient_id' => $patientData->id,
+                    'doctor_id' => $doctor->id,
+                    'reference_number' => $appointment->reference_number
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to save appointment', [
+                    'error' => $e->getMessage(),
+                    'appointment_data' => [
+                        'patient_id' => $patientData->id,
+                        'doctor_id' => $doctor->id,
+                        'appointment_date' => $appointment->appointment_date
+                    ]
+                ]);
+                throw new \Exception('Failed to save appointment: ' . $e->getMessage());
+            }
 
             // Create notification for the doctor
             Notification::create([
@@ -321,8 +431,17 @@ class PatientDashboardController extends Controller
 
             Log::error('Failed to save appointment', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all(),
+                'patient_id' => $user->id,
+                'doctor_id' => $request->doctor_id
             ]);
+
+            // For debugging purposes - return detailed error in development
+            if (config('app.debug')) {
+                return redirect()->back()->withErrors(['error' => 'Failed to save appointment: ' . $e->getMessage()]);
+            }
+
             return redirect()->back()->withErrors(['error' => 'Failed to save appointment. Please try again.']);
         }
     }

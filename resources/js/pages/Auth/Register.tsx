@@ -52,6 +52,13 @@ export default function Register() {
     }
   }, [data.password, data.password_confirmation]);
 
+  // Update address whenever address components change
+  useEffect(() => {
+    if (data.barangay || data.city || data.province || data.zip_code) {
+      updateAddress();
+    }
+  }, [data.barangay, data.city, data.province, data.zip_code]);
+
   const updateAddress = () => {
     const fullAddress = [
       data.barangay,
@@ -67,7 +74,7 @@ export default function Register() {
   // Handle changes to address fields
   const handleAddressChange = (field: 'province' | 'city' | 'barangay' | 'zip_code', value: string) => {
     setData(field, value);
-    // We don't call updateAddress() here anymore to avoid timing issues
+    // We don't call updateAddress() here anymore as it's handled by the useEffect
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -82,11 +89,14 @@ export default function Register() {
 
     setDatabaseError(null);
 
-    // Ensure address is updated right before submission
+    // Force update address right before submission to ensure it's current
     const finalAddress = updateAddress();
     console.log("Final address to be saved:", finalAddress);
 
-    // Save the data with the combined address
+    // Manually set the address field to ensure it's included in the submission
+    setData('address', finalAddress);
+
+    // Save the data with the combined address - using the correct API
     post(route('auth.register.store'), {
       onSuccess: () => {
         console.log("Registration successful");
@@ -346,7 +356,6 @@ export default function Register() {
                           placeholder="Province"
                           className={`py-1 px-2 text-sm h-8 ${errors.province ? 'border-red-500' : ''}`}
                         />
-                        {errors.province && <p className="mt-0.5 text-xs text-red-500">{String(errors.province)}</p>}
                       </div>
 
                       {/* City */}
@@ -356,10 +365,9 @@ export default function Register() {
                           id="city"
                           value={data.city}
                           onChange={(e) => handleAddressChange('city', e.target.value)}
-                          placeholder="City/Municipality"
+                          placeholder="City"
                           className={`py-1 px-2 text-sm h-8 ${errors.city ? 'border-red-500' : ''}`}
                         />
-                        {errors.city && <p className="mt-0.5 text-xs text-red-500">{String(errors.city)}</p>}
                       </div>
 
                       {/* Barangay */}
@@ -372,7 +380,6 @@ export default function Register() {
                           placeholder="Barangay"
                           className={`py-1 px-2 text-sm h-8 ${errors.barangay ? 'border-red-500' : ''}`}
                         />
-                        {errors.barangay && <p className="mt-0.5 text-xs text-red-500">{String(errors.barangay)}</p>}
                       </div>
 
                       {/* Zip Code */}
@@ -385,15 +392,6 @@ export default function Register() {
                           placeholder="Zip Code"
                           className={`py-1 px-2 text-sm h-8 ${errors.zip_code ? 'border-red-500' : ''}`}
                         />
-                        {errors.zip_code && <p className="mt-0.5 text-xs text-red-500">{String(errors.zip_code)}</p>}
-                      </div>
-
-                      {/* Address Preview */}
-                      <div className="space-y-0.5 col-span-2">
-                        <Label htmlFor="combined_address" className="text-xs text-gray-500">Full Address Preview</Label>
-                        <div className="p-1 bg-gray-50 border rounded-md text-xs text-gray-600 min-h-[28px]">
-                          {[data.barangay, data.city, data.province, data.zip_code].filter(Boolean).join(', ') || 'Your complete address will appear here'}
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -417,16 +415,6 @@ export default function Register() {
                   </div>
                 </div>
               )}
-
-              <div className="mt-2 text-center text-xs">
-                Already have an account?{' '}
-                <Link
-                  href={route('auth.login')}
-                  className="font-medium text-blue-600 hover:text-blue-700 hover:underline transition-colors"
-                >
-                  Login
-                </Link>
-              </div>
             </form>
           </div>
         </div>
