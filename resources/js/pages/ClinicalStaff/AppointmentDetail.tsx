@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import axios from 'axios';
 import { toast } from "react-hot-toast";
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 interface User {
     id: number;
@@ -24,6 +25,7 @@ interface Patient {
     id: number;
     name: string;
     reference_number?: string;
+    email?: string;
 }
 
 interface Doctor {
@@ -78,6 +80,8 @@ export default function AppointmentDetail({ appointment, user }: AppointmentProp
     const [notes, setNotes] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
     const [showStatusForm, setShowStatusForm] = useState<boolean>(false);
+    const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
+    const [confirmAction, setConfirmAction] = useState<'approve' | 'reject'>('approve');
 
     // Handle print function
     const handlePrint = () => {
@@ -202,7 +206,7 @@ export default function AppointmentDetail({ appointment, user }: AppointmentProp
                         </tr>
                         <tr>
                             <td>Address:</td>
-                            <td>{details.patient_info?.address || 'Louisville, KY 40201'}</td>
+                            <td>{details.patient_info?.address || details.address || 'Address not provided'}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -224,9 +228,23 @@ export default function AppointmentDetail({ appointment, user }: AppointmentProp
         </div>
     ));
 
-    // Handle status update
+    // Handle status update with confirmation
     const handleUpdateStatus = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (status === 'confirmed') {
+            setConfirmAction('approve');
+            setShowConfirmModal(true);
+        } else if (status === 'cancelled') {
+            setConfirmAction('reject');
+            setShowConfirmModal(true);
+        } else {
+            submitStatusUpdate();
+        }
+    };
+
+    // Submit the status update to the server
+    const submitStatusUpdate = async () => {
         setIsSubmitting(true);
 
         try {
@@ -247,6 +265,7 @@ export default function AppointmentDetail({ appointment, user }: AppointmentProp
             toast.error('An error occurred while updating the appointment status');
         } finally {
             setIsSubmitting(false);
+            setShowConfirmModal(false);
         }
     };
 
@@ -300,7 +319,7 @@ export default function AppointmentDetail({ appointment, user }: AppointmentProp
                                             <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Current Status:</p>
                                             <div className="mt-1">{getStatusBadge(appointment.status)}</div>
                                         </div>
-                                        <Button 
+                                        <Button
                                             onClick={() => setShowStatusForm(true)}
                                             variant="outline"
                                         >
@@ -337,15 +356,15 @@ export default function AppointmentDetail({ appointment, user }: AppointmentProp
                                             />
                                         </div>
                                         <div className="flex justify-end gap-2">
-                                            <Button 
-                                                type="button" 
-                                                variant="outline" 
+                                            <Button
+                                                type="button"
+                                                variant="outline"
                                                 onClick={() => setShowStatusForm(false)}
                                             >
                                                 Cancel
                                             </Button>
-                                            <Button 
-                                                type="submit" 
+                                            <Button
+                                                type="submit"
                                                 disabled={isSubmitting}
                                             >
                                                 {isSubmitting ? 'Updating...' : 'Update Status'}
@@ -389,9 +408,9 @@ export default function AppointmentDetail({ appointment, user }: AppointmentProp
                                             <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Assigned Doctor:</p>
                                             <p>Dr. {appointment.doctor.name}</p>
                                         </div>
-                                        <Button 
+                                        <Button
                                             asChild
-                                            variant="outline" 
+                                            variant="outline"
                                             size="sm"
                                         >
                                             <Link href={route('staff.doctor-schedules.view', appointment.doctor.id)}>
@@ -440,8 +459,12 @@ export default function AppointmentDetail({ appointment, user }: AppointmentProp
                                     </div>
                                 </div>
                                 <div>
+                                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Email:</p>
+                                    <p>{details.patient_info?.email || appointment.patient?.email || 'Not recorded'}</p>
+                                </div>
+                                <div>
                                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Address:</p>
-                                    <p>{details.patient_info?.address || 'Not recorded'}</p>
+                                    <p>{details.patient_info?.address || details.address || 'Not recorded'}</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -464,6 +487,15 @@ export default function AppointmentDetail({ appointment, user }: AppointmentProp
                             <PrintableMedicalRecord ref={printRef} />
                         </div>
                     </div>
+
+                    {/* Confirmation Modal */}
+                    <ConfirmationModal
+                        isOpen={showConfirmModal}
+                        onClose={() => setShowConfirmModal(false)}
+                        onConfirm={submitStatusUpdate}
+                        title={`Are you sure you want to ${confirmAction} this appointment?`}
+                        actionType={confirmAction}
+                    />
                 </main>
             </div>
         </div>

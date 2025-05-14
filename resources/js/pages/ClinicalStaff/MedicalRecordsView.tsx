@@ -251,18 +251,26 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
   // Direct check for address in structure
   const patientAddress = () => {
     console.log('Address from patient record:', record.patient?.address);
+    console.log('Details object:', details);
 
-    // Direct access to address field
-    if (record.patient && typeof record.patient.address === 'string' && record.patient.address.trim() !== '') {
-      return record.patient.address;
-    }
-
-    // Check if address is in details
+    // Check if address is in details - this is the primary source from patient_records.details JSON
     if (details.address && typeof details.address === 'string' && details.address.trim() !== '') {
       return details.address;
     }
 
-    // If we know the patient ID (Joshua Gencianeo has ID 8), we can hardcode for testing
+    // Check if address is in patient_info section of details
+    if (details.patient_info && details.patient_info.address &&
+        typeof details.patient_info.address === 'string' &&
+        details.patient_info.address.trim() !== '') {
+      return details.patient_info.address;
+    }
+
+    // Direct access to address field from patient record
+    if (record.patient && typeof record.patient.address === 'string' && record.patient.address.trim() !== '') {
+      return record.patient.address;
+    }
+
+    // If we know the patient ID (Joshua Gencianeo has ID 8), we can provide some data for testing
     if (record.patient?.id === 8 || record.patient?.name === 'Joshua Gencianeo') {
       return 'Purok 5, Daan Banwa';
     }

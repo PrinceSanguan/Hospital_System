@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import toast from 'react-hot-toast';
 import axios from 'axios';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 interface User {
     id: number;
@@ -64,6 +65,9 @@ export default function StaffDashboard({
     appointments = []
 }: DashboardProps) {
     const [dashboardAppointments, setDashboardAppointments] = useState<Appointment[]>(appointments);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [confirmAction, setConfirmAction] = useState<'approve' | 'reject'>('approve');
+    const [appointmentIdToUpdate, setAppointmentIdToUpdate] = useState<number | null>(null);
 
     // Format date
     const formatDate = (dateString: string) => {
@@ -112,7 +116,7 @@ export default function StaffDashboard({
                         return appointment;
                     })
                 );
-                
+
                 toast.success(`Appointment ${newStatus} successfully`);
             } else {
                 toast.error('Failed to update appointment status');
@@ -123,15 +127,34 @@ export default function StaffDashboard({
         }
     };
 
-    // Update openDenyDialog to directly handle the cancellation
+    // Function to open confirm modal for approve action
+    const openApproveDialog = (id: number) => {
+        setAppointmentIdToUpdate(id);
+        setConfirmAction('approve');
+        setShowConfirmModal(true);
+    };
+
+    // Function to open confirm modal for deny action
     const openDenyDialog = (id: number) => {
-        handleStatusUpdate(id, 'cancelled');
+        setAppointmentIdToUpdate(id);
+        setConfirmAction('reject');
+        setShowConfirmModal(true);
+    };
+
+    // Function to confirm and execute the status update
+    const confirmStatusUpdate = () => {
+        if (appointmentIdToUpdate) {
+            const newStatus = confirmAction === 'approve' ? 'confirmed' : 'cancelled';
+            handleStatusUpdate(appointmentIdToUpdate, newStatus);
+            setShowConfirmModal(false);
+            setAppointmentIdToUpdate(null);
+        }
     };
 
     return (
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
             <Head title="Dashboard" />
-            
+
             {/* Sidebar Component */}
             <Sidebar user={user} />
 
@@ -239,11 +262,11 @@ export default function StaffDashboard({
                                                                     <TooltipProvider>
                                                                         <Tooltip>
                                                                             <TooltipTrigger asChild>
-                                                                                <Button 
-                                                                                    variant="outline" 
+                                                                                <Button
+                                                                                    variant="outline"
                                                                                     size="sm"
                                                                                     className="bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100"
-                                                                                    onClick={() => handleStatusUpdate(appointment.id, 'confirmed')}
+                                                                                    onClick={() => openApproveDialog(appointment.id)}
                                                                                 >
                                                                                     Accept
                                                                                 </Button>
@@ -253,12 +276,12 @@ export default function StaffDashboard({
                                                                             </TooltipContent>
                                                                         </Tooltip>
                                                                     </TooltipProvider>
-                                                                    
+
                                                                     <TooltipProvider>
                                                                         <Tooltip>
                                                                             <TooltipTrigger asChild>
-                                                                                <Button 
-                                                                                    variant="outline" 
+                                                                                <Button
+                                                                                    variant="outline"
                                                                                     size="sm"
                                                                                     className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100"
                                                                                     onClick={() => openDenyDialog(appointment.id)}
@@ -273,7 +296,7 @@ export default function StaffDashboard({
                                                                     </TooltipProvider>
                                                                 </>
                                                             )}
-                                                            
+
                                                             {/* View Button */}
                                                             <TooltipProvider>
                                                                 <Tooltip>
@@ -312,6 +335,15 @@ export default function StaffDashboard({
                         </Card>
                     </div>
                 </main>
+
+                {/* Confirmation Modal */}
+                <ConfirmationModal
+                    isOpen={showConfirmModal}
+                    onClose={() => setShowConfirmModal(false)}
+                    onConfirm={confirmStatusUpdate}
+                    title={`Are you sure you want to ${confirmAction} this appointment?`}
+                    actionType={confirmAction}
+                />
             </div>
         </div>
     );

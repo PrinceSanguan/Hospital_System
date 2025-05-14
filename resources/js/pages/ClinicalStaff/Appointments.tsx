@@ -21,6 +21,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import toast from 'react-hot-toast';
 import axios from 'axios';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 interface User {
     id: number;
@@ -105,6 +106,9 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
     const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
     const [showPrintDialog, setShowPrintDialog] = useState(false);
     const [printType, setPrintType] = useState<'record' | 'prescription' | null>(null);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [confirmAction, setConfirmAction] = useState<'approve' | 'reject'>('approve');
+    const [appointmentIdToUpdate, setAppointmentIdToUpdate] = useState<number | null>(null);
 
     // Sort appointments: Pending first, then Completed/Done
     useEffect(() => {
@@ -236,7 +240,7 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                         return appointment;
                     })
                 );
-                
+
                 toast.success(`Appointment ${newStatus} successfully`);
             } else {
                 toast.error('Failed to update appointment status');
@@ -247,9 +251,28 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
         }
     };
 
-    // Update the openDenyDialog function to directly handle the appointment cancellation
+    // Function to open confirm modal for approve action
+    const openApproveDialog = (id: number) => {
+        setAppointmentIdToUpdate(id);
+        setConfirmAction('approve');
+        setShowConfirmModal(true);
+    };
+
+    // Function to open confirm modal for deny action
     const openDenyDialog = (id: number) => {
-        handleStatusUpdate(id, 'cancelled');
+        setAppointmentIdToUpdate(id);
+        setConfirmAction('reject');
+        setShowConfirmModal(true);
+    };
+
+    // Function to confirm and execute the status update
+    const confirmStatusUpdate = () => {
+        if (appointmentIdToUpdate) {
+            const newStatus = confirmAction === 'approve' ? 'confirmed' : 'cancelled';
+            handleStatusUpdate(appointmentIdToUpdate, newStatus);
+            setShowConfirmModal(false);
+            setAppointmentIdToUpdate(null);
+        }
     };
 
     return (
@@ -374,11 +397,11 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                                                                     <TooltipProvider>
                                                                         <Tooltip>
                                                                             <TooltipTrigger asChild>
-                                                                                <Button 
-                                                                                    variant="outline" 
+                                                                                <Button
+                                                                                    variant="outline"
                                                                                     size="sm"
                                                                                     className="bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100"
-                                                                                    onClick={() => handleStatusUpdate(appointment.id, 'confirmed')}
+                                                                                    onClick={() => openApproveDialog(appointment.id)}
                                                                                 >
                                                                                     Accept
                                                                                 </Button>
@@ -388,12 +411,12 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                                                                             </TooltipContent>
                                                                         </Tooltip>
                                                                     </TooltipProvider>
-                                                                    
+
                                                                     <TooltipProvider>
                                                                         <Tooltip>
                                                                             <TooltipTrigger asChild>
-                                                                                <Button 
-                                                                                    variant="outline" 
+                                                                                <Button
+                                                                                    variant="outline"
                                                                                     size="sm"
                                                                                     className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100"
                                                                                     onClick={() => openDenyDialog(appointment.id)}
@@ -408,7 +431,7 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                                                                     </TooltipProvider>
                                                                 </>
                                                             )}
-                                                            
+
                                                             {/* Simple Action Buttons - Only 4 as requested */}
                                                             <TooltipProvider>
                                                                 {/* View Button */}
@@ -533,6 +556,15 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={showConfirmModal}
+                onClose={() => setShowConfirmModal(false)}
+                onConfirm={confirmStatusUpdate}
+                title={`Are you sure you want to ${confirmAction} this appointment?`}
+                actionType={confirmAction}
+            />
         </div>
     );
 }

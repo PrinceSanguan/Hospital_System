@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { Header } from '@/components/clinicalstaff/header';
 import { Sidebar } from '@/components/clinicalstaff/sidebar';
@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/card';
 import { ChevronLeft } from 'lucide-react';
 import { format } from 'date-fns';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 // Sample medications for dropdown
 const MEDICATIONS = [
@@ -114,6 +115,8 @@ interface MedicalRecordsEditProps {
 }
 
 export default function MedicalRecordsEdit({ user, record, patients, doctors }: MedicalRecordsEditProps) {
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+
   // Parse the record details if it's a string
   const parseDetails = (): MedicalRecordDetails => {
     if (typeof record.details === 'string') {
@@ -201,7 +204,12 @@ export default function MedicalRecordsEdit({ user, record, patients, doctors }: 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setShowSaveConfirmation(true);
+  };
+
+  const confirmSave = () => {
     put(route('staff.clinical.info.update', record.id));
+    setShowSaveConfirmation(false);
   };
 
   const addPrescription = () => {
@@ -621,6 +629,15 @@ export default function MedicalRecordsEdit({ user, record, patients, doctors }: 
               </form>
             </Card>
           </div>
+
+          {/* Save Confirmation Modal */}
+          <ConfirmationModal
+            isOpen={showSaveConfirmation}
+            onClose={() => setShowSaveConfirmation(false)}
+            onConfirm={confirmSave}
+            title="Are you sure you want to save these changes?"
+            actionType="save"
+          />
         </main>
       </div>
     </div>
