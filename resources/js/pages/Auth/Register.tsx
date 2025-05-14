@@ -2,11 +2,31 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Alert } from '@/components/ui/alert';
+
+// Define error type that includes database errors
+interface FormErrors {
+  name?: string;
+  email?: string;
+  password?: string;
+  password_confirmation?: string;
+  date_of_birth?: string;
+  gender?: string;
+  phone?: string;
+  province?: string;
+  city?: string;
+  barangay?: string;
+  zip_code?: string;
+  address?: string;
+  database?: string;
+  [key: string]: string | undefined; // Allow other error properties
+}
 
 export default function Register() {
   const [activeTab, setActiveTab] = useState(0);
+  const [databaseError, setDatabaseError] = useState<string | null>(null);
+  const [passwordMismatch, setPasswordMismatch] = useState<boolean>(false);
 
   const { data, setData, post, processing, errors, reset } = useForm({
     name: '',
@@ -16,29 +36,102 @@ export default function Register() {
     date_of_birth: '',
     gender: '',
     phone: '',
+    province: '',
+    city: '',
+    barangay: '',
+    zip_code: '',
     address: '',
   });
+
+  // Check if passwords match whenever either password field changes
+  useEffect(() => {
+    if (data.password && data.password_confirmation) {
+      setPasswordMismatch(data.password !== data.password_confirmation);
+    } else {
+      setPasswordMismatch(false);
+    }
+  }, [data.password, data.password_confirmation]);
+
+  const updateAddress = () => {
+    const fullAddress = [
+      data.barangay,
+      data.city,
+      data.province,
+      data.zip_code
+    ].filter(Boolean).join(', ');
+
+    setData('address', fullAddress);
+    return fullAddress; // Return the address for immediate use
+  };
+
+  // Handle changes to address fields
+  const handleAddressChange = (field: 'province' | 'city' | 'barangay' | 'zip_code', value: string) => {
+    setData(field, value);
+    // We don't call updateAddress() here anymore to avoid timing issues
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Form submitted with data:", data);
 
-    // Use the post method from Inertia with the route and options
+    // Client-side validation for password match
+    if (data.password !== data.password_confirmation) {
+      setPasswordMismatch(true);
+      return;
+    }
+
+    setDatabaseError(null);
+
+    // Ensure address is updated right before submission
+    const finalAddress = updateAddress();
+    console.log("Final address to be saved:", finalAddress);
+
+    // Save the data with the combined address
     post(route('auth.register.store'), {
       onSuccess: () => {
         console.log("Registration successful");
-        // Optionally reset the form after successful submission
         reset();
       },
-      onError: (errors) => {
-        console.error("Registration failed with errors:", errors);
+      onError: (formErrors: FormErrors) => {
+        console.error("Registration failed with errors:", formErrors);
+
+        // Special handling for database errors
+        if (formErrors.database) {
+          let errorMessage = formErrors.database;
+
+          // Clean up the error message to be more user-friendly
+          if (errorMessage.includes('Unable to connect to the database')) {
+            errorMessage = errorMessage.replace(/SQLSTATE\[\d+\]: .+?: /, '');
+            setDatabaseError(errorMessage);
+          } else {
+            setDatabaseError(errorMessage);
+          }
+        }
+
+        // Handle password confirmation separately
+        if (formErrors.password_confirmation) {
+          setPasswordMismatch(true);
+        }
       },
-      // Preserve the scroll position
       preserveScroll: true,
     });
   };
 
   const nextTab = () => {
+    // Before moving to next tab, validate current tab fields
+    if (activeTab === 0) {
+      // Check required fields on first tab
+      if (!data.name || !data.email || !data.password || !data.password_confirmation) {
+        return;
+      }
+
+      // Check password match
+      if (data.password !== data.password_confirmation) {
+        setPasswordMismatch(true);
+        return;
+      }
+    }
+
     setActiveTab(1);
   };
 
@@ -97,9 +190,9 @@ export default function Register() {
             </div>
 
             {/* Display global errors if any */}
-            {errors.database && (
+            {databaseError && (
               <Alert className="mb-4 bg-red-50 text-red-700 border border-red-200 p-3 rounded-md">
-                {String(errors.database)}
+                {databaseError}
               </Alert>
             )}
 
@@ -160,7 +253,7 @@ export default function Register() {
                       id="password"
                       value={data.password}
                       onChange={e => setData('password', e.target.value)}
-                      className={`w-full py-2 px-3 transition-all focus:border-blue-500 focus:ring-blue-500 ${errors.password ? 'border-red-500' : ''}`}
+                      className={`w-full py-2 px-3 transition-all focus:border-blue-500 focus:ring-blue-500 ${errors.password || passwordMismatch ? 'border-red-500' : ''}`}
                       placeholder="••••••••"
                     />
                     {errors.password && <p className="mt-0.5 text-xs text-red-500 transition-all">{String(errors.password)}</p>}
@@ -174,9 +267,10 @@ export default function Register() {
                       id="password_confirmation"
                       value={data.password_confirmation}
                       onChange={e => setData('password_confirmation', e.target.value)}
-                      className="w-full py-2 px-3 transition-all focus:border-blue-500 focus:ring-blue-500"
+                      className={`w-full py-2 px-3 transition-all focus:border-blue-500 focus:ring-blue-500 ${passwordMismatch ? 'border-red-500' : ''}`}
                       placeholder="••••••••"
                     />
+                    {passwordMismatch && <p className="mt-0.5 text-xs text-red-500 transition-all">The password confirmation does not match.</p>}
                   </div>
 
                   {/* Next Button */}
@@ -193,27 +287,28 @@ export default function Register() {
               {/* Personal Information Tab */}
               {activeTab === 1 && (
                 <>
+                  <div className="space-y-3">
                   {/* Date of Birth Field */}
-                  <div className="space-y-1.5">
-                    <Label htmlFor="date_of_birth" className="text-gray-700 font-medium text-sm">Date of Birth</Label>
+                    <div className="space-y-1">
+                      <Label htmlFor="date_of_birth" className="text-gray-700 text-sm font-medium">Date of Birth</Label>
                     <Input
                       type="date"
                       id="date_of_birth"
                       value={data.date_of_birth}
                       onChange={e => setData('date_of_birth', e.target.value)}
-                      className={`w-full py-2 px-3 transition-all focus:border-blue-500 focus:ring-blue-500 ${errors.date_of_birth ? 'border-red-500' : ''}`}
+                        className={`w-full py-1.5 px-3 text-sm transition-all focus:border-blue-500 focus:ring-blue-500 ${errors.date_of_birth ? 'border-red-500' : ''}`}
                     />
                     {errors.date_of_birth && <p className="mt-0.5 text-xs text-red-500 transition-all">{String(errors.date_of_birth)}</p>}
                   </div>
 
                   {/* Gender Field */}
-                  <div className="space-y-1.5">
-                    <Label htmlFor="gender" className="text-gray-700 font-medium text-sm">Gender</Label>
+                    <div className="space-y-1">
+                      <Label htmlFor="gender" className="text-gray-700 text-sm font-medium">Gender</Label>
                     <select
                       id="gender"
                       value={data.gender}
                       onChange={e => setData('gender', e.target.value)}
-                      className={`w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${errors.gender ? 'border-red-500' : ''}`}
+                        className={`w-full h-9 rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${errors.gender ? 'border-red-500' : ''}`}
                     >
                       <option value="">Select Gender</option>
                       <option value="male">Male</option>
@@ -224,44 +319,99 @@ export default function Register() {
                   </div>
 
                   {/* Phone Field */}
-                  <div className="space-y-1.5">
-                    <Label htmlFor="phone" className="text-gray-700 font-medium text-sm">Phone Number</Label>
+                    <div className="space-y-1">
+                      <Label htmlFor="phone" className="text-gray-700 text-sm font-medium">Phone Number</Label>
                     <Input
                       type="tel"
                       id="phone"
                       value={data.phone}
                       onChange={e => setData('phone', e.target.value)}
-                      className={`w-full py-2 px-3 transition-all focus:border-blue-500 focus:ring-blue-500 ${errors.phone ? 'border-red-500' : ''}`}
+                        className={`w-full py-1.5 px-3 text-sm transition-all focus:border-blue-500 focus:ring-blue-500 ${errors.phone ? 'border-red-500' : ''}`}
                       placeholder="Enter your phone number"
                     />
                     {errors.phone && <p className="mt-0.5 text-xs text-red-500 transition-all">{String(errors.phone)}</p>}
                   </div>
 
-                  {/* Address Field */}
-                  <div className="space-y-1.5">
-                    <Label htmlFor="address" className="text-gray-700 font-medium text-sm">Address</Label>
-                    <textarea
-                      id="address"
-                      value={data.address}
-                      onChange={e => setData('address', e.target.value)}
-                      className={`w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px] ${errors.address ? 'border-red-500' : ''}`}
-                      placeholder="Enter your address"
-                    />
-                    {errors.address && <p className="mt-0.5 text-xs text-red-500 transition-all">{String(errors.address)}</p>}
+                    {/* Address Information */}
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-medium text-gray-700 mt-2">Address Information</h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {/* Province */}
+                        <div className="space-y-1">
+                          <Label htmlFor="province" className="text-sm">Province</Label>
+                          <Input
+                            id="province"
+                            value={data.province}
+                            onChange={(e) => handleAddressChange('province', e.target.value)}
+                            placeholder="Province"
+                            className={`py-1.5 px-3 text-sm ${errors.province ? 'border-red-500' : ''}`}
+                          />
+                          {errors.province && <p className="mt-0.5 text-xs text-red-500">{String(errors.province)}</p>}
+                        </div>
+
+                        {/* City */}
+                        <div className="space-y-1">
+                          <Label htmlFor="city" className="text-sm">City</Label>
+                          <Input
+                            id="city"
+                            value={data.city}
+                            onChange={(e) => handleAddressChange('city', e.target.value)}
+                            placeholder="City/Municipality"
+                            className={`py-1.5 px-3 text-sm ${errors.city ? 'border-red-500' : ''}`}
+                          />
+                          {errors.city && <p className="mt-0.5 text-xs text-red-500">{String(errors.city)}</p>}
+                        </div>
+
+                        {/* Barangay */}
+                        <div className="space-y-1">
+                          <Label htmlFor="barangay" className="text-sm">Barangay</Label>
+                          <Input
+                            id="barangay"
+                            value={data.barangay}
+                            onChange={(e) => handleAddressChange('barangay', e.target.value)}
+                            placeholder="Barangay"
+                            className={`py-1.5 px-3 text-sm ${errors.barangay ? 'border-red-500' : ''}`}
+                          />
+                          {errors.barangay && <p className="mt-0.5 text-xs text-red-500">{String(errors.barangay)}</p>}
+                        </div>
+
+                        {/* Zip Code */}
+                        <div className="space-y-1">
+                          <Label htmlFor="zip_code" className="text-sm">Zip Code</Label>
+                          <Input
+                            id="zip_code"
+                            value={data.zip_code}
+                            onChange={(e) => handleAddressChange('zip_code', e.target.value)}
+                            placeholder="Zip Code"
+                            className={`py-1.5 px-3 text-sm ${errors.zip_code ? 'border-red-500' : ''}`}
+                          />
+                          {errors.zip_code && <p className="mt-0.5 text-xs text-red-500">{String(errors.zip_code)}</p>}
+                        </div>
+
+                        {/* Address Preview */}
+                        <div className="space-y-1 col-span-2">
+                          <Label htmlFor="combined_address" className="text-xs text-gray-500">Full Address Preview</Label>
+                          <div className="p-1.5 bg-gray-50 border rounded-md text-xs text-gray-600 min-h-[32px]">
+                            {[data.barangay, data.city, data.province, data.zip_code].filter(Boolean).join(', ') || 'Your complete address will appear here'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Button Group */}
-                  <div className="grid grid-cols-2 gap-4 mt-6">
+                  <div className="grid grid-cols-2 gap-3 mt-4">
                     <Button
                       type="button"
-                      className="w-full py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
+                      className="w-full py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
                       onClick={prevTab}
                     >
                       Back
                     </Button>
                     <Button
                       type="submit"
-                      className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                      className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                       disabled={processing}
                     >
                       {processing ? 'Registering...' : 'Register'}

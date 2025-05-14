@@ -971,7 +971,7 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
                           <Input
                             value={data.province}
                             onChange={(e) => setData('province', e.target.value)}
-                            placeholder="Select Province"
+                            placeholder="Province"
                             required
                           />
                           {errors.province && <p className="text-sm text-red-500">{errors.province}</p>}
@@ -983,7 +983,7 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
                           <Input
                             value={data.city}
                             onChange={(e) => setData('city', e.target.value)}
-                            placeholder="Select City/Municipality"
+                            placeholder="City/Municipality"
                             required
                           />
                           {errors.city && <p className="text-sm text-red-500">{errors.city}</p>}
@@ -995,7 +995,7 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
                           <Input
                             value={data.barangay}
                             onChange={(e) => setData('barangay', e.target.value)}
-                            placeholder="Select Barangay"
+                            placeholder="Barangay"
                             required
                           />
                           {errors.barangay && <p className="text-sm text-red-500">{errors.barangay}</p>}
