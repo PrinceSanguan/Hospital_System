@@ -361,11 +361,11 @@ export default function LabResults({ labResults, patient, isPatientView, auth }:
                                                                 View Lab Result
                                                             </Button>
                                                         </Link>
-                                                        <Link href={route('staff.lab-results.download', result.id)}>
+                                                        <a href={route('staff.lab-results.download', result.id)} download>
                                                             <Button variant="outline" size="sm">
                                                                 <ArrowDownTrayIcon className="h-4 w-4" />
                                                             </Button>
-                                                        </Link>
+                                                        </a>
                                                         <form
                                                             onSubmit={(e) => {
                                                                 e.preventDefault();

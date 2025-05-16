@@ -22,6 +22,7 @@ interface Props {
     labResult: LabResult;
     auth: {
         user: {
+            id: number;
             name: string;
             email: string;
             role: string;
@@ -35,7 +36,7 @@ export default function LabResultDetail({ labResult, auth }: Props) {
             <Head title={`Lab Result - ${labResult.test_type}`} />
 
             <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-                <Sidebar />
+                <Sidebar user={auth.user} />
 
                 <div className="flex flex-1 flex-col">
                     <Header user={auth.user} />
@@ -92,13 +93,13 @@ export default function LabResultDetail({ labResult, auth }: Props) {
 
                                     <div>
                                         <h3 className="text-lg font-medium">Lab Result File</h3>
-                                        <div className="mt-4">
-                                            <Link href={route('staff.lab-results.download', labResult.id)}>
-                                                <Button>
-                                                    <ArrowDownTrayIcon className="mr-2 h-4 w-4" />
-                                                    Download Lab Result
-                                                </Button>
-                                            </Link>
+                                                                                <div className="mt-4">
+                                              <a href={route('staff.lab-results.download', labResult.id)} download>
+                                                 <Button>
+                                                     <ArrowDownTrayIcon className="mr-2 h-4 w-4" />
+                                                     Download Lab Result
+                                                  </Button>
+                                              </a>
                                         </div>
                                     </div>
                                 </div>
