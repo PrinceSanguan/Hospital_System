@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\HospitalService;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
@@ -70,37 +71,30 @@ class LandingController extends Controller
             $hospitalServices = [];
         }
 
-        // Define the featured doctors for the landing page
-        $doctors = [
-            [
-                'id' => 1,
-                'name' => 'Dr. Sheila Mae Beltrano',
-                'specialty' => 'Certified Family Physician',
-                'image' => 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80',
-                'availability' => ['Monday', 'Wednesday', 'Friday']
-            ],
-            [
-                'id' => 2,
-                'name' => 'Dr. Kathy Narvaez-Garcia',
-                'specialty' => 'General Practitioner',
-                'image' => 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80',
-                'availability' => ['Tuesday', 'Thursday', 'Saturday']
-            ],
-            [
-                'id' => 3,
-                'name' => 'Dr. Rogelia Bantayon-Tubog',
-                'specialty' => 'Occupational Health Physician, BCOM Diplomate, Family Medicine',
-                'image' => 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80',
-                'availability' => ['Monday', 'Tuesday', 'Friday']
-            ],
-            [
-                'id' => 4,
-                'name' => 'Dr. Blas Bandian',
-                'specialty' => 'Diplomate, Family Medicine',
-                'image' => 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80',
-                'availability' => ['Wednesday', 'Thursday', 'Saturday']
-            ]
-        ];
+        // Get doctors from database
+        try {
+            $doctors = User::where('user_role', User::ROLE_DOCTOR)
+                ->with(['doctorProfile', 'schedules', 'services'])
+                ->get()
+                ->map(function ($doctor) {
+                    return [
+                        'id' => $doctor->id,
+                        'name' => $doctor->name,
+                        'specialty' => $doctor->doctorProfile?->specialization ?? 'General Practitioner',
+                        'image' => $doctor->doctorProfile?->profile_image ?
+                            (str_starts_with($doctor->doctorProfile->profile_image, 'images/')
+                                ? asset($doctor->doctorProfile->profile_image)
+                                : asset('storage/' . $doctor->doctorProfile->profile_image))
+                            : asset('placeholder-avatar.jpg'),
+                        'availability' => $doctor->availability ?? [],
+                        'schedules' => $doctor->schedules,
+                        'services' => $doctor->services,
+                    ];
+                });
+        } catch (\Exception $e) {
+            Log::error('Error loading doctors: ' . $e->getMessage());
+            $doctors = [];
+        }
 
         return Inertia::render('Landing', [
             'services' => $services,
@@ -123,5 +117,39 @@ class LandingController extends Controller
 
         // Return the appropriate view based on the service
         return Inertia::render('Services/' . ucfirst($service));
+    }
+
+    /**
+     * Display the view for a specific doctor
+     */
+    public function viewDoctor($id)
+    {
+        $doctor = User::where('user_role', User::ROLE_DOCTOR)
+            ->with(['doctorProfile', 'services' => function($query) {
+                $query->where('is_active', true);
+            }, 'schedules'])
+            ->findOrFail($id);
+
+        // Get available dates based on doctor schedules
+        $availableDates = [];
+        $availableTimeSlots = [];
+        if ($doctor->schedules) {
+            foreach ($doctor->schedules as $schedule) {
+                if ($schedule->is_available) {
+                    // Add available days from schedules
+                    $availableDates[] = [
+                        'day' => $schedule->day_of_week,
+                        'start_time' => $schedule->start_time,
+                        'end_time' => $schedule->end_time,
+                    ];
+                }
+            }
+        }
+
+        return Inertia::render('Doctors/Show', [
+            'doctor' => $doctor,
+            'availableDates' => $availableDates,
+            'availableTimeSlots' => $availableTimeSlots
+        ]);
     }
 }

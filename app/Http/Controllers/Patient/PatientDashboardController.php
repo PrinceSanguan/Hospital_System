@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use App\Models\Patient;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class PatientDashboardController extends Controller
 {
@@ -90,15 +93,15 @@ class PatientDashboardController extends Controller
                 ];
             });
 
-        // Get available doctors
-        $doctors = User::where('user_role', User::ROLE_DOCTOR)
-            ->with(['schedules', 'services'])
+                // Get available doctors
+            $doctors = User::where('user_role', User::ROLE_DOCTOR)
+            ->with(['doctorProfile', 'schedules', 'services'])
             ->get()
             ->map(function ($doctor) {
                 return [
                     'id' => $doctor->id,
                     'name' => $doctor->name,
-                    'specialty' => $doctor->specialty ?? 'General Practitioner',
+                    'specialty' => $doctor->doctorProfile?->specialty ?? '', // Changed from 'General Practitioner' to empty string
                     'image' => $doctor->profile_photo ?? '/placeholder-avatar.jpg',
                     'availability' => $doctor->availability ?? [],
                     'schedules' => $doctor->schedules,
@@ -131,13 +134,25 @@ class PatientDashboardController extends Controller
             'user_id' => Auth::id()
         ]);
 
+        // Check database connection first
+        try {
+            DB::connection()->getPdo();
+            Log::info('Database connection established');
+        } catch (\Exception $e) {
+            Log::error('Database connection failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->back()->withErrors(['error' => 'Database connection error. Please try again later.']);
+        }
+
         $request->validate([
             'doctor_id' => 'required|exists:users,id',
             'appointment_date' => 'required|date',
             'appointment_time' => 'required|string',
             'reason' => 'required|string',
             'notes' => 'nullable|string',
-            'service_id' => 'nullable|exists:doctor_services,id',
+            'service_id' => 'nullable|numeric',
             // Patient information - make these optional to allow direct booking
             'name' => 'required|string',
             'birthdate' => 'required|date',
@@ -160,121 +175,232 @@ class PatientDashboardController extends Controller
         $user = Auth::user();
         $doctor = User::findOrFail($request->doctor_id);
 
-        // Create the patient record (appointment)
-        $appointment = new PatientRecord();
-        $appointment->patient_id = $user->id;
-        $appointment->assigned_doctor_id = $doctor->id;
-        $appointment->record_type = 'medical_checkup';
-        $appointment->status = 'pending';
-
-        // Format the appointment date and time correctly
-        $appointmentDateTime = $request->appointment_date . ' ' . $request->appointment_time;
-        Log::info('Formatting appointment date and time', [
-            'date' => $request->appointment_date,
-            'time' => $request->appointment_time,
-            'combined' => $appointmentDateTime
-        ]);
-
-        $appointment->appointment_date = $appointmentDateTime;
-
-        // If service_id is provided, associate it with the appointment
-        if ($request->has('service_id') && !empty($request->service_id)) {
-            $appointment->service_id = $request->service_id;
-            Log::info('Service associated with appointment', ['service_id' => $request->service_id]);
-        }
-
-        // Store additional information in details field
-        $details = [
-            'appointment_time' => $request->appointment_time,
-            'reason' => $request->reason,
-            'notes' => $request->notes,
-            // Patient information
-            'patient_info' => [
-                'name' => $request->name,
-                'birthdate' => $request->birthdate,
-                'age' => $request->age,
-                'height' => $request->height,
-                'weight' => $request->weight,
-                'bmi' => $request->bmi,
-                'address' => $request->address,
-            ],
-        ];
-
-        // Add uploaded files information if provided
-        if ($request->has('uploaded_files') && !empty($request->uploaded_files)) {
-            try {
-                $uploadedFiles = json_decode($request->uploaded_files, true);
-
-                // Log the decoded data to help with debugging
-                Log::info('Processing uploaded files for appointment', [
-                    'json_decode_result' => $uploadedFiles,
-                    'json_last_error' => json_last_error(),
-                    'json_last_error_msg' => json_last_error_msg(),
-                    'raw_input' => $request->uploaded_files
-                ]);
-
-                if (json_last_error() === JSON_ERROR_NONE && is_array($uploadedFiles) && count($uploadedFiles) > 0) {
-                    $details['uploaded_files'] = $uploadedFiles;
-
-                    Log::info('Added uploaded files to appointment details', [
-                        'files_count' => count($uploadedFiles),
-                        'appointment_id' => $appointment->id ?? 'not_saved_yet',
-                        'files_data' => $uploadedFiles
-                    ]);
-                } else {
-                    Log::warning('Failed to parse uploaded files JSON properly', [
-                        'uploaded_files' => $request->uploaded_files,
-                        'json_last_error' => json_last_error(),
-                        'json_last_error_msg' => json_last_error_msg()
-                    ]);
-                }
-            } catch (\Exception $e) {
-                Log::error('Error parsing uploaded files JSON', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                    'uploaded_files' => $request->uploaded_files
-                ]);
-            }
-        } else {
-            Log::info('No uploaded files information provided in the request', [
-                'request_has_uploaded_files' => $request->has('uploaded_files'),
-                'uploaded_files_value' => $request->uploaded_files ?? 'null'
-            ]);
-        }
-
-        // Add vital signs if provided
-        if ($request->temperature || $request->pulse_rate || $request->respiratory_rate ||
-            $request->blood_pressure || $request->oxygen_saturation) {
-            $details['vital_signs'] = [
-                'temperature' => $request->temperature,
-                'pulse_rate' => $request->pulse_rate,
-                'respiratory_rate' => $request->respiratory_rate,
-                'blood_pressure' => $request->blood_pressure,
-                'oxygen_saturation' => $request->oxygen_saturation,
-                'recorded_at' => now()->format('Y-m-d H:i:s'),
-            ];
-        }
-
-        // Add service if selected
-        if ($request->service_id) {
-            $service = DoctorService::findOrFail($request->service_id);
-            $details['service'] = [
-                'id' => $service->id,
-                'name' => $service->name,
-                'price' => $service->price,
-                'duration_minutes' => $service->duration_minutes,
-            ];
-        }
-
-        $appointment->details = json_encode($details);
+        // Begin database transaction for consistency
+        DB::beginTransaction();
 
         try {
-            $saved = $appointment->save();
-            Log::info('Appointment saved result', [
-                'saved' => $saved,
-                'appointment_id' => $appointment->id,
-                'appointment_data' => $appointment->toArray()
+            // Format the appointment date and time correctly
+            $appointmentDateTime = $request->appointment_date . ' ' . $request->appointment_time;
+            Log::info('Formatting appointment date and time', [
+                'date' => $request->appointment_date,
+                'time' => $request->appointment_time,
+                'combined' => $appointmentDateTime
             ]);
+
+            // Validate the doctor exists
+            if (!$doctor) {
+                Log::error('Doctor not found', ['doctor_id' => $request->doctor_id]);
+                throw new \Exception("Doctor with ID {$request->doctor_id} not found");
+            }
+
+            // Store additional information in details field
+            $details = [
+                'appointment_time' => $request->appointment_time,
+                'reason' => $request->reason,
+                'notes' => $request->notes,
+                // Patient information
+                'patient_info' => [
+                    'name' => $request->name,
+                    'birthdate' => $request->birthdate,
+                    'age' => $request->age,
+                    'height' => $request->height,
+                    'weight' => $request->weight,
+                    'bmi' => $request->bmi,
+                    'address' => $request->address,
+                ],
+            ];
+
+            // Add uploaded files information if provided
+            if ($request->has('uploaded_files') && !empty($request->uploaded_files)) {
+                try {
+                    $uploadedFiles = json_decode($request->uploaded_files, true);
+
+                    // Log the decoded data to help with debugging
+                    Log::info('Processing uploaded files for appointment', [
+                        'json_decode_result' => $uploadedFiles,
+                        'json_last_error' => json_last_error(),
+                        'json_last_error_msg' => json_last_error_msg(),
+                        'raw_input' => $request->uploaded_files
+                    ]);
+
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($uploadedFiles) && count($uploadedFiles) > 0) {
+                        $details['uploaded_files'] = $uploadedFiles;
+
+                        Log::info('Added uploaded files to appointment details', [
+                            'files_count' => count($uploadedFiles),
+                            'files_data' => $uploadedFiles
+                        ]);
+                    } else {
+                        Log::warning('Failed to parse uploaded files JSON properly', [
+                            'uploaded_files' => $request->uploaded_files,
+                            'json_last_error' => json_last_error(),
+                            'json_last_error_msg' => json_last_error_msg()
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error parsing uploaded files JSON', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                        'uploaded_files' => $request->uploaded_files
+                    ]);
+                }
+            }
+
+            // Add vital signs if provided
+            if ($request->temperature || $request->pulse_rate || $request->respiratory_rate ||
+                $request->blood_pressure || $request->oxygen_saturation) {
+                $details['vital_signs'] = [
+                    'temperature' => $request->temperature,
+                    'pulse_rate' => $request->pulse_rate,
+                    'respiratory_rate' => $request->respiratory_rate,
+                    'blood_pressure' => $request->blood_pressure,
+                    'oxygen_saturation' => $request->oxygen_saturation,
+                    'recorded_at' => now()->format('Y-m-d H:i:s'),
+                ];
+            }
+
+            // Add service if selected
+            if ($request->service_id) {
+                try {
+                    $service = DoctorService::find($request->service_id);
+                    if ($service) {
+                        $details['service'] = [
+                            'id' => $service->id,
+                            'name' => $service->name,
+                            'price' => $service->price,
+                            'duration_minutes' => $service->duration_minutes,
+                        ];
+                    } else {
+                        Log::warning('Service not found', ['service_id' => $request->service_id]);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error retrieving service', [
+                        'service_id' => $request->service_id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            // 1. Create the patient record (appointment)
+            $patientRecord = new PatientRecord();
+            $patientRecord->patient_id = $user->id;
+            $patientRecord->assigned_doctor_id = $doctor->id;
+            $patientRecord->record_type = 'medical_checkup';
+            $patientRecord->status = 'pending';
+
+            // Format the appointment date properly
+            try {
+                $parsedDate = new \DateTime($appointmentDateTime);
+                $patientRecord->appointment_date = $parsedDate->format('Y-m-d H:i:s');
+                Log::info('Setting appointment date', [
+                    'appointment_date' => $patientRecord->appointment_date,
+                    'original_input' => $appointmentDateTime
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error parsing appointment date', [
+                    'input' => $appointmentDateTime,
+                    'error' => $e->getMessage()
+                ]);
+                throw new \Exception('Invalid appointment date format: ' . $appointmentDateTime);
+            }
+
+            // If service_id is provided, associate it with the appointment
+            if ($request->has('service_id') && !empty($request->service_id)) {
+                $patientRecord->service_id = $request->service_id;
+                Log::info('Service associated with appointment', ['service_id' => $request->service_id]);
+            }
+
+            $patientRecord->details = json_encode($details);
+            $patientRecord->save();
+
+            Log::info('Created patient record', [
+                'record_id' => $patientRecord->id,
+                'patient_id' => $user->id,
+                'doctor_id' => $doctor->id
+            ]);
+
+            // 2. Create entry in the appointments table as well for staff view
+            // First check if the user has a corresponding patient record
+            $patientData = Patient::where('user_id', $user->id)->first();
+
+            if (!$patientData) {
+                // Instead of throwing an exception, create a new Patient record
+                Log::info('Creating new patient record for user', ['user_id' => $user->id]);
+
+                $patientData = new Patient();
+                $patientData->user_id = $user->id;
+                $patientData->name = $user->name;
+                $patientData->reference_number = 'PAT' . str_pad($user->id, 6, '0', STR_PAD_LEFT);
+
+                // Extract data from the patient info in the request
+                $patientData->date_of_birth = $request->birthdate;
+                $patientData->address = $request->address;
+
+                // If gender is provided in the request, use it, otherwise default to null
+                $patientData->gender = $request->gender ?? null;
+                $patientData->contact_number = $user->phone ?? null;
+
+                $patientData->save();
+
+                Log::info('Created new patient record', ['patient_id' => $patientData->id]);
+            }
+
+            // Now create the appointment entry
+            $appointment = new \App\Models\Appointment();
+            $appointment->patient_id = $patientData->id;
+
+            // Get the correct doctor_id from the doctors table instead of using user_id
+            $doctorRecord = \App\Models\Doctor::where('user_id', $doctor->id)->first();
+
+            if (!$doctorRecord) {
+                // If no doctor record exists, create one
+                Log::info('Creating new doctor record for user', ['user_id' => $doctor->id]);
+
+                $doctorRecord = new \App\Models\Doctor();
+                $doctorRecord->user_id = $doctor->id;
+                $doctorRecord->name = $doctor->name;
+                $doctorRecord->specialization = $doctor->doctorProfile?->specialty ?? 'General Practitioner';
+                $doctorRecord->license_number = $doctor->doctorProfile?->license_number ?? null;
+                $doctorRecord->contact_number = $doctor->phone ?? null;
+                $doctorRecord->save();
+
+                Log::info('Created new doctor record', ['doctor_id' => $doctorRecord->id]);
+            }
+
+            // Use the correct doctor ID from the doctors table
+            $appointment->doctor_id = $doctorRecord->id;
+            $appointment->assigned_doctor_id = $doctor->id; // Keep the user_id for assigned_doctor
+
+            // Format appointment date the same way
+            $appointment->appointment_date = $patientRecord->appointment_date;
+
+            $appointment->status = 'pending';
+            $appointment->reason = $request->reason;
+            $appointment->notes = $request->notes ?? '';
+            $appointment->details = json_encode($details);
+            $appointment->record_type = 'medical_checkup';
+            $appointment->reference_number = 'APP' . str_pad($patientRecord->id, 6, '0', STR_PAD_LEFT);
+
+            try {
+                $appointment->save();
+
+                Log::info('Created appointment record', [
+                    'appointment_id' => $appointment->id,
+                    'patient_id' => $patientData->id,
+                    'doctor_id' => $doctor->id,
+                    'reference_number' => $appointment->reference_number
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to save appointment', [
+                    'error' => $e->getMessage(),
+                    'appointment_data' => [
+                        'patient_id' => $patientData->id,
+                        'doctor_id' => $doctor->id,
+                        'appointment_date' => $appointment->appointment_date
+                    ]
+                ]);
+                throw new \Exception('Failed to save appointment: ' . $e->getMessage());
+            }
 
             // Create notification for the doctor
             Notification::create([
@@ -282,10 +408,10 @@ class PatientDashboardController extends Controller
                 'type' => Notification::TYPE_APPOINTMENT_REQUEST,
                 'title' => 'New Appointment Request',
                 'message' => "Patient {$user->name} has requested an appointment on " . date('F j, Y', strtotime($request->appointment_date)) . " at {$request->appointment_time}.",
-                'related_id' => $appointment->id,
+                'related_id' => $patientRecord->id,
                 'related_type' => 'appointment',
                 'data' => [
-                    'appointment_id' => $appointment->id,
+                    'appointment_id' => $patientRecord->id,
                     'patient_id' => $user->id,
                     'patient_name' => $user->name,
                     'appointment_date' => $request->appointment_date,
@@ -295,12 +421,27 @@ class PatientDashboardController extends Controller
                 ]
             ]);
 
+            // Commit the transaction
+            DB::commit();
+
             return redirect()->back()->with('success', 'Appointment request has been submitted. You will be notified when the doctor confirms your appointment.');
         } catch (\Exception $e) {
+            // Rollback transaction if there was an error
+            DB::rollBack();
+
             Log::error('Failed to save appointment', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all(),
+                'patient_id' => $user->id,
+                'doctor_id' => $request->doctor_id
             ]);
+
+            // For debugging purposes - return detailed error in development
+            if (config('app.debug')) {
+                return redirect()->back()->withErrors(['error' => 'Failed to save appointment: ' . $e->getMessage()]);
+            }
+
             return redirect()->back()->withErrors(['error' => 'Failed to save appointment. Please try again.']);
         }
     }
@@ -362,7 +503,7 @@ class PatientDashboardController extends Controller
         $user = Auth::user();
 
         $doctors = User::where('user_role', User::ROLE_DOCTOR)
-            ->with(['schedules', 'services'])
+            ->with(['doctorProfile', 'schedules', 'services'])
             ->get();
 
         // Get notifications for the user
@@ -425,11 +566,63 @@ class PatientDashboardController extends Controller
     {
         $user = Auth::user();
 
+        // Get lab records from PatientRecord table (lab appointments)
         $labRecords = PatientRecord::with('assignedDoctor')
             ->where('patient_id', $user->id)
             ->where('record_type', 'laboratory')
             ->latest('updated_at')
             ->paginate(10);
+
+        // Find patient record linked to this user
+        $patient = \App\Models\Patient::where('user_id', $user->id)->first();
+
+        // Get uploaded lab results if patient record exists
+        $uploadedLabResults = [];
+        if ($patient) {
+            // Get lab results from LabResult table (uploaded files)
+            $uploadedLabResults = \App\Models\LabResult::where('patient_id', $patient->id)
+                ->latest('test_date')
+                ->get()
+                ->map(function ($result) {
+                    return [
+                        'id' => 'lab_' . $result->id, // Prefix to distinguish from PatientRecord IDs
+                        'patient_id' => $result->patient_id,
+                        'record_type' => 'laboratory_file',
+                        'appointment_date' => $result->test_date,
+                        'status' => 'completed',
+                        'details' => json_encode([
+                            'lab_type' => $result->test_type,
+                            'notes' => $result->notes,
+                            'reference_number' => 'PAT' . str_pad($result->id, 6, '0', STR_PAD_LEFT),
+                            'file_path' => $result->file_path,
+                            'result_date' => $result->created_at,
+                        ]),
+                        'created_at' => $result->created_at,
+                        'updated_at' => $result->updated_at,
+                        'is_file' => true
+                    ];
+                });
+        }
+
+        // Add uploaded lab results to paginated records
+        $labRecords->getCollection()->transform(function ($record) {
+            $record->is_file = false;
+            return $record;
+        });
+
+        // Combine both types of results if there are uploaded lab results
+        if (count($uploadedLabResults) > 0) {
+            $combinedRecords = $labRecords->getCollection()->concat($uploadedLabResults);
+            $combinedRecords = $combinedRecords->sortByDesc('updated_at')->values();
+
+            $labRecords->setCollection($combinedRecords->slice(
+                ($labRecords->currentPage() - 1) * $labRecords->perPage(),
+                $labRecords->perPage()
+            ));
+
+            // Update total count for pagination
+            $labRecords->total(count($combinedRecords));
+        }
 
         return Inertia::render('Patient/LabResults', [
             'user' => [
@@ -461,42 +654,46 @@ class PatientDashboardController extends Controller
         ]);
     }
 
-    // List all doctors
-    public function listDoctors()
-    {
-        $user = Auth::user();
+            // List all doctors
+        public function listDoctors()
+        {
+            $user = Auth::user();
 
-        $doctors = User::where('user_role', User::ROLE_DOCTOR)
-            ->with(['schedules', 'services'])
-            ->get()
-            ->map(function ($doctor) {
-                return [
-                    'id' => $doctor->id,
-                    'name' => $doctor->name,
-                    'specialty' => $doctor->specialty ?? 'General Practitioner',
-                    'image' => $doctor->profile_photo ?? '/placeholder-avatar.jpg',
-                    'availability' => $doctor->availability ?? [],
-                    'schedules' => $doctor->schedules,
-                    'services' => $doctor->services,
-                ];
-            });
+            $doctors = User::where('user_role', User::ROLE_DOCTOR)
+                ->with(['doctorProfile', 'schedules', 'services'])
+                ->get()
+                ->map(function ($doctor) {
+                    return [
+                        'id' => $doctor->id,
+                        'name' => $doctor->name,
+                        'specialty' => $doctor->doctorProfile?->specialty ?? '', // Changed from 'General Practitioner' to empty string
+                        'profile_image' => $doctor->doctorProfile?->profile_image ?
+                            (str_starts_with($doctor->doctorProfile->profile_image, 'images/')
+                                ? asset($doctor->doctorProfile->profile_image)
+                                : asset('storage/' . $doctor->doctorProfile->profile_image))
+                            : null,
+                        'availability' => $doctor->availability ?? [],
+                        'schedules' => $doctor->schedules,
+                        'services' => $doctor->services,
+                    ];
+                });
 
-        // Get notifications for the user
-        $notifications = Notification::where('user_id', $user->id)
-            ->orderBy('created_at', 'desc')
-            ->take(5)
-            ->get();
+            // Get notifications for the user
+            $notifications = Notification::where('user_id', $user->id)
+                ->orderBy('created_at', 'desc')
+                ->take(5)
+                ->get();
 
-        return Inertia::render('Patient/Doctors', [
-            'user' => [
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->user_role,
-            ],
-            'doctors' => $doctors,
-            'notifications' => $notifications,
-        ]);
-    }
+            return Inertia::render('Patient/Doctors', [
+                'user' => [
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->user_role,
+                ],
+                'doctors' => $doctors,
+                'notifications' => $notifications,
+            ]);
+        }
 
     // View profile
     public function viewProfile()
@@ -545,7 +742,9 @@ class PatientDashboardController extends Controller
     {
         $user = Auth::user();
 
-        $doctors = User::where('user_role', User::ROLE_DOCTOR)->get();
+        $doctors = User::where('user_role', User::ROLE_DOCTOR)
+            ->with('doctorProfile')
+            ->get();
 
         return Inertia::render('Patient/BookLabAppointment', [
             'user' => [
@@ -647,7 +846,150 @@ class PatientDashboardController extends Controller
         return inertia('Patient/DoctorProfile', [
             'doctor' => $doctor,
             'availableDates' => $availableDates,
-            'user' => auth()->user(),
+            'user' => Auth::user(),
         ]);
+    }
+
+    /**
+     * Display the doctor schedules page
+     *
+     * @return \Inertia\Response
+     */
+    public function viewDoctorSchedules()
+    {
+        $user = Auth::user();
+
+        // Get all doctors
+        $doctors = User::where('user_role', 'doctor')
+            ->with('doctor_profile')
+            ->get()
+            ->map(function($doctor) {
+                return [
+                    'id' => $doctor->id,
+                    'name' => $doctor->name,
+                    'specialty' => $doctor->doctor_profile->specialty ?? 'General Practitioner',
+                    'profile_image' => $doctor->doctor_profile->profile_image ?? null,
+                ];
+            });
+
+        return Inertia::render('Patient/ViewDoctorSchedules', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+            ],
+            'doctors' => $doctors,
+        ]);
+    }
+
+    /**
+     * Get booked time slots for a specific doctor and date
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getBookedTimeSlots(Request $request)
+    {
+        $request->validate([
+            'doctor_id' => 'required|exists:users,id',
+            'date' => 'required|date_format:Y-m-d',
+        ]);
+
+        try {
+            // Find all appointments for this doctor on the selected date
+            $bookedAppointments = PatientRecord::where('assigned_doctor_id', $request->doctor_id)
+                ->whereDate('appointment_date', $request->date)
+                ->whereIn('status', ['pending', 'confirmed']) // Only include pending and confirmed appointments
+                ->get();
+
+            // Extract the appointment times from the details JSON
+            $bookedTimeSlots = [];
+            foreach ($bookedAppointments as $appointment) {
+                $details = json_decode($appointment->details, true);
+                if (isset($details['appointment_time'])) {
+                    $bookedTimeSlots[] = $details['appointment_time'];
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'bookedTimeSlots' => $bookedTimeSlots
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving booked time slots: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Download lab result file
+     */
+    public function downloadLabResult($id)
+    {
+        try {
+            // Trim 'lab_' prefix if it exists in the ID
+            if (Str::startsWith($id, 'lab_')) {
+                $id = Str::replaceFirst('lab_', '', $id);
+            }
+
+            // Find patient record linked to this user
+            $user = Auth::user();
+            $patient = \App\Models\Patient::where('user_id', $user->id)->first();
+
+            if (!$patient) {
+                Log::error('Patient record not found for download', ['user_id' => $user->id]);
+                return back()->with('error', 'Patient record not found');
+            }
+
+            // Find the lab result
+            $labResult = \App\Models\LabResult::where('id', $id)
+                ->where('patient_id', $patient->id)
+                ->first();
+
+            if (!$labResult) {
+                Log::error('Lab result not found', ['id' => $id, 'patient_id' => $patient->id]);
+                return back()->with('error', 'Lab result not found');
+            }
+
+            // Check if file exists in storage
+            if (!Storage::exists($labResult->file_path)) {
+                Log::error('Lab result file not found in storage', [
+                    'id' => $labResult->id,
+                    'file_path' => $labResult->file_path
+                ]);
+                return back()->with('error', 'The lab result file could not be found');
+            }
+
+            // Force file to be downloaded with a content disposition
+            $filename = $labResult->test_type . '_results.' . pathinfo($labResult->file_path, PATHINFO_EXTENSION);
+
+            // Set the content type based on the file extension
+            $extension = pathinfo($labResult->file_path, PATHINFO_EXTENSION);
+            $contentType = 'application/pdf';
+            if (in_array($extension, ['jpg', 'jpeg'])) {
+                $contentType = 'image/jpeg';
+            } elseif ($extension === 'png') {
+                $contentType = 'image/png';
+            }
+
+            return Storage::download(
+                $labResult->file_path,
+                $filename,
+                [
+                    'Content-Type' => $contentType,
+                    'Content-Disposition' => 'attachment; filename="' . $filename . '"'
+                ]
+            );
+        } catch (\Exception $e) {
+            Log::error('Error downloading lab result', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return back()->with('error', 'Error downloading lab result: ' . $e->getMessage());
+        }
     }
 }

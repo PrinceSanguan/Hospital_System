@@ -17,7 +17,6 @@ class DoctorProfileController extends Controller
      */
     public function index()
     {
-        // For admin: view all doctor profiles
         if (Auth::user()->user_role === User::ROLE_ADMIN) {
             $doctors = User::where('user_role', User::ROLE_DOCTOR)
                 ->with('doctorProfile', 'services')
@@ -25,7 +24,6 @@ class DoctorProfileController extends Controller
             return view('admin.doctors.index', compact('doctors'));
         }
 
-        // Redirect to the doctor's own profile if not admin
         return redirect()->route('doctor.profile');
     }
 
@@ -34,7 +32,6 @@ class DoctorProfileController extends Controller
      */
     public function create()
     {
-        // This is handled during user registration
         return redirect()->route('doctor.profile');
     }
 
@@ -43,7 +40,6 @@ class DoctorProfileController extends Controller
      */
     public function store(Request $request)
     {
-        // This is handled during user registration
         return redirect()->route('doctor.profile');
     }
 
@@ -62,7 +58,7 @@ class DoctorProfileController extends Controller
                 'name' => $doctor->name,
                 'email' => $doctor->email,
                 'role' => $doctor->user_role,
-                'specialization' => $doctor->doctorProfile?->specialization,
+                'specialty' => $doctor->specialty,
                 'qualifications' => $doctor->doctorProfile?->qualifications,
                 'about' => $doctor->doctorProfile?->about,
                 'phone_number' => $doctor->doctorProfile?->phone_number,
@@ -70,7 +66,11 @@ class DoctorProfileController extends Controller
                 'years_of_experience' => $doctor->doctorProfile?->years_of_experience,
                 'languages_spoken' => $doctor->doctorProfile?->languages_spoken,
                 'education' => $doctor->doctorProfile?->education,
-                'profile_image' => $doctor->doctorProfile?->profile_image ? asset('storage/' . $doctor->doctorProfile->profile_image) : null,
+                'profile_image' => $doctor->doctorProfile?->profile_image ?
+                    (str_starts_with($doctor->doctorProfile->profile_image, 'images/')
+                        ? asset($doctor->doctorProfile->profile_image)
+                        : asset('storage/' . $doctor->doctorProfile->profile_image))
+                    : null,
                 'is_visible' => $doctor->doctorProfile?->is_visible
             ],
             'services' => $doctor->services
@@ -89,7 +89,6 @@ class DoctorProfileController extends Controller
                 ->with('error', 'Only doctors can edit doctor profiles.');
         }
 
-        // Get or create doctor profile
         $profile = $user->doctorProfile ?? new DoctorProfile(['doctor_id' => $user->id]);
         $services = $user->services;
 
@@ -99,7 +98,7 @@ class DoctorProfileController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
-                'specialization' => $profile->specialization,
+                'specialty' => $user->specialty,
                 'qualifications' => $profile->qualifications,
                 'about' => $profile->about,
                 'phone_number' => $profile->phone_number,
@@ -107,7 +106,11 @@ class DoctorProfileController extends Controller
                 'years_of_experience' => $profile->years_of_experience,
                 'languages_spoken' => $profile->languages_spoken,
                 'education' => $profile->education,
-                'profile_image' => $profile->profile_image ? asset('storage/' . $profile->profile_image) : null,
+                'profile_image' => $profile->profile_image ?
+                    (str_starts_with($profile->profile_image, 'images/')
+                        ? asset($profile->profile_image)
+                        : asset('storage/' . $profile->profile_image))
+                    : null,
                 'is_visible' => $profile->is_visible
             ],
             'services' => $services
@@ -126,10 +129,12 @@ class DoctorProfileController extends Controller
                 ->with('error', 'Only doctors can update doctor profiles.');
         }
 
+        \Log::info('Request Data:', $request->all());
+
         $request->validate([
             'name' => 'nullable|string|max:255',
             'phone_number' => 'nullable|string|max:20',
-            'specialization' => 'nullable|string|max:255',
+            'specialty' => 'nullable|string|max:255',
             'qualifications' => 'nullable|string',
             'address' => 'nullable|string',
             'about' => 'nullable|string',
@@ -140,10 +145,8 @@ class DoctorProfileController extends Controller
             'is_visible' => 'boolean',
         ]);
 
-        // Get or create doctor profile
         $profile = $user->doctorProfile ?? new DoctorProfile(['doctor_id' => $user->id]);
 
-        // Handle profile image upload
         if ($request->hasFile('profile_image')) {
             if ($profile->profile_image) {
                 Storage::delete($profile->profile_image);
@@ -151,10 +154,8 @@ class DoctorProfileController extends Controller
             $profile->profile_image = $request->file('profile_image')->store('doctor-profiles', 'public');
         }
 
-        // Update profile fields
         $profile->fill([
             'phone_number' => $request->phone_number,
-            'specialization' => $request->specialization,
             'qualifications' => $request->qualifications,
             'address' => $request->address,
             'about' => $request->about,
@@ -164,11 +165,15 @@ class DoctorProfileController extends Controller
             'is_visible' => $request->has('is_visible'),
         ]);
 
-        // Update user name if provided
-        if ($request->name) {
-            // Use the User model to update the name
-            User::where('id', $user->id)->update(['name' => $request->name]);
+        $updateData = [
+            'name' => $request->name ?? $user->name,
+        ];
+
+        if ($request->has('specialty')) {
+            $updateData['specialty'] = $request->specialty;
         }
+
+        $user->update($updateData);
 
         $profile->save();
 
@@ -178,7 +183,7 @@ class DoctorProfileController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
-                'specialization' => $profile->specialization,
+                'specialty' => $user->specialty,
                 'qualifications' => $profile->qualifications,
                 'about' => $profile->about,
                 'phone_number' => $profile->phone_number,
@@ -186,7 +191,11 @@ class DoctorProfileController extends Controller
                 'years_of_experience' => $profile->years_of_experience,
                 'languages_spoken' => $profile->languages_spoken,
                 'education' => $profile->education,
-                'profile_image' => $profile->profile_image ? asset('storage/' . $profile->profile_image) : null,
+                'profile_image' => $profile->profile_image ?
+                    (str_starts_with($profile->profile_image, 'images/')
+                        ? asset($profile->profile_image)
+                        : asset('storage/' . $profile->profile_image))
+                    : null,
                 'is_visible' => $profile->is_visible
             ],
             'services' => $user->services,
@@ -201,7 +210,6 @@ class DoctorProfileController extends Controller
      */
     public function destroy($id)
     {
-        // Only admin should be able to delete doctor profiles
         if (Auth::user()->user_role !== User::ROLE_ADMIN) {
             return redirect()->route('dashboard')
                 ->with('error', 'You are not authorized to perform this action.');
@@ -209,7 +217,6 @@ class DoctorProfileController extends Controller
 
         $profile = DoctorProfile::findOrFail($id);
 
-        // Delete profile image if exists
         if ($profile->profile_image) {
             Storage::delete($profile->profile_image);
         }
@@ -237,11 +244,15 @@ class DoctorProfileController extends Controller
                 return [
                     'id' => $doctor->id,
                     'name' => $doctor->name,
-                    'specialization' => $doctor->doctorProfile?->specialization,
+                    'specialty' => $doctor->specialty,
                     'qualifications' => $doctor->doctorProfile?->qualifications,
-                    'about' => $doctor->doctorProfile?->about, 
+                    'about' => $doctor->doctorProfile?->about,
                     'years_of_experience' => $doctor->doctorProfile?->years_of_experience,
-                    'profile_image' => $doctor->doctorProfile?->profile_image ? asset('storage/' . $doctor->doctorProfile->profile_image) : null,
+                    'profile_image' => $doctor->doctorProfile?->profile_image ?
+                        (str_starts_with($doctor->doctorProfile->profile_image, 'images/')
+                            ? asset($doctor->doctorProfile->profile_image)
+                            : asset('storage/' . $doctor->doctorProfile->profile_image))
+                        : null,
                     'services' => $doctor->services
                 ];
             });
@@ -270,7 +281,7 @@ class DoctorProfileController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
-                'specialization' => $profile->specialization,
+                'specialty' => $user->specialty,
                 'qualifications' => $profile->qualifications,
                 'about' => $profile->about,
                 'phone' => $profile->phone_number,
@@ -278,7 +289,11 @@ class DoctorProfileController extends Controller
                 'years_of_experience' => $profile->years_of_experience,
                 'languages_spoken' => $profile->languages_spoken,
                 'education' => $profile->education,
-                'profile_image' => $profile->profile_image ? asset('storage/' . $profile->profile_image) : null,
+                'profile_image' => $profile->profile_image ?
+                    (str_starts_with($profile->profile_image, 'images/')
+                        ? asset($profile->profile_image)
+                        : asset('storage/' . $profile->profile_image))
+                    : null,
                 'is_visible' => $profile->is_visible
             ],
             'services' => $user->services
@@ -297,16 +312,15 @@ class DoctorProfileController extends Controller
                 ->with('error', 'Only doctors can access doctor settings.');
         }
 
-        // Get or create doctor profile
         $profile = $user->doctorProfile ?? new DoctorProfile(['doctor_id' => $user->id]);
 
-        return Inertia::render('Doctor/Settings', [
+        return inertia('Doctor/Settings', [
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
-                'specialization' => $profile->specialization,
+                'specialty' => $user->specialty,
                 'qualifications' => $profile->qualifications,
                 'about' => $profile->about,
                 'phone_number' => $profile->phone_number,
@@ -314,7 +328,11 @@ class DoctorProfileController extends Controller
                 'years_of_experience' => $profile->years_of_experience,
                 'languages_spoken' => $profile->languages_spoken,
                 'education' => $profile->education,
-                'profile_image' => $profile->profile_image ? asset('storage/' . $profile->profile_image) : null,
+                'profile_image' => $profile->profile_image ?
+                    (str_starts_with($profile->profile_image, 'images/')
+                        ? asset($profile->profile_image)
+                        : asset('storage/' . $profile->profile_image))
+                    : null,
                 'is_visible' => $profile->is_visible
             ]
         ]);

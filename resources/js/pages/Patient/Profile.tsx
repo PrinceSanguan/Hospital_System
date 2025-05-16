@@ -1,9 +1,11 @@
 import React from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { PatientLayout } from '@/layouts/PatientLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import ProfileAppointmentsList from '@/components/patient/ProfileAppointmentsList';
 import { UserData } from '@/types';
+import { FaPencilAlt } from 'react-icons/fa';
 
 interface PatientRecord {
   id: number;
@@ -18,7 +20,9 @@ interface PatientRecord {
 }
 
 interface ProfileProps {
-  user: UserData;
+  user: UserData & {
+    profile_image: string | null;
+  };
   appointments: PatientRecord[];
   medicalRecords: PatientRecord[];
   registrationDate: string;
@@ -36,7 +40,15 @@ export default function Profile({ user, appointments, medicalRecords, registrati
 
       <div className="py-12">
         <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6">Patient Profile: {user.name}</h1>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold text-gray-900">Patient Profile: {user.name}</h1>
+            <Link href={route('patient.my-profile.edit')}>
+              <Button>
+                <FaPencilAlt className="mr-2" />
+                Edit Profile
+              </Button>
+            </Link>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Personal Information */}
@@ -45,6 +57,21 @@ export default function Profile({ user, appointments, medicalRecords, registrati
                 <CardTitle>Personal Information</CardTitle>
               </CardHeader>
               <CardContent>
+                <div className="flex flex-col items-center mb-6">
+                  <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-100 mb-4">
+                    {user.profile_image ? (
+                      <img
+                        src={user.profile_image}
+                        alt={user.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center w-full h-full bg-gray-200">
+                        <span className="text-gray-500 text-5xl">{user.name?.[0]?.toUpperCase()}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <div className="space-y-4">
                   <div>
                     <h3 className="text-sm font-medium text-gray-500">Name</h3>

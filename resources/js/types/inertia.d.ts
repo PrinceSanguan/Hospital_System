@@ -106,9 +106,28 @@ declare module '@inertiajs/react' {
     reload(options?: Record<string, unknown>): void;
     visit(url: string, options?: Record<string, unknown>): void;
   };
+
+  export const Head: ComponentType<{ title: string, children?: ReactNode }>;
+
+  // Add other missing type declarations as needed
+  export interface PageProps {
+    errors: Record<string, string>;
+    flash: {
+      success?: string;
+      error?: string;
+      [key: string]: string | undefined;
+    };
+    url: string;
+    [key: string]: any;
+  }
+
+  // Extend usePage to include our specific props
+  export function usePage<T = PageProps>(): {
+    props: T & PageProps;
+  };
 }
 
 // Declaring global route function for type safety
 declare global {
   function route(name: string, params?: Record<string, unknown>): string;
-} 
+}

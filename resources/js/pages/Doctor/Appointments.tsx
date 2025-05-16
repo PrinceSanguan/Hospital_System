@@ -4,7 +4,6 @@ import DoctorLayout from '@/layouts/DoctorLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-    Calendar,
     Search,
     Filter,
     CheckCircle,
@@ -219,12 +218,7 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                             </p>
                         </div>
                         <div className="flex gap-2">
-                            <Button variant="outline" asChild>
-                                <Link href={route('doctor.appointments.calendar')}>
-                                    <Calendar className="mr-2 h-4 w-4" />
-                                    View Calendar
-                                </Link>
-                            </Button>
+                            {/* View Calendar button removed */}
                         </div>
                     </div>
 

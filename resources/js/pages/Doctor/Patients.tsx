@@ -81,10 +81,6 @@ const Patients = ({ user, patients = [] }: PatientsProps) => {
                   Search Patients
                 </Link>
               </Button>
-              <Button onClick={() => setIsCreateModalOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add New Patient
-              </Button>
             </div>
           </div>
 

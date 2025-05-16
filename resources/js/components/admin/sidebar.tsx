@@ -70,7 +70,11 @@ export function Sidebar() {
             {/* Header with logo */}
             <div className="flex h-16 items-center border-b px-4 dark:border-gray-700">
                 <Link href={route('admin.dashboard')} className="flex items-center gap-2">
-                    <Stethoscope className="h-6 w-6 text-blue-600" />
+                    <img
+                      src="/images/logo_famcare.jpg"
+                      alt="Famcare Logo"
+                      className="h-6 w-auto"
+                    />
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Famcare Admin</h2>
                 </Link>
             </div>
@@ -104,15 +108,6 @@ export function Sidebar() {
                 </nav>
             </div>
 
-            {/* Logout Button */}
-            <div className="border-t p-4 dark:border-gray-700">
-                <Button asChild variant="outline" className="w-full">
-                    <Link href={route('auth.logout')} method="post" className="flex items-center justify-center">
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Logout
-                    </Link>
-                </Button>
-            </div>
         </div>
     );
 }

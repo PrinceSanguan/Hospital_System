@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Patient;
 
 use App\Http\Controllers\Controller;
+use App\Models\Patient;
 use App\Models\PatientRecord;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class ProfileController extends Controller
@@ -17,6 +19,7 @@ class ProfileController extends Controller
     public function index()
     {
         $user = Auth::user();
+        $patient = $user->patient;
 
         // Get patient's appointments
         $appointments = PatientRecord::where('patient_id', $user->id)
@@ -38,6 +41,7 @@ class ProfileController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
+                'profile_image' => $patient && $patient->profile_image ? asset('storage/' . $patient->profile_image) : null,
             ],
             'appointments' => $appointments,
             'medicalRecords' => $medicalRecords,
@@ -51,6 +55,7 @@ class ProfileController extends Controller
     public function edit()
     {
         $user = Auth::user();
+        $patient = $user->patient;
 
         return Inertia::render('Patient/ProfileEdit', [
             'user' => [
@@ -58,6 +63,7 @@ class ProfileController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
+                'profile_image' => $patient && $patient->profile_image ? asset('storage/' . $patient->profile_image) : null,
             ],
         ]);
     }
@@ -68,11 +74,13 @@ class ProfileController extends Controller
     public function update(Request $request)
     {
         $user = Auth::user();
+        $patient = $user->patient;
 
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:8|confirmed',
+            'profile_image' => 'nullable|image|max:2048',
         ]);
 
         // Update user data using the User model
@@ -86,6 +94,28 @@ class ProfileController extends Controller
             User::where('id', $user->id)->update([
                 'password' => bcrypt($validatedData['password']),
             ]);
+        }
+
+        // Handle profile image upload
+        if ($request->hasFile('profile_image')) {
+            // Delete old image if exists
+            if ($patient && $patient->profile_image) {
+                Storage::disk('public')->delete($patient->profile_image);
+            }
+
+            // Store the new image
+            $imagePath = $request->file('profile_image')->store('patient-profiles', 'public');
+
+            // Update or create patient record
+            if ($patient) {
+                $patient->update(['profile_image' => $imagePath]);
+            } else {
+                Patient::create([
+                    'user_id' => $user->id,
+                    'name' => $user->name,
+                    'profile_image' => $imagePath
+                ]);
+            }
         }
 
         return redirect()->route('patient.my-profile.index')

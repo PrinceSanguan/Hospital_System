@@ -56,9 +56,9 @@ return new class extends Migration
                 $table->string('user_role')->default('user');
             });
         } else {
-            // For other databases
+            // For other databases, include all possible roles to avoid data truncation
             Schema::table('users', function (Blueprint $table) {
-                $table->enum('user_role', ['admin', 'user'])->default('user')->change();
+                $table->enum('user_role', ['admin', 'user', 'patient', 'clinical_staff', 'doctor'])->default('user')->change();
             });
         }
     }

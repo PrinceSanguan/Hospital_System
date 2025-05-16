@@ -103,6 +103,7 @@ interface PatientDashboardProps {
       duration_minutes: number;
       price: number;
     }>;
+    profile_image?: string;
   }>;
 }
 
@@ -119,6 +120,12 @@ const formatTime = (time: string): string => {
   const ampm = hour >= 12 ? 'PM' : 'AM';
   const hour12 = hour % 12 || 12;
   return `${hour12}:${minutes} ${ampm}`;
+};
+
+// Helper function to format day of week number to name
+const formatDayOfWeek = (dayNumber: number): string => {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return days[dayNumber];
 };
 
 export default function PatientDashboard({
@@ -344,7 +351,11 @@ export default function PatientDashboard({
       }`}>
         <div className="flex h-16 items-center justify-center border-b px-4">
           <Link href="/patient/dashboard" className="flex items-center">
-            <Stethoscope className="h-6 w-6 text-blue-600" />
+            <img
+              src="/images/logo_famcare.jpg"
+              alt="Famcare Logo"
+              className="h-8 w-auto mr-2"
+            />
             <span className="ml-2 text-xl font-semibold text-gray-900">Famcare</span>
           </Link>
         </div>
@@ -504,11 +515,6 @@ export default function PatientDashboard({
               <p className="mt-1 text-gray-600">Here's an overview of your health</p>
             </div>
             <div className="mt-4 md:mt-0 flex gap-2">
-              <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700">
-                <Link href="/patient/appointments/book">
-                  <Calendar className="w-4 h-4 mr-2" /> Book Appointment
-                </Link>
-              </Button>
               <Button asChild size="sm" variant="outline">
                 <Link href="/patient/records">
                   <FileText className="w-4 h-4 mr-2" /> View Records
@@ -702,43 +708,73 @@ export default function PatientDashboard({
               <CardContent>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {doctors.slice(0, 3).map((doctor) => (
-                    <div key={doctor.id} className="flex flex-col overflow-hidden rounded-lg border hover:shadow-md transition-shadow">
-                      <div className="flex overflow-hidden">
-                      <div className="w-1/3">
-                        <img
-                          src={doctor.image || "https://ui.shadcn.com/avatars/01.png"}
-                          alt={doctor.name}
-                          className="h-full w-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = "https://ui.shadcn.com/avatars/01.png";
-                          }}
-                        />
-                      </div>
-                      <div className="w-2/3 p-4">
-                        <h3 className="font-medium">{doctor.name}</h3>
-                        <p className="text-sm text-blue-600">{doctor.specialty}</p>
-                        <div className="mt-2">
-                          <p className="text-xs text-gray-500">Available on:</p>
-                          <div className="mt-1 flex flex-wrap gap-1">
-                              {doctor.schedules?.slice(0, 2).map(schedule => (
-                                <Badge key={schedule.id} variant="outline" className="text-xs">
-                                  {getDayName(schedule.day_of_week).substring(0, 3)}: {formatTime(schedule.start_time).substring(0, 5)}
-                                </Badge>
-                            ))}
-                              {doctor.schedules && doctor.schedules.length > 2 && (
-                                <Badge variant="outline" className="text-xs">+{doctor.schedules.length - 2} more</Badge>
-                              )}
-                            </div>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="mt-3 w-full"
-                            onClick={() => handleDoctorSelect(doctor)}
-                          >
-                            Book Appointment
-                          </Button>
+                    <div key={doctor.id} className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300">
+                      <div className="p-4 bg-blue-50 flex items-center">
+                        <div className="w-16 h-16 rounded-full overflow-hidden bg-white border-2 border-blue-100 mr-3">
+                          <img
+                            src={doctor.profile_image || `/images/doctor/${doctor.name.split(' ')[0]}.png` || doctor.image || "https://ui.shadcn.com/avatars/01.png"}
+                            alt={doctor.name}
+                            className="w-full h-full object-cover object-center"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = "https://ui.shadcn.com/avatars/01.png";
+                            }}
+                          />
                         </div>
+                        <div>
+                          <h3 className="font-bold text-gray-900">{doctor.name}</h3>
+                          <p className="text-xs text-gray-600">{doctor.specialty}</p>
+                        </div>
+                      </div>
+
+                      <div className="p-4">
+                        <div className="mb-3">
+                          <div className="flex items-center mb-1">
+                            <img
+                              src="/images/logo_famcare.jpg"
+                              alt="Famcare Logo"
+                              className="h-5 w-auto mr-2"
+                            />
+                            <span className="text-sm font-medium">Available:</span>
+                          </div>
+                          {doctor.availability && doctor.availability.length > 0 ? (
+                            <div className="ml-6 text-sm text-gray-600">
+                              {doctor.availability.map((day, idx) => (
+                                <span key={`${doctor.id}-${idx}`} className="mr-2">
+                                  {day}{idx < doctor.availability.length - 1 ? ',' : ''}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="ml-6 text-sm text-gray-600">Schedule not available</div>
+                          )}
+                        </div>
+
+                        <details className="mb-3 border-t pt-2">
+                          <summary className="font-medium text-sm cursor-pointer">Hours</summary>
+                          <div className="mt-2 pl-2 text-xs space-y-1">
+                            {doctor.schedules && doctor.schedules.length > 0 ? (
+                              doctor.schedules.map(schedule => (
+                                <div key={schedule.id} className="flex justify-between">
+                                  <span>{formatDayOfWeek(schedule.day_of_week)}:</span>
+                                  <span>{schedule.is_available ?
+                                    `${formatTime(schedule.start_time)} - ${formatTime(schedule.end_time)}` :
+                                    'Not available'}</span>
+                                </div>
+                              ))
+                            ) : (
+                              <div>No schedule information available</div>
+                            )}
+                          </div>
+                        </details>
+
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="w-full mt-2"
+                          onClick={() => handleDoctorSelect(doctor)}
+                        >
+                          Book Appointment
+                        </Button>
                       </div>
                     </div>
                   ))}

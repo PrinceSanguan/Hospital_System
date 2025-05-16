@@ -1,12 +1,48 @@
+import React, { useState } from 'react';
 import { Header } from '@/components/clinicalstaff/header';
 import { Sidebar } from '@/components/clinicalstaff/sidebar';
-import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Users, FileText } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Calendar } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { format, parseISO } from 'date-fns';
+import { Head, Link } from '@inertiajs/react';
+import { EyeIcon, UserGroupIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import toast from 'react-hot-toast';
+import axios from 'axios';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 interface User {
+    id: number;
     name: string;
     email: string;
     role?: string;
+}
+
+interface AppointmentDetails {
+    appointment_time?: string;
+    reason?: string;
+    notes?: string;
+}
+
+interface Appointment {
+    id: number;
+    patient: {
+        id: number;
+        name: string;
+    };
+    appointment_date: string;
+    status: string;
+    doctor?: {
+        id: number;
+        name: string;
+    };
+    reason?: string;
+    reference_number?: string;
+    details?: AppointmentDetails;
+    has_lab_results?: boolean;
 }
 
 interface DashboardProps {
@@ -16,15 +52,109 @@ interface DashboardProps {
         todayAppointments: number;
         pendingLabResults: number;
     };
+    appointments?: Appointment[];
 }
 
-export default function StaffDashboard({ user, stats = {
-    totalPatients: 8,
-    todayAppointments: 0,
-    pendingLabResults: 0
-} }: DashboardProps) {
+export default function StaffDashboard({
+    user,
+    stats = {
+        totalPatients: 8,
+        todayAppointments: 0,
+        pendingLabResults: 0
+    },
+    appointments = []
+}: DashboardProps) {
+    const [dashboardAppointments, setDashboardAppointments] = useState<Appointment[]>(appointments);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [confirmAction, setConfirmAction] = useState<'approve' | 'reject'>('approve');
+    const [appointmentIdToUpdate, setAppointmentIdToUpdate] = useState<number | null>(null);
+
+    // Format date
+    const formatDate = (dateString: string) => {
+        try {
+            const date = parseISO(dateString);
+            return format(date, 'MMM dd, yyyy');
+        } catch {
+            return dateString;
+        }
+    };
+
+    // Get status badge
+    const getStatusBadge = (status: string) => {
+        switch (status.toLowerCase()) {
+            case 'pending':
+                return <Badge variant="outline">Pending</Badge>;
+            case 'confirmed':
+                return <Badge className="bg-blue-100 text-blue-800">Confirmed</Badge>;
+            case 'completed':
+                return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
+            case 'cancelled':
+                return <Badge className="bg-red-600 text-white">Cancelled</Badge>;
+            default:
+                return <Badge>{status}</Badge>;
+        }
+    };
+
+    // Handle appointment status update
+    const handleStatusUpdate = async (id: number, newStatus: string) => {
+        try {
+            const response = await axios.post(route('staff.appointments.status', id), {
+                status: newStatus,
+                notes: 'Status updated by clinical staff from dashboard'
+            });
+
+            if (response.data.success) {
+                // Update the state with the new array
+                setDashboardAppointments(
+                    dashboardAppointments.map(appointment => {
+                        if (appointment.id === id) {
+                            return {
+                                ...appointment,
+                                status: newStatus
+                            };
+                        }
+                        return appointment;
+                    })
+                );
+
+                toast.success(`Appointment ${newStatus} successfully`);
+            } else {
+                toast.error('Failed to update appointment status');
+            }
+        } catch (error) {
+            console.error('Error updating appointment status:', error);
+            toast.error('An error occurred while updating the appointment status');
+        }
+    };
+
+    // Function to open confirm modal for approve action
+    const openApproveDialog = (id: number) => {
+        setAppointmentIdToUpdate(id);
+        setConfirmAction('approve');
+        setShowConfirmModal(true);
+    };
+
+    // Function to open confirm modal for deny action
+    const openDenyDialog = (id: number) => {
+        setAppointmentIdToUpdate(id);
+        setConfirmAction('reject');
+        setShowConfirmModal(true);
+    };
+
+    // Function to confirm and execute the status update
+    const confirmStatusUpdate = () => {
+        if (appointmentIdToUpdate) {
+            const newStatus = confirmAction === 'approve' ? 'confirmed' : 'cancelled';
+            handleStatusUpdate(appointmentIdToUpdate, newStatus);
+            setShowConfirmModal(false);
+            setAppointmentIdToUpdate(null);
+        }
+    };
+
     return (
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
+            <Head title="Dashboard" />
+
             {/* Sidebar Component */}
             <Sidebar user={user} />
 
@@ -53,7 +183,7 @@ export default function StaffDashboard({ user, stats = {
                                             <p className="text-3xl font-bold">{stats.totalPatients}</p>
                                         </div>
                                         <div className="rounded-full bg-blue-100 p-3 text-blue-600">
-                                            <Users size={20} />
+                                            <UserGroupIcon className="h-5 w-5" />
                                         </div>
                                     </div>
                                 </CardContent>
@@ -81,32 +211,139 @@ export default function StaffDashboard({ user, stats = {
                                             <p className="text-3xl font-bold">{stats.pendingLabResults}</p>
                                         </div>
                                         <div className="rounded-full bg-yellow-100 p-3 text-yellow-600">
-                                            <FileText size={20} />
+                                            <DocumentTextIcon className="h-5 w-5" />
                                         </div>
                                     </div>
                                 </CardContent>
                             </Card>
                         </div>
 
-                        {/* Today's Appointments Section */}
+                        {/* All Appointments Section */}
                         <Card>
-                            <CardContent className="p-6">
-                                <h2 className="mb-4 text-xl font-semibold">Today's Appointments</h2>
-                                {stats.todayAppointments > 0 ? (
-                                    <div className="divide-y">
-                                        {/* Appointments would be listed here */}
-                                        <p>Appointment list would appear here</p>
-                                    </div>
+                            <CardHeader className="pb-2">
+                                <CardTitle>Appointment List</CardTitle>
+                                <CardDescription>
+                                    Showing {dashboardAppointments.length} appointments
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {dashboardAppointments.length > 0 ? (
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Appointment Ref #</TableHead>
+                                                <TableHead>Patient</TableHead>
+                                                <TableHead>Date</TableHead>
+                                                <TableHead>Reason</TableHead>
+                                                <TableHead>Status</TableHead>
+                                                <TableHead className="text-center">Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {dashboardAppointments.map((appointment) => (
+                                                <TableRow key={appointment.id}>
+                                                    <TableCell>
+                                                        {appointment.reference_number || `APP-${appointment.id}`}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="font-medium">{appointment.patient.name}</div>
+                                                        {appointment.doctor && (
+                                                            <div className="text-xs text-gray-500">Dr. {appointment.doctor.name}</div>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>{formatDate(appointment.appointment_date)}</TableCell>
+                                                    <TableCell>{appointment.reason || 'Not specified'}</TableCell>
+                                                    <TableCell>{getStatusBadge(appointment.status)}</TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center justify-center space-x-2">
+                                                            {/* Status actions for pending appointments */}
+                                                            {appointment.status === 'pending' && (
+                                                                <>
+                                                                    <TooltipProvider>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <Button
+                                                                                    variant="outline"
+                                                                                    size="sm"
+                                                                                    className="bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100"
+                                                                                    onClick={() => openApproveDialog(appointment.id)}
+                                                                                >
+                                                                                    Accept
+                                                                                </Button>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent>
+                                                                                <p>Accept on behalf of doctor</p>
+                                                                            </TooltipContent>
+                                                                        </Tooltip>
+                                                                    </TooltipProvider>
+
+                                                                    <TooltipProvider>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <Button
+                                                                                    variant="outline"
+                                                                                    size="sm"
+                                                                                    className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100"
+                                                                                    onClick={() => openDenyDialog(appointment.id)}
+                                                                                >
+                                                                                    Deny
+                                                                                </Button>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent>
+                                                                                <p>Deny appointment</p>
+                                                                            </TooltipContent>
+                                                                        </Tooltip>
+                                                                    </TooltipProvider>
+                                                                </>
+                                                            )}
+
+                                                            {/* View Button */}
+                                                            <TooltipProvider>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button asChild variant="ghost" size="icon">
+                                                                            <Link href={route('staff.appointments.show', appointment.id)}>
+                                                                                <EyeIcon className="h-4 w-4" />
+                                                                            </Link>
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        <p>View Details</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            </TooltipProvider>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
                                 ) : (
                                     <div className="flex items-center justify-center p-6 text-gray-500">
                                         <Calendar className="mr-2 h-5 w-5" />
-                                        <span>No appointments scheduled for today</span>
+                                        <span>No appointments found in the system</span>
                                     </div>
                                 )}
+                                <div className="mt-4 text-right">
+                                    <Button asChild variant="outline">
+                                        <Link href={route('staff.appointments.index')}>
+                                            View All Appointments
+                                        </Link>
+                                    </Button>
+                                </div>
                             </CardContent>
                         </Card>
                     </div>
                 </main>
+
+                {/* Confirmation Modal */}
+                <ConfirmationModal
+                    isOpen={showConfirmModal}
+                    onClose={() => setShowConfirmModal(false)}
+                    onConfirm={confirmStatusUpdate}
+                    title={`Are you sure you want to ${confirmAction} this appointment?`}
+                    actionType={confirmAction}
+                />
             </div>
         </div>
     );

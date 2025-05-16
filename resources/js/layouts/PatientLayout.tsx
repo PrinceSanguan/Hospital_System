@@ -62,13 +62,11 @@ export function PatientLayout({ children, user }: PatientLayoutProps) {
         <div className="flex flex-1 items-center justify-between">
           <div className="flex items-center">
             <Link href={route('patient.dashboard')} className="font-semibold text-lg md:text-xl flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-blue-600 mr-2">
-                <path d="M11 2v2"></path>
-                <path d="M5 2v2"></path>
-                <path d="M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1"></path>
-                <path d="M8 15a6 6 0 0 0 12 0v-3"></path>
-                <circle cx="20" cy="10" r="2"></circle>
-              </svg>
+              <img
+                src="/images/logo_famcare.jpg"
+                alt="Famcare Logo"
+                className="h-6 w-auto mr-2"
+              />
               Famcare
             </Link>
           </div>
@@ -96,7 +94,7 @@ export function PatientLayout({ children, user }: PatientLayoutProps) {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href={route('auth.logout')} method="post" className="flex w-full cursor-pointer items-center gap-2">
+                  <Link href={route('auth.logout')} method="post" as="button" className="flex w-full cursor-pointer items-center gap-2">
                     <LogOut size={16} />
                     Logout
                   </Link>

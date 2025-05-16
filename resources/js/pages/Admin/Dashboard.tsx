@@ -1,6 +1,5 @@
 import AdminLayout from '@/layouts/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Users, User, Stethoscope, UserCog } from "lucide-react";
 import { ResponsiveContainer, LineChart as ReLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart as ReBarChart, Bar, PieChart as RePieChart, Pie, Cell, AreaChart as ReAreaChart, Area } from 'recharts';
 
 interface User {
@@ -70,19 +69,7 @@ interface DashboardProps {
     upcomingAppointments: Appointment[];
 }
 
-export default function AdminDashboard({ user, stats, chartData, upcomingAppointments = [] }: DashboardProps) {
-    // Format date for display
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
-
+export default function AdminDashboard({ user, stats, chartData }: DashboardProps) {
     return (
         <AdminLayout user={user}>
                     <div className="flex flex-col gap-6">
@@ -103,7 +90,7 @@ export default function AdminDashboard({ user, stats, chartData, upcomingAppoint
                                     <p className="text-3xl font-bold">{stats.users.patients}</p>
                                 </div>
                                 <div className="rounded-full bg-blue-100 p-3 text-blue-600">
-                                    <User size={20} />
+                                    {/* User icon placeholder */}
                                 </div>
                             </div>
                         </CardContent>
@@ -117,7 +104,7 @@ export default function AdminDashboard({ user, stats, chartData, upcomingAppoint
                                     <p className="text-3xl font-bold">{stats.users.doctors}</p>
                                 </div>
                                 <div className="rounded-full bg-green-100 p-3 text-green-600">
-                                    <Stethoscope size={20} />
+                                    {/* Stethoscope icon placeholder */}
                                 </div>
                             </div>
                         </CardContent>
@@ -131,7 +118,7 @@ export default function AdminDashboard({ user, stats, chartData, upcomingAppoint
                                     <p className="text-3xl font-bold">{stats.users.staff}</p>
                                 </div>
                                 <div className="rounded-full bg-purple-100 p-3 text-purple-600">
-                                    <UserCog size={20} />
+                                    {/* UserCog icon placeholder */}
                                 </div>
                             </div>
                         </CardContent>
@@ -145,7 +132,7 @@ export default function AdminDashboard({ user, stats, chartData, upcomingAppoint
                                     <p className="text-3xl font-bold">{stats.users.total}</p>
                                 </div>
                                 <div className="rounded-full bg-amber-100 p-3 text-amber-600">
-                                    <Users size={20} />
+                                    {/* Users icon placeholder */}
                                 </div>
                             </div>
                         </CardContent>
@@ -162,7 +149,7 @@ export default function AdminDashboard({ user, stats, chartData, upcomingAppoint
                                     <p className="text-3xl font-bold">{stats.appointments.total}</p>
                                         </div>
                                         <div className="rounded-full bg-blue-100 p-3 text-blue-600">
-                                            <FileText size={20} />
+                                            {/* FileText icon placeholder */}
                                         </div>
                                     </div>
                                 </CardContent>
@@ -176,7 +163,7 @@ export default function AdminDashboard({ user, stats, chartData, upcomingAppoint
                                     <p className="text-3xl font-bold">{stats.appointments.pending}</p>
                                         </div>
                                 <div className="rounded-full bg-yellow-100 p-3 text-yellow-600">
-                                    <FileText size={20} />
+                                    {/* FileText icon placeholder */}
                                         </div>
                                     </div>
                                 </CardContent>
@@ -190,7 +177,7 @@ export default function AdminDashboard({ user, stats, chartData, upcomingAppoint
                                     <p className="text-3xl font-bold">{stats.appointments.completed}</p>
                                         </div>
                                 <div className="rounded-full bg-green-100 p-3 text-green-600">
-                                            <FileText size={20} />
+                                            {/* FileText icon placeholder */}
                                         </div>
                                     </div>
                                 </CardContent>
@@ -204,7 +191,7 @@ export default function AdminDashboard({ user, stats, chartData, upcomingAppoint
                                     <p className="text-3xl font-bold">{stats.appointments.todayTotal}</p>
                                         </div>
                                 <div className="rounded-full bg-red-100 p-3 text-red-600">
-                                            <FileText size={20} />
+                                            {/* FileText icon placeholder */}
                                         </div>
                                     </div>
                                 </CardContent>
@@ -363,66 +350,6 @@ export default function AdminDashboard({ user, stats, chartData, upcomingAppoint
                                 </CardContent>
                             </Card>
                         </div>
-
-                {/* Upcoming Appointments */}
-                        <Card>
-                            <CardHeader>
-                        <CardTitle className="text-xl">Upcoming Appointments</CardTitle>
-                                <CardDescription>
-                            Next scheduled appointments
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Patient</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Doctor</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Date & Time</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Type</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200 bg-white">
-                                    {upcomingAppointments.map((appointment) => (
-                                        <tr key={appointment.id}>
-                                            <td className="whitespace-nowrap px-6 py-4">
-                                                <div className="text-sm font-medium text-gray-900">{appointment.patient.name}</div>
-                                            </td>
-                                            <td className="whitespace-nowrap px-6 py-4">
-                                                <div className="text-sm text-gray-500">
-                                                    {appointment.assignedDoctor ? appointment.assignedDoctor.name : 'Not assigned'}
-                                                </div>
-                                            </td>
-                                            <td className="whitespace-nowrap px-6 py-4">
-                                                <div className="text-sm text-gray-500">{formatDate(appointment.appointment_date)}</div>
-                                            </td>
-                                            <td className="whitespace-nowrap px-6 py-4">
-                                                <div className="text-sm text-gray-500">{appointment.record_type}</div>
-                                            </td>
-                                            <td className="whitespace-nowrap px-6 py-4">
-                                                <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5
-                                                    ${appointment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                                    appointment.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                                    'bg-red-100 text-red-800'}`}>
-                                                    {appointment.status}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {upcomingAppointments.length === 0 && (
-                                        <tr>
-                                            <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
-                                                No upcoming appointments
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                                </div>
-                            </CardContent>
-                        </Card>
                     </div>
         </AdminLayout>
     );

@@ -10,6 +10,7 @@ use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use App\Models\Patient;
 
 class UserManagementController extends Controller
 {
@@ -20,13 +21,19 @@ class UserManagementController extends Controller
     {
         $user = Auth::user();
 
-        $query = User::query();
+        $query = User::query()
+            ->with(['patient' => function($query) {
+                $query->select('id', 'user_id', 'reference_number');
+            }]);
 
         // Apply filters
         if ($request->has('search')) {
             $query->where(function($q) use ($request) {
                 $q->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('email', 'like', '%' . $request->search . '%');
+                  ->orWhere('email', 'like', '%' . $request->search . '%')
+                  ->orWhereHas('patient', function($q) use ($request) {
+                      $q->where('reference_number', 'like', '%' . $request->search . '%');
+                  });
             });
         }
 
@@ -34,7 +41,19 @@ class UserManagementController extends Controller
             $query->where('user_role', $request->role);
         }
 
-        $users = $query->orderBy('created_at', 'desc')->paginate(10);
+        $users = $query->orderBy('created_at', 'desc')
+            ->paginate(10)
+            ->through(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'user_role' => $user->user_role,
+                    'reference_number' => $user->user_role === User::ROLE_PATIENT ?
+                        ($user->patient ? $user->patient->reference_number : null) : null,
+                    'created_at' => $user->created_at
+                ];
+            });
 
         $roles = [
             User::ROLE_PATIENT,
@@ -79,36 +98,53 @@ class UserManagementController extends Controller
         ]);
     }
 
+    protected function createPatient($user, $data)
+    {
+        $latestPatient = Patient::latest('id')->first();
+        $nextId = $latestPatient ? $latestPatient->id + 1 : 1;
+        $referenceNumber = 'PAT' . str_pad($nextId, 6, '0', STR_PAD_LEFT);
+
+        return Patient::create([
+            'user_id' => $user->id,
+            'reference_number' => $referenceNumber,
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'phone' => $data['phone'] ?? null,
+            'address' => $data['address'] ?? null,
+            'date_of_birth' => $data['date_of_birth'] ?? null,
+            'gender' => $data['gender'] ?? null,
+        ]);
+    }
+
     /**
      * Store a newly created user in storage.
      */
     public function store(Request $request)
     {
-        try {
-            $validatedData = $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|string|email|max:255|unique:users',
-                'password' => 'required|string|min:8|confirmed',
-                'user_role' => ['required', Rule::in([
-                    User::ROLE_ADMIN,
-                    User::ROLE_DOCTOR,
-                    User::ROLE_CLINICAL_STAFF,
-                    User::ROLE_PATIENT,
-                ])],
-            ]);
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8|confirmed',
+            'user_role' => 'required|string|in:' . implode(',', [
+                User::ROLE_ADMIN,
+                User::ROLE_DOCTOR,
+                User::ROLE_CLINICAL_STAFF,
+                User::ROLE_PATIENT
+            ]),
+        ]);
 
-            $validatedData['password'] = Hash::make($validatedData['password']);
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'user_role' => $request->user_role,
+        ]);
 
-            User::create($validatedData);
-
-            return redirect()->route('admin.users.index')
-                ->with('success', 'User created successfully');
-        } catch (\Exception $e) {
-            Log::error('Error creating user: ' . $e->getMessage());
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['error' => 'Failed to create user: ' . $e->getMessage()]);
+        if ($request->user_role === User::ROLE_PATIENT) {
+            $this->createPatient($user, $request->all());
         }
+
+        return redirect()->route('admin.users.index')->with('success', 'User created successfully.');
     }
 
     /**

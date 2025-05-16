@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/clinicalstaff/header';
 import { Sidebar } from '@/components/clinicalstaff/sidebar';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,18 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, parseISO } from 'date-fns';
-import { Eye, FileText } from 'lucide-react';
+import { EyeIcon, PencilIcon, DocumentTextIcon, BeakerIcon } from '@heroicons/react/24/outline';
+import {
+    Dialog,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import toast from 'react-hot-toast';
+import axios from 'axios';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 interface User {
     id: number;
@@ -25,21 +36,61 @@ interface Patient {
     email: string;
 }
 
+interface UploadedFile {
+    name: string;
+    path: string;
+    size?: number;
+    type?: string;
+    url?: string;
+}
+
+interface AppointmentDetails {
+    appointment_time?: string;
+    reason?: string;
+    notes?: string;
+    patient_info?: {
+        name?: string;
+        birthdate?: string;
+        age?: number;
+        height?: number;
+        weight?: number;
+        bmi?: number;
+        address?: string;
+    };
+    vital_signs?: {
+        temperature?: number;
+        pulse_rate?: number;
+        respiratory_rate?: number;
+        blood_pressure?: string;
+        oxygen_saturation?: number;
+        recorded_at?: string;
+    };
+    service?: {
+        id?: number;
+        name?: string;
+        price?: number;
+        duration_minutes?: number;
+    };
+    uploaded_files?: UploadedFile[];
+}
+
 interface Appointment {
     id: number;
     patient: Patient;
     record_type: string;
     appointment_date: string;
     status: string;
-    details: string;
+    details: AppointmentDetails | string; // Can be either parsed object or string JSON
     reference_number?: string;
     assigned_doctor_id?: number;
     doctor?: {
         id: number;
         name: string;
-        email: string;
     };
-    appointment_type?: string; // For additional appointment type info
+    appointment_type?: string;
+    reason?: string;
+    has_lab_results?: boolean;
+    has_medical_record?: boolean;
 }
 
 interface AppointmentsProps {
@@ -52,6 +103,12 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [typeFilter, setTypeFilter] = useState('all');
+    const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+    const [showPrintDialog, setShowPrintDialog] = useState(false);
+    const [printType, setPrintType] = useState<'record' | 'prescription' | null>(null);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [confirmAction, setConfirmAction] = useState<'approve' | 'reject'>('approve');
+    const [appointmentIdToUpdate, setAppointmentIdToUpdate] = useState<number | null>(null);
 
     // Sort appointments: Pending first, then Completed/Done
     useEffect(() => {
@@ -102,10 +159,20 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
     };
 
     // Extract appointment time from details
-    const getAppointmentTime = (details: string) => {
+    const getAppointmentTime = (details: AppointmentDetails | string): string => {
         try {
-            const detailsObj = JSON.parse(details);
-            return detailsObj.appointment_time || 'N/A';
+            // If details is already an object
+            if (typeof details === 'object' && details !== null) {
+                return details.appointment_time || 'N/A';
+            }
+
+            // If details is a string, try to parse it
+            if (typeof details === 'string') {
+                const detailsObj = JSON.parse(details) as AppointmentDetails;
+                return detailsObj.appointment_time || 'N/A';
+            }
+
+            return 'N/A';
         } catch {
             return 'N/A';
         }
@@ -121,9 +188,90 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
             case 'completed':
                 return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
             case 'cancelled':
-                return <Badge className="bg-red-100 text-red-800">Cancelled</Badge>;
+                return <Badge className="bg-red-600 text-white">Cancelled</Badge>;
             default:
                 return <Badge>{status}</Badge>;
+        }
+    };
+
+    // Handle print document
+    const handlePrintDocument = () => {
+        if (!selectedAppointment || !printType) return;
+
+        let url = '';
+        switch(printType) {
+            case 'record':
+                url = route('staff.appointments.pdf', selectedAppointment.id);
+                break;
+            case 'prescription':
+                url = route('staff.receipts.download', selectedAppointment.id);
+                break;
+        }
+
+        window.open(url, '_blank');
+        setShowPrintDialog(false);
+        setSelectedAppointment(null);
+        setPrintType(null);
+    };
+
+    // Create receipt for appointment
+    const createReceipt = (id: number) => {
+        router.visit(route('staff.appointments.receipt', id));
+    };
+
+    // Define a new function to handle status updates
+    const handleStatusUpdate = async (id: number, newStatus: string) => {
+        try {
+            const response = await axios.post(route('staff.appointments.status', id), {
+                status: newStatus,
+                notes: 'Status updated by clinical staff'
+            });
+
+            if (response.data.success) {
+                // Update the state with the new array
+                setFilteredAppointments(
+                    filteredAppointments.map(appointment => {
+                        if (appointment.id === id) {
+                            return {
+                                ...appointment,
+                                status: newStatus
+                            };
+                        }
+                        return appointment;
+                    })
+                );
+
+                toast.success(`Appointment ${newStatus} successfully`);
+            } else {
+                toast.error('Failed to update appointment status');
+            }
+        } catch (error) {
+            console.error('Error updating appointment status:', error);
+            toast.error('An error occurred while updating the appointment status');
+        }
+    };
+
+    // Function to open confirm modal for approve action
+    const openApproveDialog = (id: number) => {
+        setAppointmentIdToUpdate(id);
+        setConfirmAction('approve');
+        setShowConfirmModal(true);
+    };
+
+    // Function to open confirm modal for deny action
+    const openDenyDialog = (id: number) => {
+        setAppointmentIdToUpdate(id);
+        setConfirmAction('reject');
+        setShowConfirmModal(true);
+    };
+
+    // Function to confirm and execute the status update
+    const confirmStatusUpdate = () => {
+        if (appointmentIdToUpdate) {
+            const newStatus = confirmAction === 'approve' ? 'confirmed' : 'cancelled';
+            handleStatusUpdate(appointmentIdToUpdate, newStatus);
+            setShowConfirmModal(false);
+            setAppointmentIdToUpdate(null);
         }
     };
 
@@ -213,59 +361,140 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead>Reference #</TableHead>
+                                                <TableHead>Appointment Ref #</TableHead>
                                                 <TableHead>Patient</TableHead>
-                                                <TableHead>Doctor</TableHead>
-                                                <TableHead>Type</TableHead>
                                                 <TableHead>Date & Time</TableHead>
+                                                <TableHead>Reasons</TableHead>
                                                 <TableHead>Status</TableHead>
-                                                <TableHead className="text-right">Actions</TableHead>
+                                                <TableHead className="text-center">Actions</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {filteredAppointments.map((appointment) => (
                                                 <TableRow key={appointment.id}>
                                                     <TableCell>
-                                                        {appointment.reference_number || `REF-${appointment.id}`}
+                                                        {appointment.reference_number || `APP-${appointment.id}`}
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="font-medium">{appointment.patient.name}</div>
-                                                        <div className="text-sm text-gray-500">{appointment.patient.email}</div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {appointment.doctor ? (
-                                                            <>
-                                                                <div className="font-medium">Dr. {appointment.doctor.name}</div>
-                                                                <div className="text-sm text-gray-500">{appointment.doctor.email}</div>
-                                                            </>
-                                                        ) : (
-                                                            <span className="text-gray-500">Unassigned</span>
+                                                        {appointment.doctor && (
+                                                            <div className="text-xs text-gray-500">Dr. {appointment.doctor.name}</div>
                                                         )}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Badge className="bg-gray-100 text-gray-800">
-                                                            {appointment.record_type.replace('_', ' ').charAt(0).toUpperCase() +
-                                                            appointment.record_type.replace('_', ' ').slice(1)}
-                                                        </Badge>
                                                     </TableCell>
                                                     <TableCell>
                                                         <div>{formatDate(appointment.appointment_date)}</div>
                                                         <div className="text-sm text-gray-500">{getAppointmentTime(appointment.details)}</div>
                                                     </TableCell>
+                                                    <TableCell>
+                                                        {appointment.reason || 'Not specified'}
+                                                    </TableCell>
                                                     <TableCell>{getStatusBadge(appointment.status)}</TableCell>
-                                                    <TableCell className="text-right">
-                                                        <div className="flex justify-end items-center gap-2">
-                                                            <Button asChild variant="ghost" size="icon">
-                                                                <Link href={route('staff.appointments.show', appointment.id)}>
-                                                                    <Eye className="h-4 w-4" />
-                                                                </Link>
-                                                            </Button>
+                                                    <TableCell>
+                                                        <div className="flex items-center justify-center space-x-2">
+                                                            {/* Status actions for pending appointments */}
+                                                            {appointment.status === 'pending' && (
+                                                                <>
+                                                                    <TooltipProvider>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <Button
+                                                                                    variant="outline"
+                                                                                    size="sm"
+                                                                                    className="bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100"
+                                                                                    onClick={() => openApproveDialog(appointment.id)}
+                                                                                >
+                                                                                    Accept
+                                                                                </Button>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent>
+                                                                                <p>Accept on behalf of doctor</p>
+                                                                            </TooltipContent>
+                                                                        </Tooltip>
+                                                                    </TooltipProvider>
 
-                                                            <Button asChild variant="ghost" size="icon">
-                                                                <Link href={route('staff.clinical.info.show', appointment.id)}>
-                                                                    <FileText className="h-4 w-4" />
-                                                                </Link>
-                                                            </Button>
+                                                                    <TooltipProvider>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <Button
+                                                                                    variant="outline"
+                                                                                    size="sm"
+                                                                                    className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100"
+                                                                                    onClick={() => openDenyDialog(appointment.id)}
+                                                                                >
+                                                                                    Deny
+                                                                                </Button>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent>
+                                                                                <p>Deny appointment</p>
+                                                                            </TooltipContent>
+                                                                        </Tooltip>
+                                                                    </TooltipProvider>
+                                                                </>
+                                                            )}
+
+                                                            {/* Simple Action Buttons - Only 4 as requested */}
+                                                            <TooltipProvider>
+                                                                {/* View Button */}
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button asChild variant="ghost" size="icon">
+                                                                            <Link href={route('staff.appointments.show', appointment.id)}>
+                                                                                <EyeIcon className="h-4 w-4 mr-1" />
+                                                                            </Link>
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        <p>View Record</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+
+                                                                {/* Edit Button */}
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button asChild variant="ghost" size="icon">
+                                                                            <Link href={route('staff.clinical.info.edit', appointment.id)}>
+                                                                                <PencilIcon className="h-4 w-4" />
+                                                                            </Link>
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        <p>Edit Medical Record</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+
+
+                                                                {/* Lab Results Button */}
+                                                                {appointment.has_lab_results && (
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Button asChild variant="ghost" size="icon">
+                                                                                <Link href={route('staff.appointments.lab-results', appointment.id)}>
+                                                                                    <BeakerIcon className="h-4 w-4" />
+                                                                                </Link>
+                                                                            </Button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>
+                                                                            <p>View Lab Results</p>
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                )}
+
+                                                                {/* Receipt Button */}
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            onClick={() => createReceipt(appointment.id)}
+                                                                        >
+                                                                            <DocumentTextIcon className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        <p>Create Receipt</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            </TooltipProvider>
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>
@@ -274,7 +503,20 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                                     </Table>
                                 ) : (
                                     <div className="flex flex-col items-center justify-center py-8 text-center">
-                                        <p className="text-gray-500 mb-2">No appointments found</p>
+                                        <p className="text-gray-500 mb-4">No appointments found</p>
+                                        <div className="max-w-md text-sm text-gray-500 mb-4">
+                                            There are no appointments in the system yet. You may need to:
+                                            <ul className="list-disc list-inside mt-2 text-left">
+                                                <li>Create patients first</li>
+                                                <li>Ensure doctors are registered in the system</li>
+                                                <li>Check that database connections are working correctly</li>
+                                            </ul>
+                                        </div>
+                                        <Button asChild variant="outline">
+                                            <Link href={route('staff.dashboard')}>
+                                                Return to Dashboard
+                                            </Link>
+                                        </Button>
                                     </div>
                                 )}
                             </CardContent>
@@ -282,6 +524,47 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                     </div>
                 </main>
             </div>
+
+            {/* Print Dialog */}
+            <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {printType === 'record' ? 'Print Medical Record' : 'Print Receipt'}
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    <div className="py-4">
+                        <p className="text-sm text-gray-500 mb-4">
+                            You are about to print the
+                            {printType === 'record' ? ' medical record' : ' receipt'}
+                            for {selectedAppointment?.patient.name}.
+                        </p>
+
+                        <p className="text-sm font-medium">
+                            This will open a new tab with the document ready for printing.
+                        </p>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowPrintDialog(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handlePrintDocument}>
+                            Print Document
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={showConfirmModal}
+                onClose={() => setShowConfirmModal(false)}
+                onConfirm={confirmStatusUpdate}
+                title={`Are you sure you want to ${confirmAction} this appointment?`}
+                actionType={confirmAction}
+            />
         </div>
     );
 }

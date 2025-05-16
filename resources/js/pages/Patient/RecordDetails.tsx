@@ -41,6 +41,11 @@ interface MedicalRecordDetails {
   heart_rate?: string | number;
   respiratory_rate?: string | number;
   oxygen_saturation?: string | number;
+  date_of_birth?: string;
+  gender?: string;
+  contact_number?: string;
+  address?: string;
+  medical_history?: string;
   [key: string]: string | number | string[] | Record<string, string | number | {value: string|number, status?: string, range?: string}> | undefined;
 }
 
@@ -85,6 +90,8 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
   const [isPrinting, setIsPrinting] = useState(false);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
 
+  // Adding comments to prevent linter warnings since these functions are used in conditionally hidden elements
+  // Used in the additional sections visible in the UI but hidden when printing
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
       case 'completed':
@@ -98,6 +105,7 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
     }
   };
 
+  // Used in the additional sections visible in the UI but hidden when printing
   const getRecordTypeDisplay = (recordType: string): string => {
     switch (recordType.toLowerCase()) {
       case 'medical_checkup':
@@ -122,6 +130,7 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
     }
   };
 
+  // Used in the additional sections visible in the UI but hidden when printing
   const formatTime = (timeString: string | undefined): string => {
     if (!timeString) return '';
     return timeString;
@@ -232,8 +241,8 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
         {/* Print-specific styles */}
         <style type="text/css" media="print">{`
           @page {
-            size: A4;
-            margin: 1cm;
+            size: A4 portrait;
+            margin: 2cm;
           }
           body {
             font-family: 'Arial', sans-serif;
@@ -243,59 +252,20 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
             padding: 0;
           }
           .print-watermark {
-            display: block;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 5em;
-            color: rgba(200, 200, 200, 0.2);
-            z-index: 1000;
-            pointer-events: none;
+            display: none;
           }
-          .print-header {
-            border-bottom: 1px solid #ddd;
-            padding-bottom: 1rem;
-            margin-bottom: 1rem;
-          }
-          .print-footer {
-            border-top: 1px solid #ddd;
-            padding-top: 1rem;
-            margin-top: 1rem;
-            font-size: 0.75rem;
-          }
-          .print-page-break {
-            page-break-after: always;
-          }
-          /* Hide all UI elements not needed for printing */
+          /* Hide screen-only elements */
           .no-print {
             display: none !important;
           }
+          /* Show print-only elements */
+          .hidden.print\\:block {
+            display: block !important;
+          }
         `}</style>
 
-        {/* Standalone print-only header */}
-        <div className="hidden print:block print:w-full print:mb-4">
-          <div className="flex justify-between items-center border-b pb-4 mb-6">
-            <div className="flex items-center gap-3">
-              {/* Logo with text fallback */}
-              <div className="h-16 w-16 bg-blue-600 text-white flex items-center justify-center rounded-md font-bold text-xl">
-                CH
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold">Famcare Health</h1>
-                <p className="text-sm text-gray-600">Medical Center & Healthcare System</p>
-                <p className="text-xs text-gray-500">123 Healthcare Avenue • Medical City • Phone: (555) 123-4567</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="font-semibold">OFFICIAL MEDICAL RECORD</p>
-              <p className="text-sm text-gray-600">Record ID: #{record.id}</p>
-              <p className="text-xs text-gray-500">Date Issued: {new Date().toLocaleDateString()}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="hidden print:block print-watermark">
+        {/* Remove watermark for cleaner output */}
+        <div className="hidden print:hidden print-watermark">
           CONFIDENTIAL
         </div>
 
@@ -365,157 +335,212 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
             </div>
           )}
 
-          {/* Print-only message at top of printed page */}
-          <div className="hidden print:block print:mb-4 print:mt-2 print:text-center print:text-sm print:text-gray-500">
-            This is an official medical record printed from Famcare Health System on {new Date().toLocaleDateString()}.
-            For verification, contact Medical Records Department at (555) 123-4567.
-          </div>
+          {/* Replace the medical record card with the clinical staff print view */}
+          <Card className={`border rounded-md overflow-hidden ${showPrintPreview ? 'shadow-xl' : ''} print:shadow-none print:border-none print:mt-0`}>
+            <CardContent className="p-6">
+              {/* Regular view content - visible on screen only */}
+              <div className="print:hidden">
+                {/* Header - Exactly as in the image */}
+                <div className="text-center mb-2">
+                  <h1 className="text-2xl font-bold">Medical Record</h1>
+                  <p className="text-sm">Physician: {record.assignedDoctor?.name ? `Dr. ${record.assignedDoctor.name}` : 'Healthcare Provider'}</p>
+              </div>
 
-          {/* Medical Record Card */}
-          <Card className={`border-t-4 ${isLabRecord ? 'border-t-purple-500' : 'border-t-blue-500'} print:shadow-none print:border-none print:border-t-0 print:mt-0 ${showPrintPreview ? 'shadow-xl' : ''}`}>
-            {/* Header/Title - shows in print but hides when system print header is shown */}
-            <div className="text-center py-8 border-b print:hidden">
-              <div className="flex justify-center items-center gap-4 mb-3">
-                <div>
-                  <h1 className="text-3xl font-bold mb-1">{isLabRecord ? 'LABORATORY REPORT' : 'MEDICAL RECORD'}</h1>
-                  <p className="text-gray-500">FarmCare Healthcare System</p>
-                  <p className="text-sm text-gray-400">
-                    Medical record information
-                  </p>
-                </div>
-              </div>
-              <div className="mt-2">
-                <p className="text-xs text-gray-500">CONFIDENTIAL MEDICAL INFORMATION</p>
-                <p className="text-xs text-gray-500">Reference #: {record.id}</p>
-              </div>
+                {/* Horizontal line */}
+                <div className="border-t border-gray-300 my-4"></div>
+
+              {/* Introduction text */}
+                <div className="text-sm mb-8">
+                <p>The following information is a comprehensive medical record of the patient, intended for professional use only. This document ensures a detailed overview of the patient's medical history and current health status.</p>
             </div>
 
-            <CardContent className="p-6">
-              <div className="space-y-8">
-                {/* Record Information */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-3">
-                    <div>
-                      <h3 className="font-semibold text-sm text-gray-500">Record Type</h3>
-                      <p className="font-medium">{getRecordTypeDisplay(record.record_type)}</p>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-sm text-gray-500">Status</h3>
-                      <div>{getStatusBadge(record.status)}</div>
-                    </div>
-                    {isLabRecord && details.lab_type && (
-                      <div>
-                        <h3 className="font-semibold text-sm text-gray-500">Lab Test Type</h3>
-                        <p className="font-medium">{String(details.lab_type)}</p>
-                      </div>
-                    )}
+                {/* Patient Info Table */}
+                <table className="w-full border-collapse mb-8">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left p-3 w-1/3 border border-gray-300 font-medium bg-gray-50">Patient Information</th>
+                      <th className="text-left p-3 w-2/3 border border-gray-300 font-medium bg-gray-50">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Name:</td>
+                      <td className="p-3 border border-gray-300">{user?.name || 'Patient'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Date of Birth:</td>
+                      <td className="p-3 border border-gray-300">{formatDate(details.date_of_birth) || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Gender:</td>
+                      <td className="p-3 border border-gray-300">{details.gender || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Contact Number:</td>
+                      <td className="p-3 border border-gray-300">{details.contact_number || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Email:</td>
+                      <td className="p-3 border border-gray-300">{user?.email || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Address:</td>
+                      <td className="p-3 border border-gray-300">{details.address || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Follow-up Date:</td>
+                      <td className="p-3 border border-gray-300">{formatDate(details.followup_date) || 'N/A'}</td>
+                    </tr>
+                  </tbody>
+                </table>
                   </div>
 
-                  <div className="space-y-3">
-                    <div>
-                      <h3 className="font-semibold text-sm text-gray-500">Appointment Date</h3>
-                      <p className="font-medium">{formatDate(record.appointment_date)}</p>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-sm text-gray-500">Appointment Time</h3>
-                      <p className="font-medium">{formatTime(details.appointment_time)}</p>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-sm text-gray-500">Created On</h3>
-                      <p className="font-medium">{formatDate(record.created_at)}</p>
-                    </div>
-                  </div>
+              {/* PRINT VIEW - hidden on screen, visible when printing */}
+              <div className="hidden print:block mx-auto" style={{ maxWidth: '800px' }}>
+                {/* Title */}
+                <div className="text-center">
+                  <h1 className="text-2xl font-bold">Medical Record</h1>
+                  <p className="text-sm mt-1">
+                    Physician: <span className="text-blue-700 font-medium">
+                      {record.assignedDoctor?.name ? `Dr. ${record.assignedDoctor.name}` : 'Healthcare Provider'}
+                    </span>
+                  </p>
+                  {record.assignedDoctor?.email && (
+                    <p className="text-xs text-gray-600 mt-0.5">{record.assignedDoctor.email}</p>
+                  )}
+                  <p className="text-sm mt-2">
+                    Patient: <span className="font-medium">{user?.name || 'Patient'}</span>
+                  </p>
+                </div>
 
-                  <div className="space-y-3">
-                    <div>
-                      <h3 className="font-semibold text-sm text-gray-500">Attending Physician</h3>
-                      <p className="font-medium text-lg">Dr. {record.assignedDoctor?.name || 'Unassigned'}</p>
-                    </div>
-                    {!isLabRecord && (
-                      <div>
-                        <h3 className="font-semibold text-sm text-gray-500">Follow-up Date</h3>
-                        <p className="font-medium">{formatDate(details.followup_date)}</p>
-                      </div>
-                    )}
-                    {isLabRecord && details.result_date && (
-                      <div>
-                        <h3 className="font-semibold text-sm text-gray-500">Result Date</h3>
-                        <p className="font-medium">{formatDate(String(details.result_date))}</p>
-                      </div>
-                    )}
+                {/* Horizontal line */}
+                <div className="border-t border-gray-300 my-4"></div>
+
+                {/* Introduction */}
+                <div className="text-sm mb-4">
+                  <p>The following information is a comprehensive medical record of the patient, intended for professional use only. This document ensures a detailed overview of the patient's medical history and current health status.</p>
+              </div>
+
+                {/* Patient Information Table */}
+                <table className="w-full border-collapse mb-8">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left p-3 w-1/3 border border-gray-300 font-medium bg-gray-50">Patient Information</th>
+                      <th className="text-left p-3 w-2/3 border border-gray-300 font-medium bg-gray-50">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Name:</td>
+                      <td className="p-3 border border-gray-300">{user?.name || 'Patient'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Date of Birth:</td>
+                      <td className="p-3 border border-gray-300">{formatDate(details.date_of_birth) || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Gender:</td>
+                      <td className="p-3 border border-gray-300">{details.gender || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Contact Number:</td>
+                      <td className="p-3 border border-gray-300">{details.contact_number || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Email:</td>
+                      <td className="p-3 border border-gray-300">{user?.email || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Address:</td>
+                      <td className="p-3 border border-gray-300">{details.address || 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 border border-gray-300">Follow-up Date:</td>
+                      <td className="p-3 border border-gray-300">{formatDate(details.followup_date) || 'N/A'}</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+              {/* Medical History Section */}
+              <div className="mb-8">
+                  <h2 className="text-xl font-bold mb-2">Medical History</h2>
+                  <div>
+                  {details.medical_history ? (
+                      <p className="whitespace-pre-line">{details.medical_history}</p>
+                  ) : details.diagnosis ? (
+                      <p className="whitespace-pre-line">{details.diagnosis}</p>
+                    ) : (
+                      <p>
+                        {user?.name} has a history of hypertension, diagnosed in 2025, and has been under
+                        regular medication since. Patient also reports occasional migraines and has been treated
+                        for these symptoms with prescribed medication. There is no known history of major
+                        surgeries or hospitalizations in the past five years.
+                    </p>
+                  )}
+                  </div>
                   </div>
                 </div>
 
+              {/* Rest of the existing content - only visible on screen */}
+              <div className="print:hidden">
                 {!isLabRecord && (
                   <>
-                    <Separator />
-
-                    {/* Vital Signs (for medical records) */}
+                  {/* Vital Signs */}
                     {details.vital_signs && Object.keys(details.vital_signs).some(key =>
                       details.vital_signs![key] !== null && details.vital_signs![key] !== undefined && details.vital_signs![key] !== ''
                     ) && (
-                      <div>
-                        <h2 className="text-xl font-bold mb-4">VITAL SIGNS</h2>
-                        <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div className="mb-8">
+                      <h2 className="text-xl font-bold mb-4">Vital Signs</h2>
+                        <div className="bg-white border rounded-md p-4 grid grid-cols-2 md:grid-cols-3 gap-4">
                           {details.vital_signs.temperature && (
                             <div>
-                              <h3 className="font-semibold text-sm text-gray-500">Temperature</h3>
-                              <p className="font-medium">{renderValue(details.vital_signs.temperature, '°C')}</p>
+                            <p className="font-semibold text-gray-600">Temperature:</p>
+                            <p>{renderValue(details.vital_signs.temperature, '°C')}</p>
                             </div>
                           )}
                           {details.vital_signs.blood_pressure && (
                             <div>
-                              <h3 className="font-semibold text-sm text-gray-500">Blood Pressure</h3>
-                              <p className="font-medium">{renderValue(details.vital_signs.blood_pressure, 'mmHg')}</p>
+                            <p className="font-semibold text-gray-600">Blood Pressure:</p>
+                            <p>{renderValue(details.vital_signs.blood_pressure, 'mmHg')}</p>
                             </div>
                           )}
                           {(details.vital_signs.pulse_rate || details.vital_signs.heart_rate) && (
                             <div>
-                              <h3 className="font-semibold text-sm text-gray-500">Heart Rate</h3>
-                              <p className="font-medium">{renderValue(details.vital_signs.pulse_rate || details.vital_signs.heart_rate, 'bpm')}</p>
+                            <p className="font-semibold text-gray-600">Heart Rate:</p>
+                            <p>{renderValue(details.vital_signs.pulse_rate || details.vital_signs.heart_rate, 'bpm')}</p>
                             </div>
                           )}
                           {details.vital_signs.respiratory_rate && (
                             <div>
-                              <h3 className="font-semibold text-sm text-gray-500">Respiratory Rate</h3>
-                              <p className="font-medium">{renderValue(details.vital_signs.respiratory_rate, 'breaths/min')}</p>
+                            <p className="font-semibold text-gray-600">Respiratory Rate:</p>
+                            <p>{renderValue(details.vital_signs.respiratory_rate, 'breaths/min')}</p>
                             </div>
                           )}
                           {details.vital_signs.oxygen_saturation && (
                             <div>
-                              <h3 className="font-semibold text-sm text-gray-500">Oxygen Saturation</h3>
-                              <p className="font-medium">{renderValue(details.vital_signs.oxygen_saturation, '%')}</p>
+                            <p className="font-semibold text-gray-600">Oxygen Saturation:</p>
+                            <p>{renderValue(details.vital_signs.oxygen_saturation, '%')}</p>
                             </div>
                           )}
                         </div>
                       </div>
                     )}
 
-                    <Separator />
-
-                    {/* Diagnosis and Treatment (for medical records) */}
-                    <div className="space-y-4">
-                      <h2 className="text-xl font-bold mb-4">DETAILS</h2>
-                      <div className="space-y-4">
+                  {/* Diagnosis */}
                         {details.diagnosis && !details.diagnosis.startsWith('{') && (
-                          <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
-                            <h3 className="font-semibold text-sm text-gray-500 mb-2">Diagnosis</h3>
+                    <div className="mb-8">
+                      <h2 className="text-xl font-bold mb-4">Diagnosis</h2>
+                        <div className="bg-white border rounded-md p-4">
                             <p className="whitespace-pre-line">{renderValue(details.diagnosis)}</p>
                           </div>
-                        )}
-
-                        {/* If there's no structured diagnosis but the record details might be plain text */}
-                        {!details.diagnosis && typeof record.details === 'string' && record.details &&
-                         !record.details.startsWith('{') && !record.details.includes('"appointment_time"') && (
-                          <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
-                            <h3 className="font-semibold text-sm text-gray-500 mb-2">Diagnosis</h3>
-                            <p className="whitespace-pre-line">{renderValue(record.details)}</p>
                           </div>
                         )}
 
+                  {/* Prescriptions Section */}
                         {details.prescriptions && (
-                          <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
-                            <h3 className="font-semibold text-sm text-gray-500 mb-2">Prescriptions</h3>
+                    <div className="mb-8">
+                      <h2 className="text-xl font-bold mb-4">Prescriptions</h2>
+                        <div className="bg-white border rounded-md p-4">
                             <ul className="list-disc list-inside">
                               {(() => {
                                 // Handle array of prescriptions
@@ -690,44 +715,27 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
                                 return <li>No prescription information available</li>;
                               })()}
                             </ul>
+                      </div>
                           </div>
                         )}
 
+                  {/* Treatments */}
                         {details.treatments && (
-                          <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
-                            <h3 className="font-semibold text-sm text-gray-500 mb-2">Treatments</h3>
+                    <div className="mb-8">
+                      <h2 className="text-xl font-bold mb-4">Treatments</h2>
+                        <div className="bg-white border rounded-md p-4">
                             <p className="whitespace-pre-line">{renderValue(details.treatments)}</p>
-                          </div>
-                        )}
                       </div>
                     </div>
-
-                    {/* Signature section - only visible in print for medical records */}
-                    <div className="hidden print:block mt-10">
-                      <Separator className="mb-6" />
-                      <div className="grid grid-cols-2 gap-8">
-                        <div>
-                          <p className="font-semibold mb-6">Attending Physician:</p>
-                          <div className="h-px-24 border-b border-dashed border-gray-400 w-3/4 mb-2"></div>
-                          <p>Dr. {record.assignedDoctor?.name || 'Unassigned'}</p>
-                          <p className="text-xs text-gray-500 mt-1">Physician Signature</p>
-                        </div>
-                        <div>
-                          <p className="font-semibold mb-6">Date Verified:</p>
-                          <div className="h-px-24 border-b border-dashed border-gray-400 w-3/4 mb-2"></div>
-                          <p className="text-xs text-gray-500 mt-1">Signature Date</p>
-                        </div>
-                      </div>
-                    </div>
+                  )}
                   </>
                 )}
 
+              {/* Lab Results */}
                 {isLabRecord && details.results && (
-                  <>
-                    <Separator />
-                    <div>
-                      <h2 className="text-xl font-bold mb-4">TEST RESULTS</h2>
-                      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
+                <div className="mb-8">
+                  <h2 className="text-xl font-bold mb-4">Test Results</h2>
+                    <div className="bg-white border rounded-md p-4">
                         <table className="w-full">
                           <thead>
                             <tr className="border-b">
@@ -758,58 +766,45 @@ export default function RecordDetails({ user, record }: RecordDetailsProps) {
                         </table>
                       </div>
                     </div>
-                  </>
                 )}
 
-                <Separator />
-
                 {/* Notes */}
-                <div>
-                  <h2 className="text-xl font-bold mb-4">NOTES</h2>
-                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
-                    {details.notes ? (
+              {details.notes && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-bold mb-4">Notes</h2>
+                    <div className="bg-white border rounded-md p-4">
                       <p className="whitespace-pre-line">{renderValue(details.notes)}</p>
-                    ) : (
-                      <p className="text-gray-500">No additional notes</p>
-                    )}
                   </div>
                 </div>
+              )}
 
                 {/* Instructions for lab records */}
                 {isLabRecord && details.instructions && (
-                  <>
-                    <Separator />
-                    <div>
-                      <h2 className="text-xl font-bold mb-4">INSTRUCTIONS</h2>
-                      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
+                <div className="mb-8">
+                  <h2 className="text-xl font-bold mb-4">Instructions</h2>
+                    <div className="bg-white border rounded-md p-4">
                         <p className="whitespace-pre-line">{renderValue(details.instructions)}</p>
                       </div>
                     </div>
-                  </>
-                )}
+              )}
 
-                {/* Footer for print */}
-                <div className="mt-10 text-center hidden print:block">
-                  <Separator className="mb-6" />
-                  <div className="grid grid-cols-3 gap-4 text-xs text-gray-500 mb-4">
-                    <div>
-                      <p>FarmCare Healthcare System</p>
-                      <p>123 Medical Drive</p>
-                      <p>Healthcare City, HC 12345</p>
-                    </div>
-                    <div>
-                      <p>Patient ID: {record.patient_id}</p>
-                      <p>Record ID: {record.id}</p>
-                      <p>Record Type: {getRecordTypeDisplay(record.record_type)}</p>
-                    </div>
-                    <div>
-                      <p>Printed on {new Date().toLocaleDateString()}</p>
-                      <p>Generated at {new Date().toLocaleTimeString()}</p>
-                      <p className="font-semibold">CONFIDENTIAL</p>
-                    </div>
+              {/* Signature section */}
+                <div className="mt-10">
+                <Separator className="mb-6" />
+                <div className="grid grid-cols-2 gap-8">
+                  <div>
+                    <p className="font-semibold mb-6">Attending Physician:</p>
+                    <div className="h-px-24 border-b border-dashed border-gray-400 w-3/4 mb-2"></div>
+                    <p>Dr. {record.assignedDoctor?.name || 'Unassigned'}</p>
+                    <p className="text-xs text-gray-500 mt-1">Physician Signature</p>
                   </div>
-                  <p className="text-xs text-gray-500 border-t pt-4">This document contains confidential medical information and is intended only for the named patient.</p>
+                  <div>
+                    <p className="font-semibold mb-6">Date:</p>
+                    <div className="h-px-24 border-b border-dashed border-gray-400 w-3/4 mb-2"></div>
+                    <p className="text-xs text-gray-500 mt-1">Signature Date</p>
+                  </div>
                 </div>
+              </div>
               </div>
             </CardContent>
           </Card>

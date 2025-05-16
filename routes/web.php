@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Middleware\GuestMiddleware;
+use App\Models\Patient;
 
 
 /*
@@ -147,8 +148,8 @@ use App\Http\Controllers\Doctor\AppointmentController;
 use App\Http\Controllers\Doctor\NotificationController;
 use App\Http\Controllers\Doctor\PatientController;
 use App\Http\Controllers\Doctor\RecordsController;
-use App\Http\Controllers\Doctor\DoctorScheduleController;
 use App\Http\Controllers\Doctor\ServiceController;
+use App\Http\Controllers\Doctor\DoctorScheduleController;
 use App\Http\Middleware\DoctorMiddleware;
 
 Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')->group(function () {
@@ -169,13 +170,6 @@ Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')-
   Route::get('/services/{id}/edit', [App\Http\Controllers\DoctorServiceController::class, 'edit'])->name('services.edit');
   Route::put('/services/{id}', [App\Http\Controllers\DoctorServiceController::class, 'update'])->name('services.update');
   Route::delete('/services/{id}', [App\Http\Controllers\DoctorServiceController::class, 'destroy'])->name('services.destroy');
-
-  // Schedule Management
-  Route::get('/schedule', [DoctorScheduleController::class, 'index'])->name('schedule.index');
-  Route::post('/schedule', [DoctorScheduleController::class, 'store'])->name('schedule.store');
-  Route::post('/schedule/multiple', [DoctorScheduleController::class, 'storeMultiple'])->name('schedule.store.multiple');
-  Route::put('/schedule/{id}', [DoctorScheduleController::class, 'update'])->name('schedule.update');
-  Route::delete('/schedule/{id}', [DoctorScheduleController::class, 'destroy'])->name('schedule.destroy');
 
   // Services Management
   Route::get('/services', [ServiceController::class, 'index'])->name('services.index');
@@ -220,6 +214,17 @@ Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')-
   Route::get('/notifications/unread/count', [NotificationController::class, 'getUnreadCount'])->name('notifications.unread.count');
   Route::get('/notifications/recent', [NotificationController::class, 'getRecent'])->name('notifications.recent');
   Route::post('/notifications/mark-appointment-notifications-read', [NotificationController::class, 'markAllAppointmentNotificationsAsRead'])->name('notifications.mark.appointment.read');
+
+
+  // Schedule management routes
+  Route::get('/schedule', [DoctorScheduleController::class, 'index'])->name('schedule.index');
+  Route::post('/schedule', [DoctorScheduleController::class, 'store'])->name('schedule.store');
+  Route::put('/schedule/{id}', [DoctorScheduleController::class, 'update'])->name('schedule.update');
+  Route::delete('/schedule/{id}', [DoctorScheduleController::class, 'destroy'])->name('schedule.destroy');
+  Route::post('/schedule/multiple', [DoctorScheduleController::class, 'storeMultiple'])->name('schedule.store-multiple');
+  Route::get('/schedule/staff/{staffId}', [DoctorScheduleController::class, 'viewStaffSchedule'])->name('schedule.view-staff');
+
+
 });
 
 /*
@@ -233,6 +238,10 @@ use App\Http\Controllers\ClinicalStaff\LabRecordsController;
 use App\Http\Controllers\ClinicalStaff\MedicalRecordsController;
 use App\Http\Controllers\ClinicalStaff\RecordRequestsController;
 use App\Http\Middleware\ClinicalStaffMiddleware;
+use App\Http\Controllers\ClinicalStaff\ScheduleController;
+use App\Http\Controllers\ClinicalStaff\LabResultsController;
+use App\Http\Controllers\ClinicalStaff\ReceiptsController;
+use App\Http\Controllers\ClinicalStaff\AppointmentsController;
 
 Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staff.')->group(function () {
   // Dashboard
@@ -255,6 +264,10 @@ Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staf
   Route::delete('/clinical-info/{id}', [MedicalRecordsController::class, 'destroy'])->name('clinical.info.destroy');
   Route::get('/patients/{patientId}/history', [MedicalRecordsController::class, 'patientHistory'])->name('patients.history');
 
+  // Prescription Management
+  Route::get('/prescriptions/record/{recordId}', [MedicalRecordsController::class, 'getPrescriptions'])->name('prescriptions.record');
+  Route::get('/prescriptions/{id}/download', [MedicalRecordsController::class, 'downloadPrescription'])->name('prescriptions.download');
+
   // Lab Records Management
   Route::get('/lab-records', [LabRecordsController::class, 'index'])->name('lab.records');
   Route::get('/lab-records/create', [LabRecordsController::class, 'create'])->name('lab.records.create');
@@ -265,13 +278,17 @@ Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staf
   Route::put('/lab-records/{id}/results', [LabRecordsController::class, 'updateResults'])->name('lab.records.results');
   Route::delete('/lab-records/{id}', [LabRecordsController::class, 'destroy'])->name('lab.records.destroy');
   Route::get('/lab-records/pending/list', [LabRecordsController::class, 'pending'])->name('lab.records.pending');
+  Route::get('/lab-records/{id}/download', [LabRecordsController::class, 'downloadResults'])->name('lab.records.download');
 
   // Appointments Management
-  Route::get('/appointments', function() {
-    return Inertia::render('ClinicalStaff/Appointments', [
-      'user' => Auth::user()
-    ]);
-  })->name('appointments');
+  Route::get('/appointments', [AppointmentsController::class, 'index'])->name('appointments.index');
+  Route::get('/appointments/{id}', [AppointmentsController::class, 'show'])->name('appointments.show');
+  Route::get('/appointments/{id}/edit', [AppointmentsController::class, 'edit'])->name('appointments.edit');
+  Route::put('/appointments/{id}', [AppointmentsController::class, 'update'])->name('appointments.update');
+  Route::match(['put', 'post'], '/appointments/{id}/status', [AppointmentsController::class, 'updateStatus'])->name('appointments.status');
+  Route::get('/appointments/{id}/pdf', [AppointmentsController::class, 'generatePdf'])->name('appointments.pdf');
+  Route::get('/appointments/{id}/receipt', [AppointmentsController::class, 'createReceipt'])->name('appointments.receipt');
+  Route::get('/appointments/{id}/lab-results', [AppointmentsController::class, 'getLabResults'])->name('appointments.lab-results');
 
   // Patient Records Management
   Route::get('/patients', function() {
@@ -302,6 +319,39 @@ Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staf
   Route::get('/record-requests/{id}', [RecordRequestsController::class, 'show'])->name('record-requests.show');
   Route::post('/record-requests/{id}/approve', [RecordRequestsController::class, 'approve'])->name('record-requests.approve');
   Route::post('/record-requests/{id}/deny', [RecordRequestsController::class, 'deny'])->name('record-requests.deny');
+
+
+  // Schedule Management
+  Route::prefix('/schedule')->middleware(['auth'])->group(function () {
+    Route::get('/', [ScheduleController::class, 'index'])->name('clinical-staff.schedule.index');
+    Route::post('/', [ScheduleController::class, 'store'])->name('clinical-staff.schedule.store');
+    Route::put('/{id}', [ScheduleController::class, 'update'])->name('clinical-staff.schedule.update');
+    Route::delete('/{id}', [ScheduleController::class, 'destroy'])->name('clinical-staff.schedule.destroy');
+    Route::post('/multiple', [ScheduleController::class, 'storeMultiple'])->name('clinical-staff.schedule.storeMultiple');
+  });
+
+  // Doctor Schedule Management routes
+  Route::get('/doctor-schedules', [App\Http\Controllers\Staff\DoctorScheduleManagementController::class, 'index'])->name('doctor-schedules.index');
+  Route::get('/doctor-schedules/{doctorId}', [App\Http\Controllers\Staff\DoctorScheduleManagementController::class, 'doctorSchedules'])->name('doctor-schedules.view');
+  Route::post('/doctor-schedules', [App\Http\Controllers\Staff\DoctorScheduleManagementController::class, 'store'])->name('doctor-schedules.store');
+  Route::post('/doctor-schedules/{id}/approve', [App\Http\Controllers\Staff\DoctorScheduleManagementController::class, 'approveSchedule'])->name('doctor-schedules.approve');
+  Route::post('/doctor-schedules/{id}/reject', [App\Http\Controllers\Staff\DoctorScheduleManagementController::class, 'rejectSchedule'])->name('doctor-schedules.reject');
+  Route::put('/doctor-schedules/{id}', [App\Http\Controllers\Staff\DoctorScheduleManagementController::class, 'editSchedule'])->name('doctor-schedules.edit');
+
+  // Lab Results Routes
+  Route::get('/lab-results', [LabResultsController::class, 'index'])->name('lab-results.index');
+  Route::get('/patients/{patient}/lab-results', [LabResultsController::class, 'getPatientLabResults'])->name('lab-results.patient');
+  Route::post('/lab-results', [LabResultsController::class, 'store'])->name('lab-results.store');
+  Route::get('/lab-results/{labResult}', [LabResultsController::class, 'show'])->name('lab-results.show');
+  Route::get('/lab-results/{labResult}/download', [LabResultsController::class, 'download'])->name('lab-results.download');
+  Route::delete('/lab-results/{labResult}', [LabResultsController::class, 'destroy'])->name('lab-results.destroy');
+
+  // Receipt routes
+  Route::get('/receipts', [ReceiptsController::class, 'index'])->name('receipts.index');
+  Route::post('/receipts', [ReceiptsController::class, 'store'])->name('receipts.store');
+  Route::get('/receipts/{receipt}', [ReceiptsController::class, 'show'])->name('receipts.show');
+  Route::get('/receipts/{receipt}/download', [ReceiptsController::class, 'download'])->name('receipts.download');
+  Route::delete('/receipts/{id}', [ReceiptsController::class, 'destroy'])->name('receipts.destroy');
 });
 
 /*
@@ -319,9 +369,10 @@ Route::middleware([PatientMiddleware::class])->prefix('patient')->name('patient.
   Route::get('/dashboard', [PatientDashboardController::class, 'index'])->name('dashboard');
 
   // Appointments
-  Route::post('/appointments', [PatientDashboardController::class, 'store'])->name('appointments.store');
   Route::get('/appointments', [PatientDashboardController::class, 'listAppointments'])->name('appointments.index');
   Route::get('/appointments/book', [PatientDashboardController::class, 'bookAppointment'])->name('appointments.book');
+  Route::post('/appointments', [PatientDashboardController::class, 'store'])->name('appointments.store');
+  Route::get('/appointments/check-booked-slots', [PatientDashboardController::class, 'getBookedTimeSlots'])->name('appointments.check-booked-slots');
   Route::get('/appointments/{id}', [PatientDashboardController::class, 'viewAppointment'])->name('appointments.show');
 
   // Medical Records
@@ -330,6 +381,9 @@ Route::middleware([PatientMiddleware::class])->prefix('patient')->name('patient.
   Route::get('/records/{id}', [PatientDashboardController::class, 'viewRecord'])->name('records.show');
   Route::get('/records/lab-results/{id}', [PatientDashboardController::class, 'viewLabResults'])->name('records.lab-results.show');
 
+  // Lab Results Download
+  Route::get('/lab-results/{id}/download', [PatientDashboardController::class, 'downloadLabResult'])->name('lab-results.download');
+
   // Lab Appointments
   Route::get('/lab-appointments/book', [PatientDashboardController::class, 'bookLabAppointment'])->name('lab-appointments.book');
   Route::post('/lab-appointments/book', [PatientDashboardController::class, 'storeLabAppointment'])->name('lab-appointments.store');
@@ -337,11 +391,13 @@ Route::middleware([PatientMiddleware::class])->prefix('patient')->name('patient.
   // Doctors
   Route::get('/doctors', [PatientDashboardController::class, 'listDoctors'])->name('doctors.index');
   Route::get('/doctors/{id}', [PatientDashboardController::class, 'viewDoctor'])->name('doctors.show');
+  Route::get('/doctor-schedules', [PatientDashboardController::class, 'viewDoctorSchedules'])->name('doctors.schedules');
 
   // API routes for doctor information
   Route::get('/api/doctors', [\App\Http\Controllers\DoctorProfileController::class, 'listDoctors'])->name('api.doctors');
   Route::get('/api/doctors/{id}', [\App\Http\Controllers\DoctorProfileController::class, 'show'])->name('api.doctors.show');
   Route::get('/api/doctors/{id}/services', [\App\Http\Controllers\DoctorServiceController::class, 'getDoctorServices'])->name('api.doctors.services');
+  Route::get('/api/doctor-schedules/{doctorId}', [\App\Http\Controllers\Api\DoctorScheduleController::class, 'getSchedules'])->name('api.doctor-schedules');
 
   // Profile
   Route::get('/profile', [PatientDashboardController::class, 'viewProfile'])->name('profile.edit');
@@ -373,3 +429,69 @@ Route::middleware(['auth', 'role:patient'])->prefix('patient')->name('patient.')
 
 // Setup routes
 Route::get('/setup/create-notifications-table', [App\Http\Controllers\SetupController::class, 'createNotificationsTable']);
+
+// Lab Results Routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::prefix('staff/lab-results')->name('staff.lab-results.')->group(function () {
+        Route::get('/', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'index'])->name('index');
+        Route::post('/', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'store'])->name('store');
+        Route::get('/{id}', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'show'])->name('show');
+        Route::get('/{id}/download', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'download'])->name('download');
+        Route::delete('/{id}', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'destroy'])->name('destroy');
+    });
+});
+
+// Receipt Routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::prefix('staff/receipts')->name('staff.receipts.')->group(function () {
+        Route::get('/', [App\Http\Controllers\ClinicalStaff\ReceiptsController::class, 'index'])->name('index');
+        Route::post('/', [App\Http\Controllers\ClinicalStaff\ReceiptsController::class, 'store'])->name('store');
+        Route::get('/{id}', [App\Http\Controllers\ClinicalStaff\ReceiptsController::class, 'show'])->name('show');
+        Route::get('/{id}/download', [App\Http\Controllers\ClinicalStaff\ReceiptsController::class, 'download'])->name('download');
+        Route::delete('/{id}', [App\Http\Controllers\ClinicalStaff\ReceiptsController::class, 'destroy'])->name('destroy');
+    });
+});
+
+// Debug route to test patient search directly
+Route::get('/test-patient-search', function() {
+    $term = request()->input('term', 'PAT000001');
+
+    // Try exact match first
+    $exactMatch = Patient::where('reference_number', $term)
+                    ->orWhere('reference_number', strtoupper($term))
+                    ->orWhere('reference_number', strtolower($term))
+                    ->first();
+
+    if ($exactMatch) {
+        return response()->json([
+            'success' => true,
+            'patient' => $exactMatch,
+            'match_type' => 'exact'
+        ]);
+    }
+
+    // Try general search
+    $patients = Patient::where('name', 'like', "%{$term}%")
+                ->orWhere('reference_number', 'like', "%{$term}%")
+                ->limit(10)
+                ->get();
+
+    return response()->json([
+        'success' => true,
+        'patients' => $patients,
+        'count' => $patients->count(),
+        'match_type' => 'partial'
+    ]);
+});
+
+// API routes for patient information
+Route::prefix('api')->name('api.')->group(function () {
+    Route::get('patients/search', [App\Http\Controllers\Api\PatientController::class, 'search'])->name('patients.search');
+    Route::get('patients/{patient}/appointments', [App\Http\Controllers\Api\PatientController::class, 'getAppointments'])->name('patients.appointments');
+});
+
+// API Routes for internal AJAX requests
+Route::prefix('api/v1')->name('api.')->group(function () {
+    Route::get('/patients/{id}', [\App\Http\Controllers\Api\PatientsController::class, 'find'])->name('patients.find');
+    Route::get('/patients/{id}/appointments', [\App\Http\Controllers\Api\PatientsController::class, 'appointments'])->name('patients.appointments');
+});

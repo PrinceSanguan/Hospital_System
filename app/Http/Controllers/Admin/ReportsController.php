@@ -167,9 +167,145 @@ class ReportsController extends Controller
      */
     public function downloadReport(Request $request)
     {
-        // TODO: Implement PDF generation with a package like dompdf
-        // This would be implemented in a real application
+        // Validate the report type
+        $request->validate([
+            'type' => 'required|string|in:summary,patient,appointment,financial',
+        ]);
 
-        return back()->with('success', 'Report download functionality would be implemented here.');
+        $reportType = $request->input('type');
+        $fileName = null;
+        $reportData = [];
+
+        // Prepare data based on report type
+        switch ($reportType) {
+            case 'summary':
+                $fileName = 'clinic_summary_report.pdf';
+                $reportData = $this->prepareSummaryReportData();
+                break;
+            case 'patient':
+                $fileName = 'patient_report.pdf';
+                $reportData = $this->preparePatientReportData();
+                break;
+            case 'appointment':
+                $fileName = 'appointment_report.pdf';
+                $reportData = $this->prepareAppointmentReportData();
+                break;
+            case 'financial':
+                $fileName = 'financial_report.pdf';
+                $reportData = $this->prepareFinancialReportData();
+                break;
+        }
+
+        // Check if we have barryvdh/laravel-dompdf installed
+        if (class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+            try {
+                $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('reports.' . $reportType, $reportData);
+                return $pdf->download($fileName);
+            } catch (\Exception $e) {
+                // If the view doesn't exist or another error occurs
+                return back()->with('error', 'Error generating PDF: ' . $e->getMessage());
+            }
+        }
+
+        // Fallback for when PDF library isn't available
+        return back()->with('info', 'Report download functionality would be implemented here. Report Type: ' . ucfirst($reportType));
+    }
+
+    /**
+     * Prepare data for the summary report
+     */
+    private function prepareSummaryReportData()
+    {
+        return [
+            'title' => 'Clinic Summary Report',
+            'generated_at' => Carbon::now()->format('F j, Y, g:i a'),
+            'user_stats' => [
+                'total' => User::count(),
+                'patients' => User::where('user_role', User::ROLE_PATIENT)->count(),
+                'doctors' => User::where('user_role', User::ROLE_DOCTOR)->count(),
+                'staff' => User::where('user_role', User::ROLE_CLINICAL_STAFF)->count(),
+            ],
+            'appointment_stats' => [
+                'total' => PatientRecord::count(),
+                'pending' => PatientRecord::where('status', 'pending')->count(),
+                'completed' => PatientRecord::where('status', 'completed')->count(),
+                'cancelled' => PatientRecord::where('status', 'cancelled')->count(),
+            ],
+            'monthly_trends' => $this->getMonthlyAppointmentTrends(),
+        ];
+    }
+
+    /**
+     * Prepare data for the patient report
+     */
+    private function preparePatientReportData()
+    {
+        return [
+            'title' => 'Patient Statistics Report',
+            'generated_at' => Carbon::now()->format('F j, Y, g:i a'),
+            'patient_count' => User::where('user_role', User::ROLE_PATIENT)->count(),
+            'new_patients_this_month' => User::where('user_role', User::ROLE_PATIENT)
+                ->whereMonth('created_at', Carbon::now()->month)
+                ->whereYear('created_at', Carbon::now()->year)
+                ->count(),
+            'patients_by_month' => $this->getMonthlyPatientGrowth(),
+            'recent_patients' => User::where('user_role', User::ROLE_PATIENT)
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get(['id', 'name', 'email', 'created_at']),
+        ];
+    }
+
+    /**
+     * Prepare data for the appointment report
+     */
+    private function prepareAppointmentReportData()
+    {
+        return [
+            'title' => 'Appointment Statistics Report',
+            'generated_at' => Carbon::now()->format('F j, Y, g:i a'),
+            'appointment_count' => PatientRecord::count(),
+            'appointment_stats' => [
+                'pending' => PatientRecord::where('status', 'pending')->count(),
+                'completed' => PatientRecord::where('status', 'completed')->count(),
+                'cancelled' => PatientRecord::where('status', 'cancelled')->count(),
+            ],
+            'appointment_trends' => $this->getMonthlyAppointmentTrends(),
+            'appointment_types' => $this->getAppointmentTypeDistribution(),
+            'upcoming_appointments' => PatientRecord::with(['patient', 'assignedDoctor'])
+                ->where('appointment_date', '>=', Carbon::now())
+                ->orderBy('appointment_date', 'asc')
+                ->limit(10)
+                ->get(),
+        ];
+    }
+
+    /**
+     * Prepare data for the financial report
+     */
+    private function prepareFinancialReportData()
+    {
+        // This would connect to a financial model in a real application
+        // For this example, we'll create mock data
+        return [
+            'title' => 'Financial Summary Report',
+            'generated_at' => Carbon::now()->format('F j, Y, g:i a'),
+            'monthly_revenue' => [
+                ['month' => 'Jan', 'revenue' => rand(5000, 15000)],
+                ['month' => 'Feb', 'revenue' => rand(5000, 15000)],
+                ['month' => 'Mar', 'revenue' => rand(5000, 15000)],
+                ['month' => 'Apr', 'revenue' => rand(5000, 15000)],
+                ['month' => 'May', 'revenue' => rand(5000, 15000)],
+                ['month' => 'Jun', 'revenue' => rand(5000, 15000)],
+            ],
+            'total_revenue_ytd' => rand(50000, 150000),
+            'average_monthly_revenue' => rand(8000, 12000),
+            'revenue_by_service' => [
+                ['service' => 'Medical Checkup', 'revenue' => rand(10000, 30000)],
+                ['service' => 'Laboratory Tests', 'revenue' => rand(15000, 35000)],
+                ['service' => 'Consultations', 'revenue' => rand(20000, 40000)],
+                ['service' => 'Procedures', 'revenue' => rand(25000, 45000)],
+            ],
+        ];
     }
 }

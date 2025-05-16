@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { format, parseISO, addDays } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 interface User {
   name: string;
@@ -105,6 +106,8 @@ interface RecordRequestDetailProps {
 export default function RecordRequestDetail({ user, request, record }: RecordRequestDetailProps) {
   const [approveDialog, setApproveDialog] = useState(false);
   const [denyDialog, setDenyDialog] = useState(false);
+  const [showApproveConfirmation, setShowApproveConfirmation] = useState(false);
+  const [showDenyConfirmation, setShowDenyConfirmation] = useState(false);
 
   const { data: approveData, setData: setApproveData, post: postApprove, processing: approveProcessing } = useForm({
     expires_at: format(addDays(new Date(), 30), 'yyyy-MM-dd')
@@ -114,12 +117,24 @@ export default function RecordRequestDetail({ user, request, record }: RecordReq
     denied_reason: ''
   });
 
+  const prepareApprove = () => {
+    setApproveDialog(false);
+    setShowApproveConfirmation(true);
+  };
+
+  const prepareDeny = () => {
+    setDenyDialog(false);
+    setShowDenyConfirmation(true);
+  };
+
   const handleApprove = () => {
     postApprove(route('staff.record-requests.approve', request.id));
+    setShowApproveConfirmation(false);
   };
 
   const handleDeny = () => {
     postDeny(route('staff.record-requests.deny', request.id));
+    setShowDenyConfirmation(false);
   };
 
   const getStatusBadge = (status: string) => {
@@ -404,7 +419,7 @@ export default function RecordRequestDetail({ user, request, record }: RecordReq
                 <Button variant="outline" onClick={() => setApproveDialog(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleApprove} disabled={approveProcessing} className="gap-1">
+                <Button onClick={prepareApprove} disabled={approveProcessing} className="gap-1">
                   <CheckCircle className="h-4 w-4" /> Approve Request
                 </Button>
               </DialogFooter>
@@ -439,7 +454,7 @@ export default function RecordRequestDetail({ user, request, record }: RecordReq
                 </Button>
                 <Button
                   variant="destructive"
-                  onClick={handleDeny}
+                  onClick={prepareDeny}
                   disabled={denyProcessing || !denyData.denied_reason}
                   className="gap-1"
                 >
@@ -448,6 +463,23 @@ export default function RecordRequestDetail({ user, request, record }: RecordReq
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Confirmation Modals */}
+          <ConfirmationModal
+            isOpen={showApproveConfirmation}
+            onClose={() => setShowApproveConfirmation(false)}
+            onConfirm={handleApprove}
+            title="Are you sure you want to approve this request?"
+            actionType="approve"
+          />
+
+          <ConfirmationModal
+            isOpen={showDenyConfirmation}
+            onClose={() => setShowDenyConfirmation(false)}
+            onConfirm={handleDeny}
+            title="Are you sure you want to reject this appointment?"
+            actionType="reject"
+          />
         </main>
       </div>
     </div>

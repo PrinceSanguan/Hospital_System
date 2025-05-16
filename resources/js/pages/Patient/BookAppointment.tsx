@@ -6,12 +6,12 @@ import {
   Clock,
   Stethoscope,
   Bell,
-  Home,
-  FileText,
-  Menu,
-  UserCircle,
-  Upload,
-  Check,
+  HomeIcon,
+  FilePlus,
+  AlignJustify,
+  UserCircle2,
+  UploadCloud,
+  CheckCircle,
   X,
   AlertCircle,
   Loader2
@@ -107,6 +107,10 @@ interface AppointmentFormData {
   weight: string;
   bmi: string;
   address: string;
+  province: string;
+  city: string;
+  barangay: string;
+  zip_code: string;
   has_previous_records: boolean;
   [key: string]: string | boolean; // More specific type for the index signature
 }
@@ -134,6 +138,10 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
     weight: '',
     bmi: '',
     address: '',
+    province: '',
+    city: '',
+    barangay: '',
+    zip_code: '',
     // Instead of storing the files in the form data, we'll use a separate state
     has_previous_records: false
   });
@@ -153,6 +161,7 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [noRecordsChecked, setNoRecordsChecked] = useState(false);
+  const [bookedTimeSlots, setBookedTimeSlots] = useState<string[]>([]);
 
   // Set the pre-selected doctor on component mount
   useEffect(() => {
@@ -290,6 +299,9 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
         console.log('No matching schedules found - using default time slots');
         const defaultSlots = ['9:00 AM', '10:00 AM', '11:00 AM', '1:00 PM', '2:00 PM', '3:00 PM'];
         setAvailableTimeSlots(defaultSlots);
+
+        // After setting available time slots, fetch booked slots
+        fetchBookedTimeSlots(selectedDoctor.id, dateString);
         return;
       }
       setAvailableTimeSlots([]);
@@ -322,6 +334,28 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
 
     console.log('Generated time slots:', slots);
     setAvailableTimeSlots(slots);
+
+    // After setting available time slots, fetch booked slots
+    fetchBookedTimeSlots(selectedDoctor.id, dateString);
+  };
+
+  // Fetch booked time slots for the selected doctor and date
+  const fetchBookedTimeSlots = async (doctorId: number, date: string) => {
+    try {
+      const response = await fetch(`${route('patient.appointments.check-booked-slots')}?doctor_id=${doctorId}&date=${date}`);
+      const data = await response.json();
+
+      if (data.success) {
+        console.log('Booked time slots:', data.bookedTimeSlots);
+        setBookedTimeSlots(data.bookedTimeSlots);
+      } else {
+        console.error('Error fetching booked time slots:', data.message);
+        setBookedTimeSlots([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch booked time slots:', error);
+      setBookedTimeSlots([]);
+    }
   };
 
   // Handle doctor selection
@@ -344,6 +378,11 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
 
   // Handle time slot selection
   const handleTimeSlotSelect = (timeSlot: string) => {
+    // Don't allow selection if the time slot is already booked
+    if (isTimeSlotBooked(timeSlot)) {
+      return;
+    }
+
     setSelectedTimeSlot(timeSlot);
 
     // Parse the 12-hour time format to 24-hour format that the backend expects
@@ -363,6 +402,25 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
     console.log(`Selected time: ${timeSlot}, formatted for backend: ${formattedTime}`);
 
     setData('appointment_time', formattedTime);
+  };
+
+  // Check if a time slot is already booked
+  const isTimeSlotBooked = (timeSlot: string): boolean => {
+    // Convert display format to 24-hour format for comparison
+    const [time, period] = timeSlot.split(' ');
+    const [hourStr, minuteStr] = time.split(':');
+    let hour = parseInt(hourStr, 10);
+    const minute = parseInt(minuteStr, 10);
+
+    if (period === 'PM' && hour !== 12) {
+      hour += 12;
+    } else if (period === 'AM' && hour === 12) {
+      hour = 0;
+    }
+
+    const formattedTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`;
+
+    return bookedTimeSlots.includes(formattedTime);
   };
 
   // Handle birthdate selection
@@ -393,6 +451,20 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
     }
   }, [data.height, data.weight]);
 
+  // Update full address when individual address fields change
+  useEffect(() => {
+    if (data.province || data.city || data.barangay || data.zip_code) {
+      const fullAddress = [
+        data.barangay,
+        data.city,
+        data.province,
+        data.zip_code
+      ].filter(Boolean).join(', ');
+
+      setData('address', fullAddress);
+    }
+  }, [data.province, data.city, data.barangay, data.zip_code]);
+
   // Check if patient information is complete
   const isPersonalInfoComplete = () => {
     return (
@@ -402,7 +474,11 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
       data.height !== '' &&
       data.weight !== '' &&
       data.bmi !== '' &&
-      typeof data.address === 'string' && data.address.trim() !== ''
+      typeof data.address === 'string' && data.address.trim() !== '' &&
+      typeof data.province === 'string' && data.province.trim() !== '' &&
+      typeof data.city === 'string' && data.city.trim() !== '' &&
+      typeof data.barangay === 'string' && data.barangay.trim() !== '' &&
+      typeof data.zip_code === 'string' && data.zip_code.trim() !== ''
     );
   };
 
@@ -429,6 +505,10 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
         if (!data.weight) setData('weight', '70');
         if (!data.bmi) setData('bmi', '24.2');
         if (!data.address) setData('address', 'Default address');
+        if (!data.province) setData('province', 'Default province');
+        if (!data.city) setData('city', 'Default city');
+        if (!data.barangay) setData('barangay', 'Default barangay');
+        if (!data.zip_code) setData('zip_code', '12345');
       }
 
       // For medical records, if nothing is set, mark as no previous records
@@ -454,15 +534,10 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
     post(route('patient.appointments.store'), {
       onSuccess: () => {
         console.log('Appointment successfully booked!');
+        // Show alert and redirect to dashboard
         alert('Appointment successfully booked!');
-        reset();
-        setDate(undefined);
-        setSelectedTimeSlot(null);
-        setSelectedDoctor(null);
-        setBirthdate(undefined);
-        setCalculatedBMI(null);
-        setCalculatedAge(null);
-        setUploadedFiles([]); // Clear uploaded files after successful submission
+        // Redirect to the patient dashboard
+        router.visit(route('patient.dashboard'));
       },
       onError: (errors) => {
         console.error('Appointment booking failed with errors:', errors);
@@ -568,7 +643,7 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
   const sidebarItems = [
     {
       name: "Dashboard",
-      icon: <Home size={18} />,
+      icon: <HomeIcon size={18} />,
       path: "/patient/dashboard",
       active: false
     },
@@ -586,7 +661,7 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
     },
     {
       name: "Medical Records",
-      icon: <FileText size={18} />,
+      icon: <FilePlus size={18} />,
       path: "/patient/records",
       active: false
     },
@@ -614,7 +689,11 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
       }`}>
         <div className="flex h-16 items-center justify-center border-b px-4">
           <Link href="/patient/dashboard" className="flex items-center">
-            <Stethoscope className="h-6 w-6 text-blue-600" />
+            <img
+              src="/images/logo_famcare.jpg"
+              alt="Famcare Logo"
+              className="h-6 w-auto mr-2"
+            />
             <span className="ml-2 text-xl font-semibold text-gray-900">Famcare Health</span>
           </Link>
         </div>
@@ -649,7 +728,7 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
               size="icon"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              <Menu size={20} />
+              <AlignJustify size={20} />
               <span className="sr-only">Toggle menu</span>
             </Button>
           </div>
@@ -745,11 +824,11 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-3 mb-8">
                 <TabsTrigger value="personal-info" className="flex gap-2">
-                  <UserCircle className="h-4 w-4" />
+                  <UserCircle2 className="h-4 w-4" />
                   Personal Information
                 </TabsTrigger>
                 <TabsTrigger value="medical-records" className="flex gap-2" disabled={!isPersonalInfoComplete()}>
-                  <FileText className="h-4 w-4" />
+                  <FilePlus className="h-4 w-4" />
                   Medical Records
                 </TabsTrigger>
                 <TabsTrigger value="appointment" className="flex gap-2" disabled={!hasMedicalRecordsInfo() || !isPersonalInfoComplete()}>
@@ -822,68 +901,117 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
                           type="number"
                           min="0"
                           max="120"
-                          disabled={calculatedAge !== null}
+                          disabled={true}
+                          readOnly
+                          className="bg-gray-50"
                           required
                         />
                         {errors.age && <p className="text-sm text-red-500">{errors.age}</p>}
                       </div>
+                    </div>
 
-                      {/* Height */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Height (cm)</label>
-                        <Input
-                          value={data.height}
-                          onChange={(e) => setData('height', e.target.value)}
-                          placeholder="Your height in centimeters"
-                          type="number"
-                          min="1"
-                          required
-                        />
-                        {errors.height && <p className="text-sm text-red-500">{errors.height}</p>}
+                    {/* Physical Measurements Section */}
+                    <div className="border-t pt-4">
+                      <h3 className="text-md font-medium text-gray-700 mb-4">Physical Measurements</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Height */}
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">Height (cm)</label>
+                          <Input
+                            value={data.height}
+                            onChange={(e) => setData('height', e.target.value)}
+                            placeholder="Your height in centimeters"
+                            type="number"
+                            min="1"
+                            required
+                          />
+                          {errors.height && <p className="text-sm text-red-500">{errors.height}</p>}
+                        </div>
+
+                        {/* Weight */}
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">Weight (kg)</label>
+                          <Input
+                            value={data.weight}
+                            onChange={(e) => setData('weight', e.target.value)}
+                            placeholder="Your weight in kilograms"
+                            type="number"
+                            min="1"
+                            required
+                          />
+                          {errors.weight && <p className="text-sm text-red-500">{errors.weight}</p>}
+                        </div>
+
+                        {/* BMI */}
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">BMI</label>
+                          <Input
+                            value={calculatedBMI !== null ? calculatedBMI.toString() : data.bmi}
+                            readOnly
+                            className="bg-gray-50"
+                          />
+                          {calculatedBMI && (
+                            <p className="text-xs text-gray-500">
+                              {calculatedBMI < 18.5 ? 'Underweight' :
+                               calculatedBMI < 25 ? 'Normal weight' :
+                               calculatedBMI < 30 ? 'Overweight' : 'Obese'}
+                            </p>
+                          )}
+                        </div>
                       </div>
+                    </div>
 
-                      {/* Address */}
-                      <div className="space-y-2 md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700">Address</label>
-                        <Textarea
-                          value={data.address}
-                          onChange={(e) => setData('address', e.target.value)}
-                          placeholder="Your full address"
-                          className="resize-none h-24"
-                          required
-                        />
-                        {errors.address && <p className="text-sm text-red-500">{errors.address}</p>}
-                      </div>
+                    {/* Address Section */}
+                    <div className="border-t pt-4">
+                      <h3 className="text-md font-medium text-gray-700 mb-4">Address Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Province */}
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">Province</label>
+                          <Input
+                            value={data.province}
+                            onChange={(e) => setData('province', e.target.value)}
+                            placeholder="Province"
+                            required
+                          />
+                          {errors.province && <p className="text-sm text-red-500">{errors.province}</p>}
+                        </div>
 
-                      {/* Weight */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Weight (kg)</label>
-                        <Input
-                          value={data.weight}
-                          onChange={(e) => setData('weight', e.target.value)}
-                          placeholder="Your weight in kilograms"
-                          type="number"
-                          min="1"
-                          required
-                        />
-                        {errors.weight && <p className="text-sm text-red-500">{errors.weight}</p>}
-                      </div>
+                        {/* City */}
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">City</label>
+                          <Input
+                            value={data.city}
+                            onChange={(e) => setData('city', e.target.value)}
+                            placeholder="City/Municipality"
+                            required
+                          />
+                          {errors.city && <p className="text-sm text-red-500">{errors.city}</p>}
+                        </div>
 
-                      {/* BMI */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">BMI</label>
-                        <Input
-                          value={calculatedBMI !== null ? calculatedBMI.toString() : data.bmi}
-                          readOnly
-                          className="bg-gray-50"
-                        />
-                        {calculatedBMI && (
-                          <p className="text-xs text-gray-500">
-                            {calculatedBMI < 18.5 ? 'Underweight' :
-                             calculatedBMI < 25 ? 'Normal weight' :
-                             calculatedBMI < 30 ? 'Overweight' : 'Obese'}
-                          </p>
-                        )}
+                        {/* Barangay */}
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">Barangay</label>
+                          <Input
+                            value={data.barangay}
+                            onChange={(e) => setData('barangay', e.target.value)}
+                            placeholder="Barangay"
+                            required
+                          />
+                          {errors.barangay && <p className="text-sm text-red-500">{errors.barangay}</p>}
+                        </div>
+
+                        {/* Zip Code */}
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">Zip Code</label>
+                          <Input
+                            value={data.zip_code}
+                            onChange={(e) => setData('zip_code', e.target.value)}
+                            placeholder="Zip Code"
+                            required
+                          />
+                          {errors.zip_code && <p className="text-sm text-red-500">{errors.zip_code}</p>}
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -911,7 +1039,7 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
                   <CardContent className="space-y-6">
                     <div className="bg-blue-50 p-4 rounded-md">
                       <div className="flex items-start gap-3">
-                        <FileText className="h-5 w-5 text-blue-600 mt-0.5" />
+                        <FilePlus className="h-5 w-5 text-blue-600 mt-0.5" />
                         <div>
                           <h3 className="font-medium text-blue-800">Why upload medical records?</h3>
                           <p className="text-sm text-blue-600">
@@ -940,7 +1068,7 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
                           <label htmlFor="medical-records-upload" className="cursor-pointer">
                             <div className="space-y-2">
                               <div className="mx-auto h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                                <Upload className="h-6 w-6 text-blue-600" />
+                                <UploadCloud className="h-6 w-6 text-blue-600" />
                               </div>
                               <div className="text-gray-700">
                                 <span className="font-medium text-blue-600">Click to upload</span>{" "}
@@ -967,7 +1095,7 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
                               {uploadedFiles.map((file, index) => (
                                 <div key={index} className="flex items-center justify-between text-sm text-gray-700 p-2 bg-white rounded-md">
                                   <div className="flex items-center gap-2">
-                                    <Check className="h-4 w-4 text-green-600" />
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
                                     <span className="truncate max-w-xs">{file.name}</span>
                                     <span className="text-gray-500 text-xs">({Math.round(file.size / 1024)} KB)</span>
                                   </div>
@@ -1176,18 +1304,31 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
                               </label>
                               <div className="grid grid-cols-3 gap-2">
                                 {availableTimeSlots.length > 0 ? (
-                                  availableTimeSlots.map((timeSlot) => (
-                                    <Button
-                                      key={timeSlot}
-                                      type="button"
-                                      variant={selectedTimeSlot === timeSlot ? 'default' : 'outline'}
-                                      className="flex items-center justify-center"
-                                      onClick={() => handleTimeSlotSelect(timeSlot)}
-                                    >
-                                      <Clock className="mr-1 h-3 w-3" />
-                                      {timeSlot}
-                                    </Button>
-                                  ))
+                                  availableTimeSlots.map((timeSlot) => {
+                                    const isBooked = isTimeSlotBooked(timeSlot);
+                                    return (
+                                      <Button
+                                        key={timeSlot}
+                                        type="button"
+                                        variant={selectedTimeSlot === timeSlot ? 'default' : 'outline'}
+                                        className={`flex items-center justify-center ${
+                                          isBooked
+                                            ? 'bg-gray-200 border-gray-300 text-gray-500 cursor-not-allowed hover:bg-gray-200 hover:text-gray-500'
+                                            : ''
+                                        }`}
+                                        onClick={() => handleTimeSlotSelect(timeSlot)}
+                                        disabled={isBooked}
+                                      >
+                                        <Clock className="mr-1 h-3 w-3" />
+                                        {timeSlot}
+                                        {isBooked && (
+                                          <span className="ml-1 text-xs text-rose-500 font-medium">
+                                            (Occupied)
+                                          </span>
+                                        )}
+                                      </Button>
+                                    );
+                                  })
                                 ) : (
                                   <p className="col-span-3 text-center text-gray-500 py-4">
                                     No available time slots for this date

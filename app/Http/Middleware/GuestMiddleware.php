@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 
 class GuestMiddleware
 {
@@ -23,16 +24,19 @@ class GuestMiddleware
                 // Get the authenticated user
                 $user = Auth::guard($guard)->user();
 
-                // Redirect based on user role
-                // Check the user_role property or method based on your implementation
-                if ($user->user_role === 'admin') {
-                    return redirect()->route('admin.dashboard');
-                } elseif ($user->user_role === 'user') {
-                    return redirect()->route('user.dashboard');
+                // Redirect based on user role using the constants from User model
+                switch ($user->user_role) {
+                    case User::ROLE_ADMIN:
+                        return redirect()->route('admin.dashboard');
+                    case User::ROLE_DOCTOR:
+                        return redirect()->route('doctor.dashboard');
+                    case User::ROLE_CLINICAL_STAFF:
+                        return redirect()->route('staff.dashboard');
+                    case User::ROLE_PATIENT:
+                        return redirect()->route('patient.dashboard');
+                    default:
+                        return redirect()->route('dashboard');
                 }
-
-                // Default dashboard for any authenticated user
-                return redirect()->route('user.dashboard');
             }
         }
 

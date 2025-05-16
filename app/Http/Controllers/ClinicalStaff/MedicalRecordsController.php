@@ -4,10 +4,13 @@ namespace App\Http\Controllers\ClinicalStaff;
 
 use App\Http\Controllers\Controller;
 use App\Models\PatientRecord;
+use App\Models\Prescription;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class MedicalRecordsController extends Controller
 {
@@ -24,6 +27,7 @@ class MedicalRecordsController extends Controller
 
         return Inertia::render('ClinicalStaff/MedicalRecords', [
             'user' => [
+                'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
@@ -43,6 +47,7 @@ class MedicalRecordsController extends Controller
 
         return Inertia::render('ClinicalStaff/MedicalRecordsAdd', [
             'user' => [
+                'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
@@ -108,12 +113,13 @@ class MedicalRecordsController extends Controller
     public function show($id)
     {
         $user = Auth::user();
-        $record = PatientRecord::with(['patient', 'assignedDoctor'])
+        $record = PatientRecord::with(['patient', 'assignedDoctor.doctorProfile'])
             ->where('id', $id)
             ->firstOrFail();
 
         return Inertia::render('ClinicalStaff/MedicalRecordsView', [
             'user' => [
+                'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
@@ -137,6 +143,7 @@ class MedicalRecordsController extends Controller
 
         return Inertia::render('ClinicalStaff/MedicalRecordsEdit', [
             'user' => [
+                'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
@@ -176,6 +183,15 @@ class MedicalRecordsController extends Controller
 
         if ($request->has('prescriptions')) {
             $record->prescriptions = $request->input('prescriptions');
+
+            // Save prescriptions to the prescriptions table
+            $this->savePrescriptions(
+                $request->input('prescriptions'),
+                $validated['patient_id'],
+                $validated['assigned_doctor_id'],
+                $id,
+                $validated['appointment_date']
+            );
         }
 
         // Handle medical record details
@@ -196,6 +212,89 @@ class MedicalRecordsController extends Controller
 
         return redirect()->route('staff.clinical.info')
             ->with('success', 'Medical record updated successfully');
+    }
+
+    /**
+     * Save prescriptions to the Prescription model
+     */
+    private function savePrescriptions($prescriptions, $patientId, $doctorId, $recordId, $date)
+    {
+        // Delete existing prescriptions for this record to avoid duplicates
+        Prescription::where('record_id', $recordId)->delete();
+
+        // Make sure prescriptions is an array
+        if (!is_array($prescriptions)) {
+            try {
+                $prescriptions = json_decode($prescriptions, true);
+            } catch (\Exception $e) {
+                Log::error("Failed to parse prescriptions: " . $e->getMessage());
+                return;
+            }
+        }
+
+        foreach ($prescriptions as $prescription) {
+            // Skip empty prescriptions
+            if (empty($prescription['medication'])) {
+                continue;
+            }
+
+            try {
+                Prescription::create([
+                    'patient_id' => $patientId,
+                    'record_id' => $recordId,
+                    'doctor_id' => $doctorId,
+                    'medication' => $prescription['medication'],
+                    'dosage' => $prescription['dosage'] ?? '',
+                    'frequency' => $prescription['frequency'] ?? '',
+                    'duration' => $prescription['duration'] ?? '',
+                    'instructions' => $prescription['instructions'] ?? '',
+                    'prescription_date' => $date,
+                    'reference_number' => Prescription::generateReferenceNumber(),
+                    'status' => 'active',
+                ]);
+            } catch (\Exception $e) {
+                Log::error("Failed to save prescription: " . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Download a prescription PDF
+     */
+    public function downloadPrescription($id)
+    {
+        // Get the original prescription to get record_id and other details
+        $originalPrescription = Prescription::with(['patient', 'doctor', 'record'])->findOrFail($id);
+        
+        // Get all prescriptions for the same record
+        $allPrescriptions = Prescription::where('record_id', $originalPrescription->record_id)
+            ->orderBy('created_at', 'asc')
+            ->get();
+            
+        $data = [
+            'prescription' => $originalPrescription, // Keep for backward compatibility
+            'prescriptions' => $allPrescriptions,    // Add all prescriptions
+            'clinic_name' => 'Famcare Medical Clinic',
+            'clinic_address' => '123 Healthcare Street, Medical District',
+            'clinic_contact' => '+1 (555) 123-4567',
+            'date' => now()->format('F d, Y'),
+        ];
+
+        $pdf = PDF::loadView('pdf.prescription', $data);
+
+        return $pdf->download('prescription_' . $originalPrescription->reference_number . '.pdf');
+    }
+
+    /**
+     * Get prescriptions for a medical record
+     */
+    public function getPrescriptions($recordId)
+    {
+        $prescriptions = Prescription::where('record_id', $recordId)
+            ->with(['patient', 'doctor'])
+            ->get();
+
+        return response()->json($prescriptions);
     }
 
     /**
@@ -228,6 +327,7 @@ class MedicalRecordsController extends Controller
 
         return Inertia::render('ClinicalStaff/PatientHistory', [
             'user' => [
+                'id' => Auth::user()->id,
                 'name' => Auth::user()->name,
                 'email' => Auth::user()->email,
                 'role' => Auth::user()->user_role,

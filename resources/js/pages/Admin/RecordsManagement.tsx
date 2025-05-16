@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { useForm } from "@inertiajs/react";
-import { Link } from "@inertiajs/react";
 import {
   Search,
-  Edit,
   Trash,
   FileText,
   Filter,
@@ -149,37 +147,6 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
     });
   };
 
-  const handleEdit = (record: MedicalRecord) => {
-    // Transform lab_results to ensure they have the new fields if they don't exist
-    const labResults = record.lab_results || {};
-    const updatedLabResults: Record<string, LabTestResult> = {};
-
-    Object.entries(labResults).forEach(([key, value]: [string, any]) => {
-      updatedLabResults[key] = {
-        value: value.value || '',
-        range: value.range || '',
-        status: value.status || 'normal',
-        is_checked: value.is_checked !== undefined ? value.is_checked : false,
-        result: value.result !== undefined ? value.result : '',
-        remarks: value.remarks !== undefined ? value.remarks : ''
-      };
-    });
-
-    setData({
-      id: record.id.toString(),
-      patient_id: record.patient.id.toString(),
-      assigned_doctor_id: record.assigned_doctor ? record.assigned_doctor.id.toString() : "none",
-      record_type: record.record_type,
-      status: record.status,
-      appointment_date: record.appointment_date,
-      details: record.details || "",
-      lab_results: updatedLabResults,
-      vital_signs: record.vital_signs || {},
-      prescriptions: record.prescriptions || []
-    });
-    setIsCreateModalOpen(true);
-  };
-
   const handleUpdate = () => {
     // Convert "none" back to empty string for the backend
     if (data.assigned_doctor_id === "none") {
@@ -253,9 +220,6 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold tracking-tight">Records Management</h1>
-          <Button onClick={() => setIsCreateModalOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Create Record
-          </Button>
         </div>
 
         {/* Filters and Search */}
@@ -379,22 +343,6 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        asChild
-                      >
-                        <Link href={route('admin.records.show', record.id)}>
-                          <FileText className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(record)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
                       <Button
                         variant="outline"
                         size="sm"

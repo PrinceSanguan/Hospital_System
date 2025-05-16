@@ -4,6 +4,7 @@ export interface UserData {
   name: string;
   email: string;
   role: string;
+  profile_image?: string | null;
 }
 
 // Schedule types
