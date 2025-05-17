@@ -3,8 +3,6 @@ import { motion } from "framer-motion";
 import { LucideIcon, Microscope, Stethoscope, Calendar, ClipboardList, UserRound, UserCog, Clock, MapPin, Phone, Mail, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState, useRef } from "react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { useRouter } from "next/navigation";
 
 interface Service {
   id: string;
@@ -98,7 +96,6 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
   const [isLoading, setIsLoading] = useState(true);
   const reloadAttempts = useRef(0);
   const maxReloadAttempts = 3;
-  const router = useRouter();
 
   useEffect(() => {
     // Immediately set loading to false when component is mounted
