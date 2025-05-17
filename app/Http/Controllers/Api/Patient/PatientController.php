@@ -86,7 +86,7 @@ class PatientController extends Controller
                 return [
                     'id' => $doctor->id,
                     'name' => $doctor->name,
-                    'specialty' => $doctor->doctorProfile?->specialty ?? '',
+                    'specialty' => $doctor->doctorProfile?->specialization ?? '',
                     'image' => $doctor->profile_photo ?? '/placeholder-avatar.jpg',
                     'availability' => $doctor->availability ?? [],
                     'schedules' => $doctor->schedules,
@@ -355,7 +355,7 @@ class PatientController extends Controller
                 $doctorRecord = new Doctor();
                 $doctorRecord->user_id = $doctor->id;
                 $doctorRecord->name = $doctor->name;
-                $doctorRecord->specialization = $doctor->doctorProfile?->specialty ?? 'General Practitioner';
+                $doctorRecord->specialization = $doctor->doctorProfile?->specialization ?? 'General Practitioner';
                 $doctorRecord->license_number = $doctor->doctorProfile?->license_number ?? null;
                 $doctorRecord->contact_number = $doctor->phone ?? null;
                 $doctorRecord->save();
@@ -522,7 +522,7 @@ class PatientController extends Controller
                 return [
                     'id' => $doctor->id,
                     'name' => $doctor->name,
-                    'specialty' => $doctor->doctorProfile?->specialty ?? '',
+                    'specialty' => $doctor->doctorProfile?->specialization ?? '',
                     'image' => $doctor->profile_photo ?? '/placeholder-avatar.jpg',
                     'availability' => $doctor->availability ?? [],
                     'schedules' => $doctor->schedules,
@@ -781,7 +781,7 @@ class PatientController extends Controller
                 return [
                     'id' => $doctor->id,
                     'name' => $doctor->name,
-                    'specialty' => $doctor->doctorProfile?->specialty ?? '',
+                    'specialty' => $doctor->doctorProfile?->specialization ?? '',
                     'profile_image' => $doctor->doctorProfile?->profile_image ?
                         (str_starts_with($doctor->doctorProfile->profile_image, 'images/')
                             ? asset($doctor->doctorProfile->profile_image)
@@ -1128,7 +1128,7 @@ class PatientController extends Controller
 
     /**
      * Display all notifications
-     * 
+     *
      * @return \Illuminate\Http\JsonResponse
      */
     public function getNotifications()
@@ -1151,7 +1151,7 @@ class PatientController extends Controller
 
     /**
      * Mark notification as read
-     * 
+     *
      * @param int $id
      * @return \Illuminate\Http\JsonResponse
      */
@@ -1170,7 +1170,7 @@ class PatientController extends Controller
 
     /**
      * Mark all notifications as read
-     * 
+     *
      * @return \Illuminate\Http\JsonResponse
      */
     public function markAllAsRead()
@@ -1187,7 +1187,7 @@ class PatientController extends Controller
 
     /**
      * Get unread notifications count
-     * 
+     *
      * @return \Illuminate\Http\JsonResponse
      */
     public function getUnreadCount()
@@ -1204,7 +1204,7 @@ class PatientController extends Controller
 
     /**
      * Get recent notifications
-     * 
+     *
      * @return \Illuminate\Http\JsonResponse
      */
     public function getRecent()

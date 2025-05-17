@@ -101,7 +101,7 @@ class PatientDashboardController extends Controller
                 return [
                     'id' => $doctor->id,
                     'name' => $doctor->name,
-                    'specialty' => $doctor->doctorProfile?->specialty ?? '', // Changed from 'General Practitioner' to empty string
+                    'specialty' => $doctor->doctorProfile?->specialization ?? '', // Changed from 'specialty' to 'specialization'
                     'image' => $doctor->profile_photo ?? '/placeholder-avatar.jpg',
                     'availability' => $doctor->availability ?? [],
                     'schedules' => $doctor->schedules,
@@ -372,7 +372,7 @@ class PatientDashboardController extends Controller
                 $doctorRecord = new \App\Models\Doctor();
                 $doctorRecord->user_id = $doctor->id;
                 $doctorRecord->name = $doctor->name;
-                $doctorRecord->specialization = $doctor->doctorProfile?->specialty ?? 'General Practitioner';
+                $doctorRecord->specialization = $doctor->doctorProfile?->specialization ?? 'General Practitioner';
                 $doctorRecord->license_number = $doctor->doctorProfile?->license_number ?? null;
                 $doctorRecord->contact_number = $doctor->phone ?? null;
                 $doctorRecord->save();
@@ -692,12 +692,8 @@ class PatientDashboardController extends Controller
                     return [
                         'id' => $doctor->id,
                         'name' => $doctor->name,
-                        'specialty' => $doctor->doctorProfile?->specialty ?? '', // Changed from 'General Practitioner' to empty string
-                        'profile_image' => $doctor->doctorProfile?->profile_image ?
-                            (str_starts_with($doctor->doctorProfile->profile_image, 'images/')
-                                ? asset($doctor->doctorProfile->profile_image)
-                                : asset('storage/' . $doctor->doctorProfile->profile_image))
-                            : null,
+                        'specialty' => $doctor->doctor_profile->specialization ?? 'General Practitioner',
+                        'profile_image' => $doctor->doctor_profile->profile_image ?? null,
                         'availability' => $doctor->availability ?? [],
                         'schedules' => $doctor->schedules,
                         'services' => $doctor->services,
@@ -893,7 +889,7 @@ class PatientDashboardController extends Controller
                 return [
                     'id' => $doctor->id,
                     'name' => $doctor->name,
-                    'specialty' => $doctor->doctor_profile->specialty ?? 'General Practitioner',
+                    'specialty' => $doctor->doctor_profile->specialization ?? 'General Practitioner',
                     'profile_image' => $doctor->doctor_profile->profile_image ?? null,
                 ];
             });

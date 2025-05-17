@@ -7,6 +7,7 @@ use App\Models\DoctorService;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -58,7 +59,7 @@ class DoctorProfileController extends Controller
                 'name' => $doctor->name,
                 'email' => $doctor->email,
                 'role' => $doctor->user_role,
-                'specialty' => $doctor->specialty,
+                'specialty' => $doctor->doctorProfile?->specialization,
                 'qualifications' => $doctor->doctorProfile?->qualifications,
                 'about' => $doctor->doctorProfile?->about,
                 'phone_number' => $doctor->doctorProfile?->phone_number,
@@ -98,7 +99,7 @@ class DoctorProfileController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
-                'specialty' => $user->specialty,
+                'specialty' => $profile->specialization,
                 'qualifications' => $profile->qualifications,
                 'about' => $profile->about,
                 'phone_number' => $profile->phone_number,
@@ -156,6 +157,7 @@ class DoctorProfileController extends Controller
 
         $profile->fill([
             'phone_number' => $request->phone_number,
+            'specialization' => $request->specialty,
             'qualifications' => $request->qualifications,
             'address' => $request->address,
             'about' => $request->about,
@@ -169,10 +171,6 @@ class DoctorProfileController extends Controller
             'name' => $request->name ?? $user->name,
         ];
 
-        if ($request->has('specialty')) {
-            $updateData['specialty'] = $request->specialty;
-        }
-
         $user->update($updateData);
 
         $profile->save();
@@ -183,7 +181,7 @@ class DoctorProfileController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
-                'specialty' => $user->specialty,
+                'specialty' => $profile->specialization,
                 'qualifications' => $profile->qualifications,
                 'about' => $profile->about,
                 'phone_number' => $profile->phone_number,
@@ -244,7 +242,7 @@ class DoctorProfileController extends Controller
                 return [
                     'id' => $doctor->id,
                     'name' => $doctor->name,
-                    'specialty' => $doctor->specialty,
+                    'specialty' => $doctor->doctorProfile?->specialization,
                     'qualifications' => $doctor->doctorProfile?->qualifications,
                     'about' => $doctor->doctorProfile?->about,
                     'years_of_experience' => $doctor->doctorProfile?->years_of_experience,
@@ -281,7 +279,7 @@ class DoctorProfileController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
-                'specialty' => $user->specialty,
+                'specialty' => $profile->specialization,
                 'qualifications' => $profile->qualifications,
                 'about' => $profile->about,
                 'phone' => $profile->phone_number,

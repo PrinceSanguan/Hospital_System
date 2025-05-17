@@ -135,14 +135,6 @@ export default function Records({ user, records }: RecordsProps) {
                 View all your medical records and request access to specific records
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button asChild variant="outline" className="flex items-center gap-1">
-                <Link href={route('patient.records.lab-results')}>
-                  <FileText className="h-4 w-4" />
-                  Lab Results
-                </Link>
-              </Button>
-            </div>
           </div>
 
           <Tabs defaultValue="all">

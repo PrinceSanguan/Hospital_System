@@ -441,7 +441,7 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
                     {/* Left side - Doctor information */}
                     <div className="flex-1 p-4">
                       <h3 className="font-bold text-lg text-gray-900 mb-1">{doctor.name}</h3>
-                      <p className="text-xs text-gray-600 mb-3">{doctor.specialty}</p>
+                      <p className="text-xs text-gray-600 mb-3">{doctor.specialty || "General Practitioner"}</p>
 
                       {/* Availability Tags */}
                       <div className="mb-4">
@@ -526,7 +526,7 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
                     </div>
                     <div>
                       <h3 className="font-bold text-lg">{doctor.name}</h3>
-                      <p className="text-sm text-gray-600">{doctor.specialty}</p>
+                      <p className="text-sm font-medium text-blue-600">{doctor.specialty || "General Practitioner"}</p>
                     </div>
                     </div>
                     <div className="mt-2">
@@ -583,7 +583,7 @@ export default function Landing({ services, hospitalServices = [], doctors = [],
                         </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-900">{doctor.name}</div>
-                              <div className="text-sm text-gray-500">{doctor.specialty}</div>
+                              <div className="text-sm text-gray-500">{doctor.specialty || "General Practitioner"}</div>
                     </div>
                   </div>
                         </td>
