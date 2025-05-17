@@ -64,25 +64,25 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 // Route to redirect users to their appropriate dashboard after login
-Route::get('/dashboard', function() {
-    $user = Auth::user();
+Route::get('/dashboard', function () {
+  $user = Auth::user();
 
-    if (!$user) {
-        return redirect()->route('auth.login');
-    }
+  if (!$user) {
+    return redirect()->route('auth.login');
+  }
 
-    switch ($user->user_role) {
-        case User::ROLE_ADMIN:
-            return redirect()->route('admin.dashboard');
-        case User::ROLE_DOCTOR:
-            return redirect()->route('doctor.dashboard');
-        case User::ROLE_CLINICAL_STAFF:
-            return redirect()->route('staff.dashboard');
-        case User::ROLE_PATIENT:
-            return redirect()->route('patient.dashboard');
-        default:
-            return redirect()->route('home');
-    }
+  switch ($user->user_role) {
+    case User::ROLE_ADMIN:
+      return redirect()->route('admin.dashboard');
+    case User::ROLE_DOCTOR:
+      return redirect()->route('doctor.dashboard');
+    case User::ROLE_CLINICAL_STAFF:
+      return redirect()->route('staff.dashboard');
+    case User::ROLE_PATIENT:
+      return redirect()->route('patient.dashboard');
+    default:
+      return redirect()->route('home');
+  }
 })->name('dashboard');
 
 /*
@@ -223,8 +223,6 @@ Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')-
   Route::delete('/schedule/{id}', [DoctorScheduleController::class, 'destroy'])->name('schedule.destroy');
   Route::post('/schedule/multiple', [DoctorScheduleController::class, 'storeMultiple'])->name('schedule.store-multiple');
   Route::get('/schedule/staff/{staffId}', [DoctorScheduleController::class, 'viewStaffSchedule'])->name('schedule.view-staff');
-
-
 });
 
 /*
@@ -248,7 +246,7 @@ Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staf
   Route::get('/dashboard', [StaffDashboardController::class, 'index'])->name('dashboard');
 
   // Profile
-  Route::get('/profile', function() {
+  Route::get('/profile', function () {
     return Inertia::render('ClinicalStaff/Profile', [
       'user' => Auth::user()
     ]);
@@ -291,21 +289,21 @@ Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staf
   Route::get('/appointments/{id}/lab-results', [AppointmentsController::class, 'getLabResults'])->name('appointments.lab-results');
 
   // Patient Records Management
-  Route::get('/patients', function() {
+  Route::get('/patients', function () {
     return Inertia::render('ClinicalStaff/Patients', [
       'user' => Auth::user()
     ]);
   })->name('patients');
 
   // Notifications
-  Route::get('/notifications', function() {
+  Route::get('/notifications', function () {
     return Inertia::render('ClinicalStaff/Notifications', [
       'user' => Auth::user()
     ]);
   })->name('notifications');
 
   // Follow-ups
-  Route::get('/followups', function() {
+  Route::get('/followups', function () {
     return Inertia::render('ClinicalStaff/Followups', [
       'user' => Auth::user()
     ]);
@@ -394,10 +392,10 @@ Route::middleware([PatientMiddleware::class])->prefix('patient')->name('patient.
   Route::get('/doctor-schedules', [PatientDashboardController::class, 'viewDoctorSchedules'])->name('doctors.schedules');
 
   // API routes for doctor information
-  Route::get('/api/doctors', [\App\Http\Controllers\DoctorProfileController::class, 'listDoctors'])->name('api.doctors');
-  Route::get('/api/doctors/{id}', [\App\Http\Controllers\DoctorProfileController::class, 'show'])->name('api.doctors.show');
-  Route::get('/api/doctors/{id}/services', [\App\Http\Controllers\DoctorServiceController::class, 'getDoctorServices'])->name('api.doctors.services');
-  Route::get('/api/doctor-schedules/{doctorId}', [\App\Http\Controllers\Api\DoctorScheduleController::class, 'getSchedules'])->name('api.doctor-schedules');
+  // Route::get('/api/doctors', [\App\Http\Controllers\DoctorProfileController::class, 'listDoctors'])->name('api.doctors');
+  // Route::get('/api/doctors/{id}', [\App\Http\Controllers\DoctorProfileController::class, 'show'])->name('api.doctors.show');
+  // Route::get('/api/doctors/{id}/services', [\App\Http\Controllers\DoctorServiceController::class, 'getDoctorServices'])->name('api.doctors.services');
+  // Route::get('/api/doctor-schedules/{doctorId}', [\App\Http\Controllers\Api\DoctorScheduleController::class, 'getSchedules'])->name('api.doctor-schedules');
 
   // Profile
   Route::get('/profile', [PatientDashboardController::class, 'viewProfile'])->name('profile.edit');
@@ -420,11 +418,11 @@ Route::middleware([PatientMiddleware::class])->prefix('patient')->name('patient.
 
 // Patient notification routes
 Route::middleware(['auth', 'role:patient'])->prefix('patient')->name('patient.')->group(function () {
-    Route::get('/notifications', [App\Http\Controllers\Patient\NotificationController::class, 'index'])->name('notifications.index');
-    Route::put('/notifications/{id}/read', [App\Http\Controllers\Patient\NotificationController::class, 'markAsRead'])->name('notifications.mark.read');
-    Route::put('/notifications/mark-all-read', [App\Http\Controllers\Patient\NotificationController::class, 'markAllAsRead'])->name('notifications.mark.all.read');
-    Route::get('/notifications/unread-count', [App\Http\Controllers\Patient\NotificationController::class, 'getUnreadCount'])->name('notifications.unread.count');
-    Route::get('/notifications/recent', [App\Http\Controllers\Patient\NotificationController::class, 'getRecent'])->name('notifications.recent');
+  Route::get('/notifications', [App\Http\Controllers\Patient\NotificationController::class, 'index'])->name('notifications.index');
+  Route::put('/notifications/{id}/read', [App\Http\Controllers\Patient\NotificationController::class, 'markAsRead'])->name('notifications.mark.read');
+  Route::put('/notifications/mark-all-read', [App\Http\Controllers\Patient\NotificationController::class, 'markAllAsRead'])->name('notifications.mark.all.read');
+  Route::get('/notifications/unread-count', [App\Http\Controllers\Patient\NotificationController::class, 'getUnreadCount'])->name('notifications.unread.count');
+  Route::get('/notifications/recent', [App\Http\Controllers\Patient\NotificationController::class, 'getRecent'])->name('notifications.recent');
 });
 
 // Setup routes
@@ -432,66 +430,54 @@ Route::get('/setup/create-notifications-table', [App\Http\Controllers\SetupContr
 
 // Lab Results Routes
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::prefix('staff/lab-results')->name('staff.lab-results.')->group(function () {
-        Route::get('/', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'index'])->name('index');
-        Route::post('/', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'store'])->name('store');
-        Route::get('/{id}', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'show'])->name('show');
-        Route::get('/{id}/download', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'download'])->name('download');
-        Route::delete('/{id}', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'destroy'])->name('destroy');
-    });
+  Route::prefix('staff/lab-results')->name('staff.lab-results.')->group(function () {
+    Route::get('/', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'index'])->name('index');
+    Route::post('/', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'store'])->name('store');
+    Route::get('/{id}', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'show'])->name('show');
+    Route::get('/{id}/download', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'download'])->name('download');
+    Route::delete('/{id}', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'destroy'])->name('destroy');
+  });
 });
 
 // Receipt Routes
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::prefix('staff/receipts')->name('staff.receipts.')->group(function () {
-        Route::get('/', [App\Http\Controllers\ClinicalStaff\ReceiptsController::class, 'index'])->name('index');
-        Route::post('/', [App\Http\Controllers\ClinicalStaff\ReceiptsController::class, 'store'])->name('store');
-        Route::get('/{id}', [App\Http\Controllers\ClinicalStaff\ReceiptsController::class, 'show'])->name('show');
-        Route::get('/{id}/download', [App\Http\Controllers\ClinicalStaff\ReceiptsController::class, 'download'])->name('download');
-        Route::delete('/{id}', [App\Http\Controllers\ClinicalStaff\ReceiptsController::class, 'destroy'])->name('destroy');
-    });
+  Route::prefix('staff/receipts')->name('staff.receipts.')->group(function () {
+    Route::get('/', [App\Http\Controllers\ClinicalStaff\ReceiptsController::class, 'index'])->name('index');
+    Route::post('/', [App\Http\Controllers\ClinicalStaff\ReceiptsController::class, 'store'])->name('store');
+    Route::get('/{id}', [App\Http\Controllers\ClinicalStaff\ReceiptsController::class, 'show'])->name('show');
+    Route::get('/{id}/download', [App\Http\Controllers\ClinicalStaff\ReceiptsController::class, 'download'])->name('download');
+    Route::delete('/{id}', [App\Http\Controllers\ClinicalStaff\ReceiptsController::class, 'destroy'])->name('destroy');
+  });
 });
 
 // Debug route to test patient search directly
-Route::get('/test-patient-search', function() {
-    $term = request()->input('term', 'PAT000001');
+Route::get('/test-patient-search', function () {
+  $term = request()->input('term', 'PAT000001');
 
-    // Try exact match first
-    $exactMatch = Patient::where('reference_number', $term)
-                    ->orWhere('reference_number', strtoupper($term))
-                    ->orWhere('reference_number', strtolower($term))
-                    ->first();
+  // Try exact match first
+  $exactMatch = Patient::where('reference_number', $term)
+    ->orWhere('reference_number', strtoupper($term))
+    ->orWhere('reference_number', strtolower($term))
+    ->first();
 
-    if ($exactMatch) {
-        return response()->json([
-            'success' => true,
-            'patient' => $exactMatch,
-            'match_type' => 'exact'
-        ]);
-    }
-
-    // Try general search
-    $patients = Patient::where('name', 'like', "%{$term}%")
-                ->orWhere('reference_number', 'like', "%{$term}%")
-                ->limit(10)
-                ->get();
-
+  if ($exactMatch) {
     return response()->json([
-        'success' => true,
-        'patients' => $patients,
-        'count' => $patients->count(),
-        'match_type' => 'partial'
+      'success' => true,
+      'patient' => $exactMatch,
+      'match_type' => 'exact'
     ]);
-});
+  }
 
-// API routes for patient information
-Route::prefix('api')->name('api.')->group(function () {
-    Route::get('patients/search', [App\Http\Controllers\Api\PatientController::class, 'search'])->name('patients.search');
-    Route::get('patients/{patient}/appointments', [App\Http\Controllers\Api\PatientController::class, 'getAppointments'])->name('patients.appointments');
-});
+  // Try general search
+  $patients = Patient::where('name', 'like', "%{$term}%")
+    ->orWhere('reference_number', 'like', "%{$term}%")
+    ->limit(10)
+    ->get();
 
-// API Routes for internal AJAX requests
-Route::prefix('api/v1')->name('api.')->group(function () {
-    Route::get('/patients/{id}', [\App\Http\Controllers\Api\PatientsController::class, 'find'])->name('patients.find');
-    Route::get('/patients/{id}/appointments', [\App\Http\Controllers\Api\PatientsController::class, 'appointments'])->name('patients.appointments');
+  return response()->json([
+    'success' => true,
+    'patients' => $patients,
+    'count' => $patients->count(),
+    'match_type' => 'partial'
+  ]);
 });
