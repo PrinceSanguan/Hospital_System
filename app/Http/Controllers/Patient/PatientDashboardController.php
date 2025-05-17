@@ -115,7 +115,20 @@ class PatientDashboardController extends Controller
                 'email' => $user->email,
                 'role' => $user->user_role,
             ],
-            'upcomingAppointments' => $upcomingAppointments,
+            'upcomingAppointments' => $upcomingAppointments->map(function($appointment) {
+                // Make sure doctor information is always included
+                return [
+                    'id' => $appointment->id,
+                    'appointment_date' => $appointment->appointment_date,
+                    'status' => $appointment->status,
+                    'record_type' => $appointment->record_type,
+                    'details' => $appointment->details,
+                    'assignedDoctor' => $appointment->assignedDoctor ? [
+                        'id' => $appointment->assignedDoctor->id,
+                        'name' => $appointment->assignedDoctor->name
+                    ] : null
+                ];
+            }),
             'labResults' => $labResults,
             'medicalRecords' => $medicalRecords,
             'notifications' => $notifications,
@@ -472,7 +485,20 @@ class PatientDashboardController extends Controller
                 'email' => $user->email,
                 'role' => $user->user_role,
             ],
-            'appointments' => $appointments,
+            'appointments' => $appointments->map(function($appointment) {
+                // Make sure doctor information is always included
+                return [
+                    'id' => $appointment->id,
+                    'appointment_date' => $appointment->appointment_date,
+                    'status' => $appointment->status,
+                    'record_type' => $appointment->record_type,
+                    'details' => $appointment->details,
+                    'assignedDoctor' => $appointment->assignedDoctor ? [
+                        'id' => $appointment->assignedDoctor->id,
+                        'name' => $appointment->assignedDoctor->name
+                    ] : null
+                ];
+            }),
             'notifications' => $notifications,
         ]);
     }

@@ -1,6 +1,8 @@
 <?php
 
+use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Artisan;
 use Inertia\Inertia;
 use App\Http\Middleware\GuestMiddleware;
 use App\Models\Patient;
@@ -495,3 +497,9 @@ Route::prefix('api/v1')->name('api.')->group(function () {
     Route::get('/patients/{id}', [\App\Http\Controllers\Api\PatientsController::class, 'find'])->name('patients.find');
     Route::get('/patients/{id}/appointments', [\App\Http\Controllers\Api\PatientsController::class, 'appointments'])->name('patients.appointments');
 });
+
+// Add a route to run the fix command for appointments (can be removed after use)
+Route::get('/fix-appointments', function() {
+    Artisan::call('app:fix-patient-appointments');
+    return redirect('/patient/dashboard')->with('success', 'Appointments fixed successfully!');
+})->middleware(['auth', 'verified']);

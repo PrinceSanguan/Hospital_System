@@ -297,7 +297,8 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
       // In production, you would want to remove this fallback
       if (process.env.NODE_ENV !== 'production') {
         console.log('No matching schedules found - using default time slots');
-        const defaultSlots = ['9:00 AM', '10:00 AM', '11:00 AM', '1:00 PM', '2:00 PM', '3:00 PM'];
+        // Updated default time slots to only show PM slots from 1:00 PM to 5:00 PM
+        const defaultSlots = ['1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM'];
         setAvailableTimeSlots(defaultSlots);
 
         // After setting available time slots, fetch booked slots
@@ -325,9 +326,14 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
         // Format as 12-hour time
         const hourFormatted = startHour % 12 || 12;
         const amPm = startHour < 12 ? 'AM' : 'PM';
-        const timeSlot = `${hourFormatted}:00 ${amPm}`;
-        console.log('Adding time slot:', timeSlot);
-        slots.push(timeSlot);
+
+        // Only add time slots from 1:00 PM to 5:00 PM
+        // These are the hours set on the staff side
+        if (startHour >= 13 && startHour <= 17) {
+          const timeSlot = `${hourFormatted}:00 ${amPm}`;
+          console.log('Adding time slot:', timeSlot);
+          slots.push(timeSlot);
+        }
         startHour++;
       }
     });
@@ -676,9 +682,8 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
   // Handle logout functionality
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault();
-    router.get('/logout');
+    router.post(route('auth.logout'));
   };
-
   return (
     <div className="flex h-screen bg-gray-50">
       <Head title="Book Appointment" />
@@ -794,15 +799,7 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      router.get('/logout');
-                    }}
-                    className="w-full text-left"
-                  >
-                    Logout
-                  </button>
+                <Link href="#" onClick={handleLogout}>Logout</Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

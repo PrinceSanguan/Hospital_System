@@ -514,13 +514,6 @@ export default function PatientDashboard({
             <h1 className="text-3xl font-bold text-gray-900">Welcome, {user.name}</h1>
               <p className="mt-1 text-gray-600">Here's an overview of your health</p>
             </div>
-            <div className="mt-4 md:mt-0 flex gap-2">
-              <Button asChild size="sm" variant="outline">
-                <Link href="/patient/records">
-                  <FileText className="w-4 h-4 mr-2" /> View Records
-                </Link>
-              </Button>
-            </div>
           </div>
 
           {/* Today's Overview */}
@@ -607,9 +600,9 @@ export default function PatientDashboard({
                             {appointment.record_type === 'medical_checkup' ? 'Medical Checkup' : 'Laboratory Test'}
                           </p>
                           <p className="text-sm text-gray-500">
-                            {appointment.assignedDoctor
+                            {appointment.assignedDoctor && appointment.assignedDoctor.name
                               ? `Dr. ${appointment.assignedDoctor.name}`
-                              : 'Doctor not assigned yet'}
+                              : 'Pending doctor assignment'}
                           </p>
                         </div>
                         <div className="mt-2 text-right sm:mt-0">
@@ -745,7 +738,7 @@ export default function PatientDashboard({
                               ))}
                             </div>
                           ) : (
-                            <div className="ml-6 text-sm text-gray-600">Schedule not available</div>
+                            <div className="ml-6 text-sm text-gray-600"></div>
                           )}
                         </div>
 

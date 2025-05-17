@@ -69,8 +69,10 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({
                 </Badge>
               </div>
 
-              {doctorName && (
+              {doctorName ? (
                 <p className="text-sm text-gray-600">Dr. {doctorName}</p>
+              ) : (
+                <p className="text-sm text-gray-600">Pending doctor assignment</p>
               )}
 
               <div className="mt-2 space-y-1">
