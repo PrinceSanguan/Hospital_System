@@ -51,4 +51,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Upload
     Route::post('/patient/upload-medical-records', [PatientController::class, 'uploadMedicalRecords']);
+
+    //get doctor schedule
+    Route::get('/patient/doctor-schedules/{doctorId?}', [PatientController::class, 'getDoctorSchedules']);
+
+    Route::post('/patient/cleanup-temp-file', [PatientController::class, 'cleanupTempFile']);
 });

@@ -17,6 +17,7 @@ use App\Models\Appointment;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use App\Models\DoctorSchedule;
 
 
 class PatientController extends Controller
@@ -977,7 +978,10 @@ class PatientController extends Controller
         $doctor = User::where('user_role', User::ROLE_DOCTOR)
             ->with(['doctorProfile', 'services' => function ($query) {
                 $query->where('is_active', true);
-            }, 'schedules'])
+            }, 'schedules' => function ($query) {
+                $query->where('is_available', true)
+                    ->where('is_approved', true);
+            }])
             ->findOrFail($id);
 
         // Get available dates based on doctor schedules
@@ -985,14 +989,23 @@ class PatientController extends Controller
 
         if ($doctor->schedules) {
             foreach ($doctor->schedules as $schedule) {
-                if ($schedule->is_available) {
-                    // Add available days from schedules
-                    $availableDates[] = [
-                        'day' => $schedule->day_of_week,
-                        'start_time' => $schedule->start_time,
-                        'end_time' => $schedule->end_time,
-                    ];
+                $availableSlots = $schedule->getAvailableSlotsCount();
+
+                $scheduleData = [
+                    'id' => $schedule->id,
+                    'day' => $schedule->day_of_week,
+                    'start_time' => $schedule->start_time,
+                    'end_time' => $schedule->end_time,
+                    'available_slots' => $availableSlots,
+                    'is_fully_booked' => $schedule->isFullyBooked(),
+                ];
+
+                // Include schedule_date if it exists
+                if ($schedule->schedule_date) {
+                    $scheduleData['schedule_date'] = $schedule->schedule_date->format('Y-m-d');
                 }
+
+                $availableDates[] = $scheduleData;
             }
         }
 
@@ -1014,35 +1027,90 @@ class PatientController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'success' => false,
+                'status' => 'error',
                 'message' => 'Validation failed',
                 'errors' => $validator->errors()
             ], 422);
         }
 
         try {
+            Log::info('Fetching booked time slots', [
+                'doctor_id' => $request->doctor_id,
+                'date' => $request->date
+            ]);
+
             // Find all appointments for this doctor on the selected date
             $bookedAppointments = PatientRecord::where('assigned_doctor_id', $request->doctor_id)
                 ->whereDate('appointment_date', $request->date)
                 ->whereIn('status', ['pending', 'confirmed']) // Only include pending and confirmed appointments
                 ->get();
 
+            Log::info('Found appointments', [
+                'count' => $bookedAppointments->count(),
+                'appointments' => $bookedAppointments->pluck('id')->toArray()
+            ]);
+
             // Extract the appointment times from the details JSON
             $bookedTimeSlots = [];
             foreach ($bookedAppointments as $appointment) {
                 $details = json_decode($appointment->details, true);
                 if (isset($details['appointment_time'])) {
-                    $bookedTimeSlots[] = $details['appointment_time'];
+                    // Ensure consistent HH:MM format
+                    $timeStr = $details['appointment_time'];
+                    $time = date('H:i', strtotime($timeStr));
+                    $bookedTimeSlots[] = $time;
+
+                    Log::info('Appointment time parsed', [
+                        'original' => $timeStr,
+                        'formatted' => $time
+                    ]);
                 }
             }
 
+            // Get doctor's schedule for this day
+            $dayOfWeek = date('l', strtotime($request->date)); // Get day name (Monday, Tuesday, etc.)
+
+            $schedule = DoctorSchedule::where('doctor_id', $request->doctor_id)
+                ->where(function ($query) use ($request, $dayOfWeek) {
+                    // Match either by specific date or recurring day of week
+                    $query->where('schedule_date', $request->date)
+                        ->orWhere('day_of_week', $dayOfWeek);
+                })
+                ->where('is_available', true)
+                ->first();
+
+            Log::info('Found schedule', ['schedule' => $schedule]);
+
+            // Return schedule information for frontend to generate time slots
+            $scheduleInfo = null;
+            if ($schedule) {
+                $scheduleInfo = [
+                    'id' => $schedule->id,
+                    'start_time' => date('H:i', strtotime($schedule->start_time)),
+                    'end_time' => date('H:i', strtotime($schedule->end_time)),
+                    'break_start' => $schedule->break_start ? date('H:i', strtotime($schedule->break_start)) : null,
+                    'break_end' => $schedule->break_end ? date('H:i', strtotime($schedule->break_end)) : null,
+                ];
+            }
+
+            Log::info('Returning booked times', [
+                'bookedTimeSlots' => array_unique($bookedTimeSlots),
+                'schedule' => $scheduleInfo
+            ]);
+
             return response()->json([
-                'success' => true,
-                'bookedTimeSlots' => $bookedTimeSlots
+                'status' => 'success',
+                'bookedTimeSlots' => array_unique($bookedTimeSlots),
+                'schedule' => $scheduleInfo
             ]);
         } catch (\Exception $e) {
+            Log::error('Error retrieving booked time slots', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
-                'success' => false,
+                'status' => 'error',
                 'message' => 'Error retrieving booked time slots: ' . $e->getMessage()
             ], 500);
         }
@@ -1094,9 +1162,6 @@ class PatientController extends Controller
                 ], 404);
             }
 
-            // Get the file contents
-            $file = Storage::get($labResult->file_path);
-
             // Set the content type based on the file extension
             $extension = pathinfo($labResult->file_path, PATHINFO_EXTENSION);
             $contentType = 'application/pdf';
@@ -1106,12 +1171,29 @@ class PatientController extends Controller
                 $contentType = 'image/png';
             }
 
-            // Return the file as a download
-            $filename = $labResult->test_type . '_results.' . pathinfo($labResult->file_path, PATHINFO_EXTENSION);
+            // Generate a filename
+            $filename = $labResult->test_type . '_results.' . $extension;
 
-            return response($file, 200, [
-                'Content-Type' => $contentType,
-                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            // For mobile apps, we need a publicly accessible URL
+            // Copy to public storage
+            $publicPath = 'public/lab_downloads/' . $filename;
+
+            // Ensure directory exists
+            if (!Storage::exists('public/lab_downloads')) {
+                Storage::makeDirectory('public/lab_downloads');
+            }
+
+            // Copy the file
+            Storage::copy($labResult->file_path, $publicPath);
+
+            // Get the URL
+            $fileUrl = url('storage/lab_downloads/' . $filename);
+
+            return response()->json([
+                'status' => 'success',
+                'file_url' => $fileUrl,
+                'file_name' => $filename,
+                'content_type' => $contentType
             ]);
         } catch (\Exception $e) {
             Log::error('Error downloading lab result', [
@@ -1501,5 +1583,95 @@ class PatientController extends Controller
             'files' => $uploadedFiles,
             'message' => 'Files uploaded successfully.',
         ]);
+    }
+
+    public function getDoctorSchedules($doctorId = null)
+    {
+        try {
+            // Add detailed logging
+            Log::info('Getting doctor schedules', [
+                'doctor_id' => $doctorId,
+                'user_id' => Auth::id()
+            ]);
+
+            // If doctor ID is specified, get schedules for just that doctor
+            if ($doctorId) {
+                $doctor = User::where('id', $doctorId)
+                    ->where('user_role', User::ROLE_DOCTOR)
+                    ->first();
+
+                if (!$doctor) {
+                    Log::warning('Doctor not found', ['doctor_id' => $doctorId]);
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Doctor not found'
+                    ], 404);
+                }
+
+                $schedules = DoctorSchedule::where('doctor_id', $doctorId)
+                    ->where('is_available', true) // Only get available schedules
+                    ->orderBy('day_of_week')
+                    ->get()
+                    ->map(function ($schedule) {
+                        // Ensure time format is consistent (HH:MM format)
+                        return [
+                            'id' => $schedule->id,
+                            'doctor_id' => $schedule->doctor_id,
+                            'day_of_week' => $schedule->day_of_week,
+                            'start_time' => date('H:i', strtotime($schedule->start_time)),
+                            'end_time' => date('H:i', strtotime($schedule->end_time)),
+                            'is_available' => $schedule->is_available,
+                            'max_appointments' => $schedule->max_appointments,
+                            'schedule_date' => $schedule->schedule_date ? $schedule->schedule_date->format('Y-m-d') : null,
+                            'break_start' => $schedule->break_start ? date('H:i', strtotime($schedule->break_start)) : null,
+                            'break_end' => $schedule->break_end ? date('H:i', strtotime($schedule->break_end)) : null,
+                        ];
+                    });
+
+                Log::info('Doctor schedules retrieved', [
+                    'doctor_id' => $doctorId,
+                    'schedules_count' => count($schedules),
+                    'schedules' => $schedules
+                ]);
+
+                return response()->json([
+                    'status' => 'success',
+                    'schedules' => $schedules,
+                ]);
+            }
+
+            // Rest of the method for getting all doctor schedules...
+        } catch (\Exception $e) {
+            Log::error('Error fetching doctor schedules', [
+                'doctor_id' => $doctorId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Error fetching doctor schedules: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function cleanupTempFile(Request $request)
+    {
+        try {
+            $tempFile = $request->input('temp_file');
+            if (!$tempFile) {
+                return response()->json(['status' => 'error', 'message' => 'No temp file specified']);
+            }
+
+            $tempPath = 'public/temp_downloads/' . $tempFile;
+            if (Storage::exists($tempPath)) {
+                Storage::delete($tempPath);
+                return response()->json(['status' => 'success', 'message' => 'Temporary file deleted']);
+            }
+
+            return response()->json(['status' => 'error', 'message' => 'File not found']);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
+        }
     }
 }
