@@ -566,6 +566,7 @@ class PatientDashboardController extends Controller
                       ->orWhere('record_type', 'prescription')
                       ->orWhere('record_type', 'medical_checkup'); // Include both forms to ensure compatibility
             })
+            ->where('status', 'completed') // Only show completed records to patients
             ->with('assignedDoctor')
             ->orderBy('updated_at', 'desc')
             ->get();

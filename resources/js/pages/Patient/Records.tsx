@@ -24,7 +24,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
-import { FileText, FileSearch } from 'lucide-react';
+import { ClipboardList, ChevronRight } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 interface User {
@@ -147,7 +147,7 @@ export default function Records({ user, records }: RecordsProps) {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-blue-500" />
+                    <ClipboardList className="h-5 w-5 text-blue-500" />
                     All Medical Records
                   </CardTitle>
                   <CardDescription>
@@ -175,7 +175,7 @@ export default function Records({ user, records }: RecordsProps) {
                           <TableRow key={record.id}>
                             <TableCell>{formatDate(record.appointment_date)}</TableCell>
                             <TableCell className="font-medium">{getRecordTypeDisplay(record.record_type)}</TableCell>
-                            <TableCell>Dr. {record.assignedDoctor?.name || 'Unknown'}</TableCell>
+                            <TableCell>{record.assignedDoctor ? `Dr. ${record.assignedDoctor.name}` : 'No doctor assigned'}</TableCell>
                             <TableCell className="max-w-xs truncate">{getDiagnosis(record.details)}</TableCell>
                             <TableCell>{getStatusBadge(record.status)}</TableCell>
                             <TableCell className="text-right">
@@ -185,7 +185,7 @@ export default function Records({ user, records }: RecordsProps) {
                                 asChild
                               >
                                 <Link href={route('patient.records.show', record.id)}>
-                                  <FileSearch className="h-4 w-4 mr-1" />
+                                  <ChevronRight className="h-4 w-4 mr-1" />
                                   View
                                 </Link>
                               </Button>
@@ -209,7 +209,7 @@ export default function Records({ user, records }: RecordsProps) {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-blue-500" />
+                    <ClipboardList className="h-5 w-5 text-blue-500" />
                     Medical Checkups
                   </CardTitle>
                 </CardHeader>
@@ -229,7 +229,7 @@ export default function Records({ user, records }: RecordsProps) {
                         medicalCheckups.map((record) => (
                           <TableRow key={record.id}>
                             <TableCell>{formatDate(record.appointment_date)}</TableCell>
-                            <TableCell>Dr. {record.assignedDoctor?.name || 'Unknown'}</TableCell>
+                            <TableCell>{record.assignedDoctor ? `Dr. ${record.assignedDoctor.name}` : 'No doctor assigned'}</TableCell>
                             <TableCell className="max-w-xs truncate">{getDiagnosis(record.details)}</TableCell>
                             <TableCell>{getStatusBadge(record.status)}</TableCell>
                             <TableCell className="text-right">
@@ -239,7 +239,7 @@ export default function Records({ user, records }: RecordsProps) {
                                 asChild
                               >
                                 <Link href={route('patient.records.show', record.id)}>
-                                  <FileSearch className="h-4 w-4 mr-1" />
+                                  <ChevronRight className="h-4 w-4 mr-1" />
                                   View
                                 </Link>
                               </Button>
