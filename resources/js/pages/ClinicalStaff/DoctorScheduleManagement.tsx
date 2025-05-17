@@ -69,11 +69,10 @@ interface PageProps {
 const DoctorScheduleManagement: React.FC = () => {
   const { doctors, schedules, flash } = usePage<PageProps>().props;
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedScheduleId, setSelectedScheduleId] = useState<number | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<number | null>(null);
-  const [rejectionNote, setRejectionNote] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [filteredSchedules, setFilteredSchedules] = useState<Schedule[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -94,8 +93,6 @@ const DoctorScheduleManagement: React.FC = () => {
         setFilteredSchedules(schedules.data.filter((s: Schedule) => s.status === 'pending'));
       } else if (activeTab === 'approved') {
         setFilteredSchedules(schedules.data.filter((s: Schedule) => s.status === 'approved'));
-      } else if (activeTab === 'rejected') {
-        setFilteredSchedules(schedules.data.filter((s: Schedule) => s.status === 'rejected'));
       } else if (activeTab === 'all') {
         setFilteredSchedules(schedules.data);
       } else if (selectedDoctor) {
@@ -121,9 +118,9 @@ const DoctorScheduleManagement: React.FC = () => {
     router.post(route('staff.doctor-schedules.approve', scheduleId));
   };
 
-  const openRejectModal = (scheduleId: number) => {
+  const openDeleteModal = (scheduleId: number) => {
     setSelectedScheduleId(scheduleId);
-    setShowRejectModal(true);
+    setShowDeleteModal(true);
   };
 
   const openEditModal = (schedule: Schedule) => {
@@ -151,13 +148,10 @@ const DoctorScheduleManagement: React.FC = () => {
     setShowAddModal(true);
   };
 
-  const handleReject = () => {
+  const handleDelete = () => {
     if (selectedScheduleId) {
-      router.post(route('staff.doctor-schedules.reject', selectedScheduleId), {
-        rejection_note: rejectionNote
-      });
-      setShowRejectModal(false);
-      setRejectionNote('');
+      router.post(route('staff.doctor-schedules.delete', selectedScheduleId));
+      setShowDeleteModal(false);
     }
   };
 
@@ -203,8 +197,8 @@ const DoctorScheduleManagement: React.FC = () => {
     switch (status) {
       case 'approved':
         return 'default';
-      case 'rejected':
-        return 'destructive';
+      case 'pending':
+        return 'secondary';
       default:
         return 'secondary';
     }
@@ -289,7 +283,6 @@ const DoctorScheduleManagement: React.FC = () => {
                   <TabsList className="w-full rounded-none border-b">
                     <TabsTrigger value="pending">Pending Schedules</TabsTrigger>
                     <TabsTrigger value="approved">Approved Schedules</TabsTrigger>
-                    <TabsTrigger value="rejected">Rejected Schedules</TabsTrigger>
                     <TabsTrigger value="all">All Schedules</TabsTrigger>
                     {selectedDoctor && activeTab === 'doctor' && (
                       <TabsTrigger value="doctor">
@@ -359,15 +352,13 @@ const DoctorScheduleManagement: React.FC = () => {
                                 </Button>
                               )}
 
-                              {schedule.status !== 'rejected' && (
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => openRejectModal(schedule.id)}
-                                >
-                                  Reject
-                                </Button>
-                              )}
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => openDeleteModal(schedule.id)}
+                              >
+                                Delete
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -596,32 +587,26 @@ const DoctorScheduleManagement: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Rejection Modal */}
-      <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
+      {/* Delete Schedule Modal */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject Schedule</DialogTitle>
+            <DialogTitle>Delete Schedule</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Rejection Reason</Label>
-              <Textarea
-                value={rejectionNote}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setRejectionNote(e.target.value)}
-                placeholder="Please provide a reason for rejecting this schedule..."
-              />
+              <p>Are you sure you want to delete this schedule? This action cannot be undone.</p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRejectModal(false)}>
+            <Button variant="outline" onClick={() => setShowDeleteModal(false)}>
               Cancel
             </Button>
             <Button
               variant="destructive"
-              onClick={handleReject}
-              disabled={!rejectionNote.trim()}
+              onClick={handleDelete}
             >
-              Confirm Rejection
+              Delete Schedule
             </Button>
           </DialogFooter>
         </DialogContent>

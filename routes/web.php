@@ -335,7 +335,7 @@ Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staf
   Route::get('/doctor-schedules/{doctorId}', [App\Http\Controllers\Staff\DoctorScheduleManagementController::class, 'doctorSchedules'])->name('doctor-schedules.view');
   Route::post('/doctor-schedules', [App\Http\Controllers\Staff\DoctorScheduleManagementController::class, 'store'])->name('doctor-schedules.store');
   Route::post('/doctor-schedules/{id}/approve', [App\Http\Controllers\Staff\DoctorScheduleManagementController::class, 'approveSchedule'])->name('doctor-schedules.approve');
-  Route::post('/doctor-schedules/{id}/reject', [App\Http\Controllers\Staff\DoctorScheduleManagementController::class, 'rejectSchedule'])->name('doctor-schedules.reject');
+  Route::post('/doctor-schedules/{id}/delete', [App\Http\Controllers\Staff\DoctorScheduleManagementController::class, 'destroy'])->name('doctor-schedules.delete');
   Route::put('/doctor-schedules/{id}', [App\Http\Controllers\Staff\DoctorScheduleManagementController::class, 'editSchedule'])->name('doctor-schedules.edit');
 
   // Lab Results Routes

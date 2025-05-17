@@ -297,8 +297,8 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
       // In production, you would want to remove this fallback
       if (process.env.NODE_ENV !== 'production') {
         console.log('No matching schedules found - using default time slots');
-        // Updated default time slots to only show PM slots from 1:00 PM to 5:00 PM
-        const defaultSlots = ['1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM'];
+        // Updated default time slots to show morning slots from 9:00 AM to 12:00 PM
+        const defaultSlots = ['9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM'];
         setAvailableTimeSlots(defaultSlots);
 
         // After setting available time slots, fetch booked slots
@@ -318,23 +318,39 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
 
       console.log('Generating slots for schedule:', { startTime, endTime });
 
-      // For simplicity, generate slots at 1-hour intervals
-      let startHour = parseInt(startTime.split(':')[0], 10);
-      const endHour = parseInt(endTime.split(':')[0], 10);
+      // Extract hours and minutes
+      const [startHourStr] = startTime.split(':');
+      const [endHourStr, endMinStr] = endTime.split(':');
 
-      while (startHour < endHour) {
+      const startHour = parseInt(startHourStr, 10);
+      const endHour = parseInt(endHourStr, 10);
+      const endMinutes = parseInt(endMinStr, 10);
+
+      // Adjust end hour if it has minutes (e.g., 3:30 should generate slots until 3:00)
+      const hasEndMinutes = endMinutes > 0;
+
+      // Generate hour-by-hour slots
+      let currentHour = startHour;
+      while (currentHour < endHour) {
         // Format as 12-hour time
-        const hourFormatted = startHour % 12 || 12;
-        const amPm = startHour < 12 ? 'AM' : 'PM';
+        const hourFormatted = currentHour % 12 || 12;
+        const amPm = currentHour < 12 ? 'AM' : 'PM';
 
-        // Only add time slots from 1:00 PM to 5:00 PM
-        // These are the hours set on the staff side
-        if (startHour >= 13 && startHour <= 17) {
-          const timeSlot = `${hourFormatted}:00 ${amPm}`;
-          console.log('Adding time slot:', timeSlot);
-          slots.push(timeSlot);
-        }
-        startHour++;
+        const timeSlot = `${hourFormatted}:00 ${amPm}`;
+        console.log('Adding time slot:', timeSlot);
+        slots.push(timeSlot);
+
+        currentHour++;
+      }
+
+      // Add the half-hour slot if the end time has minutes
+      if (hasEndMinutes && endMinutes === 30) {
+        const hourFormatted = endHour % 12 || 12;
+        const amPm = endHour < 12 ? 'AM' : 'PM';
+
+        const halfHourSlot = `${hourFormatted}:30 ${amPm}`;
+        console.log('Adding half-hour slot:', halfHourSlot);
+        slots.push(halfHourSlot);
       }
     });
 
@@ -392,7 +408,7 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
     setSelectedTimeSlot(timeSlot);
 
     // Parse the 12-hour time format to 24-hour format that the backend expects
-    // e.g. "9:00 AM" -> "09:00:00", "2:00 PM" -> "14:00:00"
+    // e.g. "9:00 AM" -> "09:00:00", "2:00 PM" -> "14:00:00", "3:30 PM" -> "15:30:00"
     const [time, period] = timeSlot.split(' ');
     const [hourStr, minuteStr] = time.split(':');
     let hour = parseInt(hourStr, 10);

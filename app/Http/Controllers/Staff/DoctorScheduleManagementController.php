@@ -150,23 +150,14 @@ class DoctorScheduleManagementController extends Controller
     }
 
     /**
-     * Reject a doctor's schedule with a note.
+     * Delete a doctor's schedule.
      */
-    public function rejectSchedule(Request $request, $id)
+    public function destroy($id)
     {
-        $request->validate([
-            'rejection_note' => 'required|string|max:255',
-        ]);
-
         $schedule = DoctorSchedule::findOrFail($id);
+        $schedule->delete();
 
-        $schedule->update([
-            'is_approved' => false,
-            'status' => 'rejected',
-            'rejection_note' => $request->rejection_note
-        ]);
-
-        return redirect()->back()->with('success', 'Schedule rejected successfully');
+        return redirect()->back()->with('success', 'Schedule deleted successfully');
     }
 
     /**
