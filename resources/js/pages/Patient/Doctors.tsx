@@ -342,7 +342,7 @@ export default function Doctors({
                       </Avatar>
                       <div className="ml-4 pb-1">
                         <h3 className="font-bold text-lg">{doctor.name}</h3>
-                        <p className="text-sm font-medium text-blue-600">{doctor.specialty || "General Practitioner"}</p>
+                        <p className="text-sm font-medium text-blue-600">{doctor.specialty}</p>
                       </div>
                     </div>
                   </div>

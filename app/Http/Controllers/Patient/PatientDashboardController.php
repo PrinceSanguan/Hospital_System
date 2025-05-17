@@ -372,7 +372,7 @@ class PatientDashboardController extends Controller
                 $doctorRecord = new \App\Models\Doctor();
                 $doctorRecord->user_id = $doctor->id;
                 $doctorRecord->name = $doctor->name;
-                $doctorRecord->specialization = $doctor->doctorProfile?->specialization ?? 'General Practitioner';
+                $doctorRecord->specialization = $doctor->doctorProfile?->specialization ?? '';
                 $doctorRecord->license_number = $doctor->doctorProfile?->license_number ?? null;
                 $doctorRecord->contact_number = $doctor->phone ?? null;
                 $doctorRecord->save();
@@ -692,8 +692,8 @@ class PatientDashboardController extends Controller
                     return [
                         'id' => $doctor->id,
                         'name' => $doctor->name,
-                        'specialty' => $doctor->doctor_profile->specialization ?? 'General Practitioner',
-                        'profile_image' => $doctor->doctor_profile->profile_image ?? null,
+                        'specialty' => $doctor->doctorProfile->specialization ?? '',
+                        'profile_image' => $doctor->doctorProfile->profile_image ?? null,
                         'availability' => $doctor->availability ?? [],
                         'schedules' => $doctor->schedules,
                         'services' => $doctor->services,
@@ -883,14 +883,14 @@ class PatientDashboardController extends Controller
 
         // Get all doctors
         $doctors = User::where('user_role', 'doctor')
-            ->with('doctor_profile')
+            ->with('doctorProfile')
             ->get()
             ->map(function($doctor) {
                 return [
                     'id' => $doctor->id,
                     'name' => $doctor->name,
-                    'specialty' => $doctor->doctor_profile->specialization ?? 'General Practitioner',
-                    'profile_image' => $doctor->doctor_profile->profile_image ?? null,
+                    'specialty' => $doctor->doctorProfile->specialization ?? '',
+                    'profile_image' => $doctor->doctorProfile->profile_image ?? null,
                 ];
             });
 

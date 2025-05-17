@@ -714,8 +714,8 @@ export default function PatientDashboard({
                           />
                         </div>
                         <div>
-                          <h3 className="font-bold text-gray-900">{doctor.name}</h3>
-                          <p className="text-sm font-medium text-blue-600">{doctor.specialty || "General Practitioner"}</p>
+                          <h3 className="font-bold text-lg">{doctor.name}</h3>
+                          <p className="text-sm font-medium text-blue-600">{doctor.specialty}</p>
                         </div>
                       </div>
 
