@@ -21,10 +21,14 @@ class ReceiptsController extends Controller
             ->latest()
             ->paginate(10);
 
+        $user = Auth::user();
+
         return Inertia::render('ClinicalStaff/Receipts', [
             'receipts' => $receipts,
-            'auth' => [
-                'user' => Auth::user()
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
             ]
         ]);
     }

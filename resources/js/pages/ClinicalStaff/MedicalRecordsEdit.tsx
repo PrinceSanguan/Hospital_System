@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { Header } from '@/components/clinicalstaff/header';
 import { Sidebar } from '@/components/clinicalstaff/sidebar';
@@ -99,6 +99,9 @@ interface MedicalRecord {
   id: number;
   patient: Patient;
   assignedDoctor: Doctor;
+  patient_id?: number;
+  doctor_id?: number;
+  assigned_doctor_id?: number;
   record_type: string;
   appointment_date: string;
   status: string;
@@ -184,7 +187,7 @@ export default function MedicalRecordsEdit({ user, record, patients, doctors }: 
   // Initialize form with existing data
   const { data, setData, put, processing, errors } = useForm({
     patient_id: record.patient?.id.toString() || '',
-    assigned_doctor_id: record.assignedDoctor?.id.toString() || '',
+    assigned_doctor_id: record.assignedDoctor?.id.toString() || record.assigned_doctor_id?.toString() || record.doctor_id?.toString() || '',
     record_type: record.record_type || 'medical_record',
     appointment_date: record.appointment_date || format(new Date(), 'yyyy-MM-dd'),
     appointment_time: details.appointment_time || '09:00',
@@ -201,6 +204,20 @@ export default function MedicalRecordsEdit({ user, record, patients, doctors }: 
     prescriptions: convertPrescriptions(),
     followup_date: details.followup_date || ''
   });
+
+  // Add useEffect to log and debug doctor information
+  useEffect(() => {
+    console.log('Record:', record);
+    console.log('AssignedDoctor:', record.assignedDoctor);
+    console.log('Assigned Doctor ID:', record.assigned_doctor_id);
+    console.log('Doctor ID:', record.doctor_id);
+    console.log('Current assigned_doctor_id in form:', data.assigned_doctor_id);
+
+    // If no doctor is selected but we have appointment data with doctor_id, try to use that
+    if (!data.assigned_doctor_id && record.doctor_id) {
+      setData('assigned_doctor_id', record.doctor_id.toString());
+    }
+  }, [record]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -413,78 +430,6 @@ export default function MedicalRecordsEdit({ user, record, patients, doctors }: 
                       onChange={(e) => setData('diagnosis', e.target.value)}
                       rows={3}
                     />
-                  </div>
-
-                  {/* Vital Signs */}
-                  <div className="space-y-4">
-                    <Label>Vital Signs</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="temperature">Temperature (°C)</Label>
-                        <Input
-                          id="temperature"
-                          type="text"
-                          placeholder="37.0"
-                          value={data.vital_signs.temperature}
-                          onChange={(e) => setData('vital_signs', {
-                            ...data.vital_signs,
-                            temperature: e.target.value
-                          })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="blood_pressure">Blood Pressure (mmHg)</Label>
-                        <Input
-                          id="blood_pressure"
-                          type="text"
-                          placeholder="120/80"
-                          value={data.vital_signs.blood_pressure}
-                          onChange={(e) => setData('vital_signs', {
-                            ...data.vital_signs,
-                            blood_pressure: e.target.value
-                          })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="pulse_rate">Pulse Rate (bpm)</Label>
-                        <Input
-                          id="pulse_rate"
-                          type="text"
-                          placeholder="72"
-                          value={data.vital_signs.pulse_rate}
-                          onChange={(e) => setData('vital_signs', {
-                            ...data.vital_signs,
-                            pulse_rate: e.target.value
-                          })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="respiratory_rate">Respiratory Rate (bpm)</Label>
-                        <Input
-                          id="respiratory_rate"
-                          type="text"
-                          placeholder="16"
-                          value={data.vital_signs.respiratory_rate}
-                          onChange={(e) => setData('vital_signs', {
-                            ...data.vital_signs,
-                            respiratory_rate: e.target.value
-                          })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="oxygen_saturation">Oxygen Saturation (%)</Label>
-                        <Input
-                          id="oxygen_saturation"
-                          type="text"
-                          placeholder="98"
-                          value={data.vital_signs.oxygen_saturation}
-                          onChange={(e) => setData('vital_signs', {
-                            ...data.vital_signs,
-                            oxygen_saturation: e.target.value
-                          })}
-                        />
-                      </div>
-                    </div>
                   </div>
 
                   {/* Prescriptions */}

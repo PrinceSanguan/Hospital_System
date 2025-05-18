@@ -123,18 +123,6 @@ const DoctorScheduleManagement: React.FC = () => {
     setShowDeleteModal(true);
   };
 
-  const openEditModal = (schedule: Schedule) => {
-    setSelectedScheduleId(schedule.id);
-    setFormData({
-      doctor_id: String(schedule.doctor_id),
-      day_of_week: schedule.day_of_week,
-      start_time: schedule.start_time,
-      end_time: schedule.end_time,
-      notes: schedule.notes || '',
-      specific_date: schedule.specific_date || ''
-    });
-    setShowEditModal(true);
-  };
 
   const openAddModal = () => {
     setFormData({
@@ -333,13 +321,6 @@ const DoctorScheduleManagement: React.FC = () => {
                           <TableCell>{schedule.notes || 'No notes'}</TableCell>
                           <TableCell>
                             <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openEditModal(schedule)}
-                              >
-                                Edit
-                              </Button>
 
                               {schedule.status !== 'approved' && (
                                 <Button

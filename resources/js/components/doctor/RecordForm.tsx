@@ -700,7 +700,7 @@ const RecordForm: React.FC<RecordFormProps> = ({
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label>Blood Pressure (mmHg)</Label>
+                      <Label>Blood Pressure(mmHg)</Label>
                       <Input
                         type="text"
                         value={formData.vital_signs?.blood_pressure?.value || ""}

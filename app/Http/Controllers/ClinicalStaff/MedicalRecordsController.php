@@ -114,8 +114,12 @@ class MedicalRecordsController extends Controller
     {
         $user = Auth::user();
         $record = PatientRecord::with(['patient', 'assignedDoctor.doctorProfile'])
-            ->where('id', $id)
-            ->firstOrFail();
+            ->findOrFail($id);
+
+        // Get all doctors to help with doctor information display
+        $doctors = User::where('user_role', User::ROLE_DOCTOR)
+            ->with('doctorProfile')
+            ->get();
 
         return Inertia::render('ClinicalStaff/MedicalRecordsView', [
             'user' => [
@@ -125,6 +129,7 @@ class MedicalRecordsController extends Controller
                 'role' => $user->user_role,
             ],
             'record' => $record,
+            'doctors' => $doctors,
         ]);
     }
 
@@ -265,12 +270,12 @@ class MedicalRecordsController extends Controller
     {
         // Get the original prescription to get record_id and other details
         $originalPrescription = Prescription::with(['patient', 'doctor', 'record'])->findOrFail($id);
-        
+
         // Get all prescriptions for the same record
         $allPrescriptions = Prescription::where('record_id', $originalPrescription->record_id)
             ->orderBy('created_at', 'asc')
             ->get();
-            
+
         $data = [
             'prescription' => $originalPrescription, // Keep for backward compatibility
             'prescriptions' => $allPrescriptions,    // Add all prescriptions

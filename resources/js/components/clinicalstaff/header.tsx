@@ -10,12 +10,20 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 import { Link, usePage } from '@inertiajs/react';
-import { ChevronDown, LayoutDashboard, Bell, LogOut } from 'lucide-react';
+import { ArrowLeftIcon, BellIcon, Bars3Icon, ChevronDownIcon } from '@heroicons/react/24/outline';
 
 interface User {
     name: string;
     email: string;
     role?: string;
+}
+
+// Interface for the props returned by usePage()
+interface PageProps {
+    auth?: {
+        user?: User;
+    };
+    [key: string]: unknown;
 }
 
 // Mock notifications - in a real app these would come from the server
@@ -57,26 +65,26 @@ const notifications = [
     }
 ];
 
-export function Header({ user }: { user: User }) {
+export function Header({ user }: { user?: User }) {
     // Helper function to check if routes exist
-    const { props } = usePage();
+    const { props } = usePage<PageProps>();
 
-    interface PageProps {
-        ziggy?: {
-            routes: Record<string, string>;
-        };
-    }
+    // Attempt to get the authenticated user from the page props if not passed directly
+    const authUser = props.auth?.user || user;
 
-    const routes = (props as PageProps)?.ziggy?.routes || {};
+    // Safe getters for user properties with defaults
+    const userName = authUser?.name || "Guest User";
+    const userEmail = authUser?.email || "";
+    const userRole = authUser?.role || "Clinical Staff";
+    const userInitial = userName.charAt(0) || "G";
 
-    const routeExists = (name: string) => {
-        return Object.keys(routes).includes(name);
-    };
+    // Check if the user is an admin
+    const isAdmin = userRole.toLowerCase() === 'admin';
 
     return (
         <header className="sticky top-0 z-10 flex h-16 items-center border-b bg-white px-4 md:px-6 dark:border-gray-700 dark:bg-gray-800">
             <Button variant="outline" size="icon" className="mr-2 md:hidden">
-                <LayoutDashboard size={20} />
+                <Bars3Icon className="h-5 w-5" />
             </Button>
             <div className="flex flex-1 items-center justify-between">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 md:hidden">
@@ -89,12 +97,23 @@ export function Header({ user }: { user: User }) {
                         Famcare Health
                     </div>
                 </h2>
+
+                {/* Back to Admin button - only visible for admin users */}
+                {isAdmin && (
+                    <Link href={route('admin.dashboard')}>
+                        <Button variant="outline" className="flex items-center gap-2">
+                            <ArrowLeftIcon className="h-4 w-4" />
+                            <span>Back to Admin</span>
+                        </Button>
+                    </Link>
+                )}
+
                 <div className="ml-auto flex items-center gap-4">
                     {/* Notifications Dropdown */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="relative">
-                                <Bell size={20} />
+                                <BellIcon className="h-5 w-5" />
                                 <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
                                     {notifications.filter(n => !n.read).length}
                                 </span>
@@ -103,7 +122,7 @@ export function Header({ user }: { user: User }) {
                         <DropdownMenuContent align="end" className="w-80 max-h-[400px] overflow-y-auto">
                             <DropdownMenuLabel className="flex items-center justify-between">
                                 <span>Notifications</span>
-                                <Link href={routeExists('staff.notifications') ? route('staff.notifications') : route('staff.dashboard')} className="text-xs text-blue-600 hover:underline">
+                                <Link href={route('staff.dashboard')} className="text-xs text-blue-600 hover:underline">
                                     View All
                                 </Link>
                             </DropdownMenuLabel>
@@ -133,7 +152,7 @@ export function Header({ user }: { user: User }) {
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center justify-center p-4 text-gray-500">
-                                    <Bell size={40} strokeWidth={1} className="mb-2 text-gray-300" />
+                                    <BellIcon className="h-10 w-10 text-gray-300" />
                                     <p>No notifications</p>
                                 </div>
                             )}
@@ -145,27 +164,32 @@ export function Header({ user }: { user: User }) {
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="flex items-center gap-2">
                                 <Avatar className="h-8 w-8">
-                                    <AvatarImage src="/placeholder-avatar.jpg" alt={user.name} />
-                                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                                    <AvatarImage src="/placeholder-avatar.jpg" alt={userName} />
+                                    <AvatarFallback>{userInitial}</AvatarFallback>
                                 </Avatar>
-                                <span className="hidden text-sm font-medium md:inline-flex">{user.name}</span>
-                                <ChevronDown size={16} />
+                                <div className="hidden text-sm md:block text-left mr-1">
+                                    <p className="font-medium">{userName}</p>
+                                </div>
+                                <ChevronDownIcon className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>
-                                <div className="flex flex-col">
-                                    <span>{user.name}</span>
-                                    <span className="text-xs text-gray-500">{user.email}</span>
-                                    <span className="text-xs text-gray-500">Clinical Staff</span>
-                                </div>
-                            </DropdownMenuLabel>
+                        <DropdownMenuContent align="end" className="w-56">
+                            <div className="p-2">
+                                <p className="font-medium">{userName}</p>
+                                <p className="text-xs text-gray-500">{userEmail}</p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    {isAdmin ? 'Admin' : 'Clinical Staff'}
+                                </p>
+                            </div>
                             <DropdownMenuSeparator />
-
-                            <DropdownMenuItem asChild>
-                                <Link href={route('auth.logout')} method="post" className="flex w-full cursor-pointer items-center gap-2">
-                                    <LogOut size={16} />
-                                    Logout
+                            <DropdownMenuItem asChild className="cursor-pointer">
+                                <Link
+                                    href={route('auth.logout')}
+                                    method="post"
+                                    className="flex w-full items-center gap-2"
+                                >
+                                    <ArrowLeftIcon className="h-4 w-4 rotate-180" />
+                                    <span>Logout</span>
                                 </Link>
                             </DropdownMenuItem>
                         </DropdownMenuContent>

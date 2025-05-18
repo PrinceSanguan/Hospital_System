@@ -243,7 +243,7 @@ class AppointmentsController extends Controller
             DB::commit();
 
             $statusMessage = ucfirst($newStatus);
-            
+
             // Handle API requests
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
@@ -255,7 +255,6 @@ class AppointmentsController extends Controller
 
             // Handle normal requests
             return redirect()->back()->with('success', "Appointment {$statusMessage} successfully");
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error updating appointment status', [
