@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import { Header } from '@/components/clinicalstaff/header';
 import { Sidebar } from '@/components/clinicalstaff/sidebar';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import {
   Plus,
-  FileEdit,
   FileSearch,
   Trash,
   X,
@@ -114,6 +113,9 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
   const [prescriptions, setPrescriptions] = useState<{ [key: number]: Prescription[] }>({});
   const [loading, setLoading] = useState<{ [key: number]: boolean }>({});
 
+  // Initialize Inertia form
+  const { delete: deleteRecord, processing } = useForm();
+
   // Filter out cancelled records
   const filteredRecords = medicalRecords.data.filter(record =>
     record.status.toLowerCase() !== 'cancelled'
@@ -131,9 +133,20 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
 
   const handleDelete = () => {
     if (recordToDelete) {
-      window.location.href = route('staff.clinical.info.destroy', recordToDelete);
+      // Use Inertia's form handler with delete method
+      deleteRecord(route('staff.clinical.info.destroy', recordToDelete), {
+        preserveScroll: true,
+        onSuccess: () => {
+          closeDeleteDialog();
+        },
+        onError: () => {
+          alert('Failed to delete the medical record. Please try again.');
+          closeDeleteDialog();
+        }
+      });
+    } else {
+      closeDeleteDialog();
     }
-    closeDeleteDialog();
   };
 
   const handleDownloadPrescription = async (recordId: number) => {
@@ -293,15 +306,6 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
                               </Button>
                               <Button
                                 variant="ghost"
-                                size="icon"
-                                asChild
-                              >
-                                <Link href={route('staff.clinical.info.edit', record.id)}>
-                                  <FileEdit className="h-4 w-4" />
-                                </Link>
-                              </Button>
-                              <Button
-                                variant="ghost"
                                 size="sm"
                                 onClick={() => handleDownloadPrescription(record.id)}
                                 disabled={loading[record.id]}
@@ -367,13 +371,13 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
               </DialogHeader>
               <p className="py-4">Are you sure you want to delete this medical record? This action cannot be undone.</p>
               <DialogFooter>
-                <Button variant="outline" onClick={closeDeleteDialog}>
+                <Button variant="outline" onClick={closeDeleteDialog} disabled={processing}>
                   <X className="h-4 w-4 mr-2" />
                   Cancel
                 </Button>
-                <Button variant="destructive" onClick={handleDelete}>
+                <Button variant="destructive" onClick={handleDelete} disabled={processing}>
                   <Trash className="h-4 w-4 mr-2" />
-                  Delete
+                  {processing ? 'Deleting...' : 'Delete'}
                 </Button>
               </DialogFooter>
             </DialogContent>
