@@ -84,7 +84,6 @@ export function Sidebar() {
         { name: 'Medical Records', route: 'admin.clinical.info', icon: 'medical' },
         { name: 'Lab Records', route: 'admin.lab.records', icon: 'lab' },
         { name: 'Appointments', route: 'admin.staff.appointments.index', icon: 'appointments' },
-        { name: 'Lab Results', route: 'admin.lab-results.index', icon: 'lab' },
         { name: 'Receipts', route: 'admin.receipts.index', icon: 'receipts' }
     ];
 
