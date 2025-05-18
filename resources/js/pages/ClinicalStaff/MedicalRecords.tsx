@@ -115,7 +115,7 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
   const [loading, setLoading] = useState<{ [key: number]: boolean }>({});
 
   // Filter out cancelled records
-  const filteredRecords = medicalRecords.data.filter(record => 
+  const filteredRecords = medicalRecords.data.filter(record =>
     record.status.toLowerCase() !== 'cancelled'
   );
 

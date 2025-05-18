@@ -1,15 +1,19 @@
 import { Button } from '@/components/ui/button';
 import { Link, usePage } from '@inertiajs/react';
 import {
-    LayoutDashboard,
-    Users,
-    FileText,
-    BarChart3,
-    LogOut,
-    Stethoscope,
-    UserCog,
-    Settings
-} from 'lucide-react';
+    HomeIcon,
+    DocumentIcon,
+    UserIcon,
+    UsersIcon,
+    HeartIcon,
+    ChartBarIcon,
+    Cog6ToothIcon,
+    ClipboardDocumentIcon,
+    BeakerIcon,
+    CalendarIcon,
+    ClipboardDocumentListIcon,
+    ReceiptRefundIcon
+} from '@heroicons/react/24/outline';
 
 // Types for usePage props
 interface PageProps {
@@ -47,23 +51,42 @@ export function Sidebar() {
     const getIconComponent = (iconName: string) => {
         switch (iconName) {
             case 'dashboard':
-                return <LayoutDashboard size={18} />;
+                return <HomeIcon className="w-5 h-5" />;
             case 'records':
-                return <FileText size={18} />;
+                return <DocumentIcon className="w-5 h-5" />;
             case 'users':
-                return <Users size={18} />;
+                return <UsersIcon className="w-5 h-5" />;
             case 'doctors':
-                return <Stethoscope size={18} />;
+                return <HeartIcon className="w-5 h-5" />;
             case 'staff':
-                return <UserCog size={18} />;
+                return <UserIcon className="w-5 h-5" />;
             case 'reports':
-                return <BarChart3 size={18} />;
+                return <ChartBarIcon className="w-5 h-5" />;
             case 'settings':
-                return <Settings size={18} />;
+                return <Cog6ToothIcon className="w-5 h-5" />;
+            case 'medical':
+                return <ClipboardDocumentIcon className="w-5 h-5" />;
+            case 'lab':
+                return <BeakerIcon className="w-5 h-5" />;
+            case 'appointments':
+                return <CalendarIcon className="w-5 h-5" />;
+            case 'prescriptions':
+                return <ClipboardDocumentListIcon className="w-5 h-5" />;
+            case 'receipts':
+                return <ReceiptRefundIcon className="w-5 h-5" />;
             default:
-                return <FileText size={18} />;
+                return <DocumentIcon className="w-5 h-5" />;
         }
     };
+
+    // Define clinical staff links
+    const staffLinks = [
+        { name: 'Medical Records', route: 'admin.clinical.info', icon: 'medical' },
+        { name: 'Lab Records', route: 'admin.lab.records', icon: 'lab' },
+        { name: 'Appointments', route: 'admin.staff.appointments.index', icon: 'appointments' },
+        { name: 'Lab Results', route: 'admin.lab-results.index', icon: 'lab' },
+        { name: 'Receipts', route: 'admin.receipts.index', icon: 'receipts' }
+    ];
 
     return (
         <div className="hidden w-64 flex-col border-r bg-white md:flex dark:border-gray-700 dark:bg-gray-900">
@@ -83,6 +106,41 @@ export function Sidebar() {
             <div className="flex-1 overflow-auto py-6">
                 <nav className="grid items-start gap-2 px-3 text-sm font-medium">
                     {navItems.map((item) => (
+                        routeExists(item.route) ? (
+                            <Link href={route(item.route)} key={item.name} className="w-full">
+                                <Button
+                                    variant={isActive(item.route) ? 'secondary' : 'ghost'}
+                                    className="flex w-full items-center justify-start gap-3 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                                >
+                                    {getIconComponent(item.icon)}
+                                    {item.name}
+                                </Button>
+                            </Link>
+                        ) : (
+                            <Button
+                                key={item.name}
+                                variant="ghost"
+                                className="flex w-full items-center justify-start gap-3 rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+                                disabled
+                            >
+                                {getIconComponent(item.icon)}
+                                {item.name}
+                            </Button>
+                        )
+                    ))}
+
+                    {/* Separator */}
+                    <div className="my-2 border-t border-gray-200 dark:border-gray-700"></div>
+
+                    {/* Clinical Staff Functions Section */}
+                    <div className="px-3 mb-2">
+                        <h3 className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                            Clinical Staff Functions
+                        </h3>
+                    </div>
+
+                    {/* Clinical Staff Links */}
+                    {staffLinks.map((item) => (
                         routeExists(item.route) ? (
                             <Link href={route(item.route)} key={item.name} className="w-full">
                                 <Button
