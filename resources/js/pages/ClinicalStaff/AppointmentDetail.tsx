@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format, parseISO } from 'date-fns';
-import { ArrowLeftIcon, PrinterIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon} from '@heroicons/react/24/outline';
 import { Sidebar } from '@/components/clinicalstaff/sidebar';
 import { Header } from '@/components/clinicalstaff/header';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -83,47 +83,7 @@ export default function AppointmentDetail({ appointment, user }: AppointmentProp
     const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
     const [confirmAction, setConfirmAction] = useState<'approve' | 'reject'>('approve');
 
-    // Handle print function
-    const handlePrint = () => {
-        if (printRef.current) {
-            const printContent = printRef.current.innerHTML;
-            const originalContents = document.body.innerHTML;
 
-            // Get title for print
-            const title = `Medical_Record_${appointment.patient.name.replace(/\s+/g, '_')}_${format(new Date(), 'yyyyMMdd')}`;
-
-            // Set print styles and content
-            const printStyles = `
-                <style>
-                    @page { size: auto; margin: 2cm; }
-                    body { font-family: Arial, sans-serif; }
-                    .medical-record-container { max-width: 800px; margin: 0 auto; }
-                    .medical-record-header { margin-bottom: 20px; }
-                    .medical-record-title { font-size: 24px; margin-bottom: 5px; text-align: center; }
-                    .medical-record-physician { font-size: 16px; text-align: center; color: #555; margin-bottom: 20px; }
-                    .medical-record-description { margin-bottom: 30px; line-height: 1.5; color: #333; }
-                    .patient-info-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-                    .patient-info-table th { background-color: #f5f5f5; text-align: left; padding: 12px; width: 30%; border: 1px solid #ddd; }
-                    .patient-info-table td { padding: 12px; border: 1px solid #ddd; }
-                    .section-title { font-size: 20px; font-weight: bold; margin-bottom: 15px; }
-                    .medical-history { line-height: 1.6; }
-                </style>
-                <title>${title}</title>
-            `;
-
-            // Replace body content with print content and add styles
-            document.body.innerHTML = printStyles + printContent;
-
-            // Execute print
-            window.print();
-
-            // Restore original content after printing
-            document.body.innerHTML = originalContents;
-
-            // Reload page to restore React components
-            window.location.reload();
-        }
-    };
 
     // Parse details if it's a string
     const details = typeof appointment.details === 'string'
@@ -294,13 +254,6 @@ export default function AppointmentDetail({ appointment, user }: AppointmentProp
                                 <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 ml-4">
                                     Medical Record
                                 </h1>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                {getStatusBadge(appointment.status)}
-                                <Button variant="outline" size="sm" onClick={handlePrint}>
-                                    <PrinterIcon className="h-4 w-4 mr-2" />
-                                    Print
-                                </Button>
                             </div>
                         </div>
 

@@ -65,7 +65,7 @@ interface MedicalRecordDetails {
   appointment_time?: string;
   vital_signs?: Record<string, string | number>;
   diagnosis?: string;
-  prescriptions?: string[];
+  prescriptions?: Array<string | PrescriptionItem>;
   notes?: string;
   followup_date?: string;
   treatments?: string;
@@ -78,9 +78,18 @@ interface MedicalRecordDetails {
     gender?: string;
     phone?: string;
     email?: string;
+    address?: string;
   };
   medical_history?: string;
-  [key: string]: string | number | string[] | Record<string, string | number> | undefined;
+  [key: string]: string | number | Array<string | PrescriptionItem> | Record<string, string | number> | undefined;
+}
+
+interface PrescriptionItem {
+  medication: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions: string;
 }
 
 interface MedicalRecord {
@@ -122,11 +131,56 @@ interface Prescription {
 interface MedicalRecordsViewProps {
   user: ComponentUser;
   record: MedicalRecord;
+  doctors?: Doctor[];
 }
 
-export default function MedicalRecordsView({ user, record }: MedicalRecordsViewProps) {
+export default function MedicalRecordsView({ user, record, doctors = [] }: MedicalRecordsViewProps) {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [doctorInfo, setDoctorInfo] = useState<{name: string, specialization: string | null}>({
+    name: record.assignedDoctor?.name || '',
+    specialization: record.assignedDoctor?.doctorProfile?.specialization || null
+  });
+
+  // Debug log for doctor info
+  useEffect(() => {
+    console.log('Record assigned doctor:', record.assignedDoctor);
+    if (record.assignedDoctor) {
+      console.log('Doctor ID:', record.assignedDoctor.id);
+      console.log('Doctor name:', record.assignedDoctor.name);
+      console.log('Doctor profile:', record.assignedDoctor.doctorProfile);
+    } else {
+      console.log('No assigned doctor found, checking doctor_id:', record.doctor_id);
+      console.log('Checking assigned_doctor_id:', record.assigned_doctor_id);
+    }
+
+    // If assignedDoctor exists but has no profile data, try to fetch it
+    if ((record.assignedDoctor && !record.assignedDoctor.doctorProfile) ||
+        (!record.assignedDoctor && (record.doctor_id || record.assigned_doctor_id))) {
+      fetchDoctorInfo();
+    }
+  }, [record]);
+
+  // New function to fetch doctor information if needed
+  const fetchDoctorInfo = async () => {
+    try {
+      const doctorId = record.assignedDoctor?.id || record.assigned_doctor_id || record.doctor_id;
+      if (!doctorId) return;
+
+      console.log('Fetching doctor info for ID:', doctorId);
+
+      const response = await axios.get(route('api.doctors.profile', doctorId));
+      if (response.data && response.data.doctor) {
+        setDoctorInfo({
+          name: response.data.doctor.name || '',
+          specialization: response.data.doctor.specialty || response.data.doctor.specialization || null
+        });
+        console.log('Fetched doctor data:', response.data.doctor);
+      }
+    } catch (error) {
+      console.error('Error fetching doctor information:', error);
+    }
+  };
 
   // Fetch prescriptions when the component mounts
   useEffect(() => {
@@ -293,6 +347,50 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
     role: user.role
   };
 
+  // Update the getDoctorDisplay function to be more aggressive in finding doctor information
+  const getDoctorDisplay = () => {
+    // First try from fetched state
+    if (doctorInfo.name) {
+      return `Dr. ${doctorInfo.name}${doctorInfo.specialization ? `, ${doctorInfo.specialization}` : ''}`;
+    }
+
+    // Fallback to record data
+    if (record.assignedDoctor && record.assignedDoctor.name) {
+      return `Dr. ${record.assignedDoctor.name}${record.assignedDoctor.doctorProfile?.specialization ?
+        `, ${record.assignedDoctor.doctorProfile.specialization}` : ''}`;
+    }
+
+    // Try to access doctor from other fields
+    const doctor_id = record.doctor_id || record.assigned_doctor_id;
+    if (doctor_id && doctors) {
+      // This assumes doctors is available in the component props
+      // If not available, we should modify the MedicalRecordsController to include a list of doctors
+      const foundDoctor = doctors.find(d => d.id === doctor_id);
+      if (foundDoctor) {
+        return `Dr. ${foundDoctor.name}${foundDoctor.doctorProfile?.specialization ?
+          `, ${foundDoctor.doctorProfile.specialization}` : ''}`;
+      }
+    }
+
+    // Last attempt - if record has attributes that suggest a doctor
+    if (typeof record.details === 'object' && record.details.doctor_name) {
+      return `Dr. ${record.details.doctor_name}${record.details.doctor_specialization ?
+        `, ${record.details.doctor_specialization}` : ''}`;
+    }
+
+    return 'Not assigned';
+  };
+
+  // Add a useEffect to load all doctors if needed for mapping purposes
+  useEffect(() => {
+    // If no doctor info but we have a doctor_id, try to load info
+    if ((!doctorInfo.name || !doctorInfo.specialization) &&
+        (record.doctor_id || record.assigned_doctor_id ||
+         (record.assignedDoctor && !record.assignedDoctor.doctorProfile))) {
+      fetchDoctorInfo();
+    }
+  }, [record]);
+
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
       {/* Sidebar - hide when printing */}
@@ -392,6 +490,12 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
                       <p className="font-medium">{formatTime(details.appointment_time) || '14:00:00'}</p>
                     </div>
                     <div>
+                      <h3 className="text-sm text-gray-500 mb-1">Doctor</h3>
+                      <p className="font-medium">
+                        {getDoctorDisplay()}
+                      </p>
+                    </div>
+                    <div>
                       <h3 className="text-sm text-gray-500 mb-1">Created On</h3>
                       <p className="font-medium">{formatDate(record.created_at)}</p>
                     </div>
@@ -429,6 +533,82 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
                   </div>
                 </div>
               </div>
+
+              {/* Detailed Medical Information */}
+              <div className="p-6">
+                {/* Diagnosis */}
+                {details.diagnosis && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-bold mb-2">Diagnosis</h3>
+                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
+                      <p className="whitespace-pre-line">{details.diagnosis}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Prescriptions */}
+                {(prescriptions.length > 0 || (details.prescriptions && details.prescriptions.length > 0)) && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-bold mb-2">Prescriptions</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="text-left p-3 border border-gray-200">Medication</th>
+                            <th className="text-left p-3 border border-gray-200">Dosage</th>
+                            <th className="text-left p-3 border border-gray-200">Frequency</th>
+                            <th className="text-left p-3 border border-gray-200">Duration</th>
+                            <th className="text-left p-3 border border-gray-200">Instructions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {prescriptions.length > 0 ? (
+                            prescriptions.map((prescription, index) => (
+                              <tr key={prescription.id || index}>
+                                <td className="p-3 border border-gray-200">{prescription.medication}</td>
+                                <td className="p-3 border border-gray-200">{prescription.dosage}</td>
+                                <td className="p-3 border border-gray-200">{prescription.frequency}</td>
+                                <td className="p-3 border border-gray-200">{prescription.duration}</td>
+                                <td className="p-3 border border-gray-200">{prescription.instructions}</td>
+                              </tr>
+                            ))
+                          ) : (
+                            details.prescriptions && details.prescriptions.map((prescription: string | PrescriptionItem, index: number) => (
+                              <tr key={index}>
+                                <td className="p-3 border border-gray-200">{typeof prescription === 'string' ? prescription : prescription.medication}</td>
+                                <td className="p-3 border border-gray-200">{typeof prescription === 'string' ? '' : prescription.dosage}</td>
+                                <td className="p-3 border border-gray-200">{typeof prescription === 'string' ? '' : prescription.frequency}</td>
+                                <td className="p-3 border border-gray-200">{typeof prescription === 'string' ? '' : prescription.duration}</td>
+                                <td className="p-3 border border-gray-200">{typeof prescription === 'string' ? '' : prescription.instructions}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {details.notes && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-bold mb-2">Notes</h3>
+                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
+                      <p className="whitespace-pre-line">{details.notes}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Medical History */}
+                {details.medical_history && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-bold mb-2">Medical History</h3>
+                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
+                      <p className="whitespace-pre-line">{details.medical_history}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -437,107 +617,154 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
               {/* Title */}
             <div className="text-center">
               <h1 className="text-2xl font-bold">Medical Record</h1>
-              <p className="text-sm mt-2">
-                Patient: <span className="font-medium">{record.patient?.name || 'Unknown Patient'}</span>
+              <p className="text-sm mt-1">
+                Physician: {getDoctorDisplay()}
+              </p>
+              <p className="text-sm mt-1">
+                Viewing medical record from {formatDate(record.appointment_date)}
               </p>
             </div>
 
             {/* Horizontal line */}
             <div className="border-t border-gray-300 my-4"></div>
 
-              {/* Introduction */}
+            {/* Introduction */}
             <div className="text-sm mb-4">
               <p>The following information is a comprehensive medical record of the patient, intended for professional use only. This document ensures a detailed overview of the patient's medical history and current health status.</p>
             </div>
 
-              {/* Patient Information Table */}
-            <table className="w-full border-collapse mb-8">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="text-left p-3 w-1/3 border border-gray-300 font-medium bg-gray-50">Patient Information</th>
-                  <th className="text-left p-3 w-2/3 border border-gray-300 font-medium bg-gray-50">Details</th>
-                </tr>
-              </thead>
+            {/* Patient Information Table - simplified for printing */}
+            <div className="mb-8">
+              <table className="w-full border-collapse mb-0">
+                <thead>
+                  <tr>
+                    <th className="text-left p-2 w-1/3 border border-gray-300 bg-gray-50 font-medium">Patient Information</th>
+                    <th className="text-left p-2 w-2/3 border border-gray-300 bg-gray-50 font-medium">Details</th>
+                  </tr>
+                </thead>
                 <tbody>
                   <tr>
-                  <td className="p-3 border border-gray-300">Name:</td>
-                  <td className="p-3 border border-gray-300">{record.patient?.name || 'Unknown Patient'}</td>
+                    <td className="p-2 border border-gray-300">Name:</td>
+                    <td className="p-2 border border-gray-300">{record.patient?.name || 'Unknown Patient'}</td>
                   </tr>
                   <tr>
-                  <td className="p-3 border border-gray-300">Date of Birth:</td>
-                  <td className="p-3 border border-gray-300">{details.patient_info?.birthdate || formatDate(record.patient?.date_of_birth) || 'Not provided'}</td>
+                    <td className="p-2 border border-gray-300">Date of Birth:</td>
+                    <td className="p-2 border border-gray-300">{details.patient_info?.birthdate || formatDate(record.patient?.date_of_birth) || 'Not provided'}</td>
                   </tr>
                   <tr>
-                  <td className="p-3 border border-gray-300">Gender:</td>
-                  <td className="p-3 border border-gray-300">{details.patient_info?.gender || record.patient?.gender || 'Not provided'}</td>
+                    <td className="p-2 border border-gray-300">Email:</td>
+                    <td className="p-2 border border-gray-300">{record.patient?.email || details.patient_info?.email || 'Not provided'}</td>
                   </tr>
                   <tr>
-                  <td className="p-3 border border-gray-300">Contact Number:</td>
-                  <td className="p-3 border border-gray-300">{details.patient_info?.phone || record.patient?.contact_number || 'Not provided'}</td>
+                    <td className="p-2 border border-gray-300">Address:</td>
+                    <td className="p-2 border border-gray-300">{patientAddress()}</td>
                   </tr>
                   <tr>
-                  <td className="p-3 border border-gray-300">Email:</td>
-                  <td className="p-3 border border-gray-300">{record.patient?.email || details.patient_info?.email || 'Not provided'}</td>
+                    <td className="p-2 border border-gray-300">Doctor:</td>
+                    <td className="p-2 border border-gray-300">{getDoctorDisplay()}</td>
                   </tr>
                   <tr>
-                  <td className="p-3 border border-gray-300">Address:</td>
-                  <td className="p-3 border border-gray-300 bg-blue-50">{patientAddress()}</td>
+                    <td className="p-2 border border-gray-300">Record Type:</td>
+                    <td className="p-2 border border-gray-300">{getRecordTypeDisplay(record.record_type)}</td>
                   </tr>
                   <tr>
-                  <td className="p-3 border border-gray-300">Created Date:</td>
-                  <td className="p-3 border border-gray-300">{formatDate(record.patient?.created_at) || formatDate(record.created_at) || 'Not available'}</td>
+                    <td className="p-2 border border-gray-300">Status:</td>
+                    <td className="p-2 border border-gray-300">{record.status}</td>
                   </tr>
                   <tr>
-                    <td className="p-3 border border-gray-300">Follow-up Date:</td>
-                    <td className="p-3 border border-gray-300">{formatDate(details.followup_date) || 'N/A'}</td>
+                    <td className="p-2 border border-gray-300">Appointment Date:</td>
+                    <td className="p-2 border border-gray-300">{formatDate(record.appointment_date)}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border border-gray-300">Appointment Time:</td>
+                    <td className="p-2 border border-gray-300">{formatTime(details.appointment_time) || 'Not specified'}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border border-gray-300">Created Date:</td>
+                    <td className="p-2 border border-gray-300">{formatDate(record.created_at) || 'Not available'}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border border-gray-300">Follow-up Date:</td>
+                    <td className="p-2 border border-gray-300">{formatDate(details.followup_date) || 'N/A'}</td>
                   </tr>
                 </tbody>
               </table>
-
-            {/* Medical History Section */}
-            <div className="mb-8">
-              <h2 className="text-xl font-bold mb-2">Medical History</h2>
-              <div>
-                {details.medical_history ? (
-                  <p className="whitespace-pre-line">{details.medical_history}</p>
-                ) : details.diagnosis ? (
-                  <p>
-                    {record.patient?.name || 'Erin Cassin'} has a history of {details.diagnosis},
-                    diagnosed in 2075, and has been under
-                    regular medication since. She also reports occasional
-                    migraines and has been treated for these symptoms with prescribed medication.
-                    There is no known history of major surgeries or hospitalizations in the past five years.
-                  </p>
-                ) : (
-                  <p>
-                    {record.patient?.name || 'Erin Cassin'} has a history of hypertension,
-                    diagnosed in 2075, and has been under
-                    regular medication since. She also reports occasional
-                    migraines and has been treated for these symptoms with prescribed medication.
-                    There is no known history of major surgeries or hospitalizations in the past five years.
-                  </p>
-                )}
-              </div>
             </div>
 
-            {/* Additional appointment details */}
-            <div className="mt-4 text-sm">
-              <p className="mb-1">
-                <span className="font-medium">Reference Number:</span> {record.reference_number || 'Not assigned'}
-              </p>
-              <p className="mb-1">
-                <span className="font-medium">Status:</span> <span className="capitalize">{record.status || 'Unknown'}</span>
-              </p>
-              {record.reason && (
-                <p className="mb-1">
-                  <span className="font-medium">Reason:</span> <span className="capitalize">{record.reason}</span>
-                </p>
-              )}
-              {record.fee && (
-                <p className="mb-1">
-                  <span className="font-medium">Fee:</span> {typeof record.fee === 'number' ? `$${record.fee.toFixed(2)}` : record.fee}
-                </p>
-              )}
+            {/* Diagnosis */}
+            {details.diagnosis && (
+              <div className="mb-4">
+                <h3 className="text-base font-bold mb-1 text-blue-800">Diagnosis</h3>
+                <div className="p-3 border border-gray-300 rounded">
+                  <p className="whitespace-pre-line">{details.diagnosis}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Prescriptions */}
+            {(prescriptions.length > 0 || (details.prescriptions && details.prescriptions.length > 0)) && (
+              <div className="mb-4">
+                <h3 className="text-base font-bold mb-1 text-blue-800">Prescriptions</h3>
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="text-left p-2 border border-gray-300 bg-gray-50">Medication</th>
+                      <th className="text-left p-2 border border-gray-300 bg-gray-50">Dosage</th>
+                      <th className="text-left p-2 border border-gray-300 bg-gray-50">Frequency</th>
+                      <th className="text-left p-2 border border-gray-300 bg-gray-50">Duration</th>
+                      <th className="text-left p-2 border border-gray-300 bg-gray-50">Instructions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {prescriptions.length > 0 ? (
+                      prescriptions.map((prescription, index) => (
+                        <tr key={prescription.id || index}>
+                          <td className="p-2 border border-gray-300">{prescription.medication}</td>
+                          <td className="p-2 border border-gray-300">{prescription.dosage}</td>
+                          <td className="p-2 border border-gray-300">{prescription.frequency}</td>
+                          <td className="p-2 border border-gray-300">{prescription.duration}</td>
+                          <td className="p-2 border border-gray-300">{prescription.instructions}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      details.prescriptions && details.prescriptions.map((prescription: string | PrescriptionItem, index: number) => (
+                        <tr key={index}>
+                          <td className="p-2 border border-gray-300">{typeof prescription === 'string' ? prescription : prescription.medication}</td>
+                          <td className="p-2 border border-gray-300">{typeof prescription === 'string' ? '' : prescription.dosage}</td>
+                          <td className="p-2 border border-gray-300">{typeof prescription === 'string' ? '' : prescription.frequency}</td>
+                          <td className="p-2 border border-gray-300">{typeof prescription === 'string' ? '' : prescription.duration}</td>
+                          <td className="p-2 border border-gray-300">{typeof prescription === 'string' ? '' : prescription.instructions}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Notes */}
+            {details.notes && (
+              <div className="mb-4">
+                <h3 className="text-base font-bold mb-1 text-blue-800">Notes</h3>
+                <div className="p-3 border border-gray-300 rounded">
+                  <p className="whitespace-pre-line">{details.notes}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Medical History */}
+            {details.medical_history && (
+              <div className="mb-4">
+                <h3 className="text-base font-bold mb-1 text-blue-800">Medical History</h3>
+                <div className="p-3 border border-gray-300 rounded">
+                  <p className="whitespace-pre-line">{details.medical_history}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Footer for print - simplified */}
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-500">Famcare Healthcare System</p>
             </div>
           </div>
         </main>

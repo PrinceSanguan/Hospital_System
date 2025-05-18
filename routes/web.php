@@ -489,3 +489,26 @@ Route::get('/fix-appointments', function() {
     Artisan::call('app:fix-patient-appointments');
     return redirect('/patient/dashboard')->with('success', 'Appointments fixed successfully!');
 })->middleware(['auth', 'verified']);
+
+// Doctor profile endpoint for web (non-API)
+Route::middleware(['auth'])->get('/doctors/{id}/profile', function (Illuminate\Http\Request $request, $id) {
+    $doctor = \App\Models\User::where('id', $id)
+        ->where('user_role', \App\Models\User::ROLE_DOCTOR)
+        ->with('doctorProfile')
+        ->first();
+
+    if (!$doctor) {
+        return response()->json(['error' => 'Doctor not found'], 404);
+    }
+
+    return response()->json([
+        'doctor' => [
+            'id' => $doctor->id,
+            'name' => $doctor->name,
+            'email' => $doctor->email,
+            'specialization' => $doctor->doctorProfile?->specialization,
+            'specialty' => $doctor->doctorProfile?->specialization, // Alias for compatibility
+            'qualifications' => $doctor->doctorProfile?->qualifications
+        ]
+    ]);
+})->name('doctors.profile');
