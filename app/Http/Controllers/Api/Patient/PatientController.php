@@ -1130,7 +1130,6 @@ class PatientController extends Controller
             $patient = Patient::where('user_id', $user->id)->first();
 
             if (!$patient) {
-                Log::error('Patient record not found for download', ['user_id' => $user->id]);
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Patient record not found'
@@ -1143,7 +1142,6 @@ class PatientController extends Controller
                 ->first();
 
             if (!$labResult) {
-                Log::error('Lab result not found', ['id' => $id, 'patient_id' => $patient->id]);
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Lab result not found'
@@ -1152,18 +1150,17 @@ class PatientController extends Controller
 
             // Check if file exists in storage
             if (!Storage::exists($labResult->file_path)) {
-                Log::error('Lab result file not found in storage', [
-                    'id' => $labResult->id,
-                    'file_path' => $labResult->file_path
-                ]);
                 return response()->json([
                     'status' => 'error',
                     'message' => 'The lab result file could not be found'
                 ], 404);
             }
 
-            // Set the content type based on the file extension
+            // Get file metadata
             $extension = pathinfo($labResult->file_path, PATHINFO_EXTENSION);
+            $filename = Str::slug($labResult->test_type) . '_' . uniqid() . '.' . $extension;
+
+            // Define the content type
             $contentType = 'application/pdf';
             if (in_array($extension, ['jpg', 'jpeg'])) {
                 $contentType = 'image/jpeg';
@@ -1171,29 +1168,19 @@ class PatientController extends Controller
                 $contentType = 'image/png';
             }
 
-            // Generate a filename
-            $filename = $labResult->test_type . '_results.' . $extension;
+            // Get the file content
+            $fileContent = Storage::get($labResult->file_path);
 
-            // For mobile apps, we need a publicly accessible URL
-            // Copy to public storage
-            $publicPath = 'public/lab_downloads/' . $filename;
+            // Encode the file content in base64
+            $base64Content = base64_encode($fileContent);
 
-            // Ensure directory exists
-            if (!Storage::exists('public/lab_downloads')) {
-                Storage::makeDirectory('public/lab_downloads');
-            }
-
-            // Copy the file
-            Storage::copy($labResult->file_path, $publicPath);
-
-            // Get the URL
-            $fileUrl = url('storage/lab_downloads/' . $filename);
-
+            // Return the file data as base64
             return response()->json([
                 'status' => 'success',
-                'file_url' => $fileUrl,
                 'file_name' => $filename,
-                'content_type' => $contentType
+                'content_type' => $contentType,
+                'file_data' => $base64Content,
+                'file_size' => Storage::size($labResult->file_path)
             ]);
         } catch (\Exception $e) {
             Log::error('Error downloading lab result', [
