@@ -17,6 +17,7 @@ use Illuminate\Validation\Rule;
 use App\Models\Patient;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PatientDashboardController extends Controller
 {
@@ -952,67 +953,53 @@ class PatientDashboardController extends Controller
      */
     public function downloadLabResult($id)
     {
-        try {
-            // Trim 'lab_' prefix if it exists in the ID
-            if (Str::startsWith($id, 'lab_')) {
-                $id = Str::replaceFirst('lab_', '', $id);
-            }
+        // Validation: Ensure the lab result belongs to the authenticated user
+        $user = Auth::user();
+        $labResult = PatientRecord::where('id', $id)
+            ->where('patient_id', $user->id)
+            ->where('record_type', 'laboratory_test')
+            ->firstOrFail();
 
-            // Find patient record linked to this user
-            $user = Auth::user();
-            $patient = \App\Models\Patient::where('user_id', $user->id)->first();
-
-            if (!$patient) {
-                Log::error('Patient record not found for download', ['user_id' => $user->id]);
-                return back()->with('error', 'Patient record not found');
-            }
-
-            // Find the lab result
-            $labResult = \App\Models\LabResult::where('id', $id)
-                ->where('patient_id', $patient->id)
-                ->first();
-
-            if (!$labResult) {
-                Log::error('Lab result not found', ['id' => $id, 'patient_id' => $patient->id]);
-                return back()->with('error', 'Lab result not found');
-            }
-
-            // Check if file exists in storage
-            if (!Storage::exists($labResult->file_path)) {
-                Log::error('Lab result file not found in storage', [
-                    'id' => $labResult->id,
-                    'file_path' => $labResult->file_path
-                ]);
-                return back()->with('error', 'The lab result file could not be found');
-            }
-
-            // Force file to be downloaded with a content disposition
-            $filename = $labResult->test_type . '_results.' . pathinfo($labResult->file_path, PATHINFO_EXTENSION);
-
-            // Set the content type based on the file extension
-            $extension = pathinfo($labResult->file_path, PATHINFO_EXTENSION);
-            $contentType = 'application/pdf';
-            if (in_array($extension, ['jpg', 'jpeg'])) {
-                $contentType = 'image/jpeg';
-            } elseif ($extension === 'png') {
-                $contentType = 'image/png';
-            }
-
-            return Storage::download(
-                $labResult->file_path,
-                $filename,
-                [
-                    'Content-Type' => $contentType,
-                    'Content-Disposition' => 'attachment; filename="' . $filename . '"'
-                ]
-            );
-        } catch (\Exception $e) {
-            Log::error('Error downloading lab result', [
-                'id' => $id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return back()->with('error', 'Error downloading lab result: ' . $e->getMessage());
+        // Get the PDF from storage
+        $pdfPath = $labResult->lab_results;
+        if (!$pdfPath || !Storage::exists($pdfPath)) {
+            return back()->with('error', 'Lab result PDF not found');
         }
+
+        return Storage::download($pdfPath, 'lab_result_' . $id . '.pdf');
+    }
+
+    /**
+     * Download a medical record as PDF
+     */
+    public function downloadMedicalRecord($id)
+    {
+        // Ensure the medical record belongs to the authenticated user
+        $user = Auth::user();
+        $record = PatientRecord::where('id', $id)
+            ->where('patient_id', $user->id)
+            ->with(['patient', 'assignedDoctor.doctorProfile'])
+            ->firstOrFail();
+
+        // Get details for the PDF
+        $details = is_string($record->details) ? json_decode($record->details, true) : $record->details;
+
+        // Prepare doctor information
+        $doctorName = $record->assignedDoctor->name ?? 'Unknown Doctor';
+        $specialization = $record->assignedDoctor->doctorProfile->specialization ?? '';
+
+        $data = [
+            'record' => $record,
+            'details' => $details,
+            'clinic_name' => 'Famcare Medical Clinic',
+            'clinic_address' => '123 Healthcare Street, Medical District',
+            'clinic_contact' => '+1 (555) 123-4567',
+            'doctor_name' => $doctorName,
+            'doctor_specialization' => $specialization,
+            'date' => now()->format('F d, Y'),
+        ];
+
+        $pdf = Pdf::loadView('pdf.medical_record', $data);
+        return $pdf->download('medical_record_' . $id . '.pdf');
     }
 }

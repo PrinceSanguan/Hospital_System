@@ -26,13 +26,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from '@/components/ui/badge';
-import {
-  Plus,
-  FileSearch,
-  Trash,
-  X,
-  Download,
-} from 'lucide-react';
+import { PlusIcon, EyeIcon, TrashIcon, XMarkIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import axios from 'axios';
 
@@ -238,36 +232,29 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
-      {/* Sidebar */}
-      <Sidebar user={user} />
-
-      {/* Main Content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Header */}
-        <Header user={user} />
-
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto bg-gray-100 p-4 md:p-6 dark:bg-gray-900">
-          <Head title="Medical Records" />
-
-          <div className="flex flex-col gap-6">
-            <div className="flex justify-between items-center">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Medical Records</h1>
-              <Button asChild className="flex items-center gap-1">
-                <Link href={route('staff.clinical.info.create')}>
-                  <Plus className="h-4 w-4" />
-                  Add New Medical Record
-                </Link>
-              </Button>
-            </div>
-
+    <>
+      <Head title="Medical Records" />
+      <div className="min-h-screen bg-gray-50 flex">
+        <Sidebar user={user} />
+        <div className="flex-1">
+          <Header user={user} />
+          <main className="p-6">
             <Card>
-              <CardHeader>
-                <CardTitle>All Medical Records</CardTitle>
-                <CardDescription>
-                  View and manage all patient medical records
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle className="text-2xl font-bold">Medical Records</CardTitle>
+                  <CardDescription>
+                    View and manage all medical records
+                  </CardDescription>
+                </div>
+                <div className="flex space-x-2">
+                  <Link href={route('staff.clinical.info.create')}>
+                    <Button className="flex items-center gap-1">
+                      <PlusIcon className="h-4 w-4" />
+                      <span>Add New Record</span>
+                    </Button>
+                  </Link>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -301,24 +288,24 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
                                 asChild
                               >
                                 <Link href={route('staff.clinical.info.show', record.id)}>
-                                  <FileSearch className="h-4 w-4" />
+                                  <EyeIcon className="h-4 w-4" />
                                 </Link>
                               </Button>
                               <Button
                                 variant="ghost"
-                                size="sm"
+                                size="icon"
                                 onClick={() => handleDownloadPrescription(record.id)}
                                 disabled={loading[record.id]}
-                                className="text-blue-500 hover:text-blue-700 font-medium"
+                                className="opacity-70 hover:opacity-100"
                               >
-                                Rx
+                                <ArrowDownTrayIcon className="h-4 w-4" />
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => confirmDelete(record.id)}
                               >
-                                <Trash className="h-4 w-4 text-red-500" />
+                                <TrashIcon className="h-4 w-4 text-red-500" />
                               </Button>
                             </div>
                           </TableCell>
@@ -361,29 +348,29 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
                 )}
               </CardContent>
             </Card>
-          </div>
 
-          {/* Delete Confirmation Dialog */}
-          <Dialog open={deleteDialog} onOpenChange={setDeleteDialog}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Confirm Deletion</DialogTitle>
-              </DialogHeader>
-              <p className="py-4">Are you sure you want to delete this medical record? This action cannot be undone.</p>
-              <DialogFooter>
-                <Button variant="outline" onClick={closeDeleteDialog} disabled={processing}>
-                  <X className="h-4 w-4 mr-2" />
-                  Cancel
-                </Button>
-                <Button variant="destructive" onClick={handleDelete} disabled={processing}>
-                  <Trash className="h-4 w-4 mr-2" />
-                  {processing ? 'Deleting...' : 'Delete'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </main>
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={deleteDialog} onOpenChange={setDeleteDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Confirm Deletion</DialogTitle>
+                </DialogHeader>
+                <p className="py-4">Are you sure you want to delete this medical record? This action cannot be undone.</p>
+                <DialogFooter>
+                  <Button variant="outline" onClick={closeDeleteDialog} disabled={processing}>
+                    <XMarkIcon className="h-4 w-4 mr-2" />
+                    Cancel
+                  </Button>
+                  <Button variant="destructive" onClick={handleDelete} disabled={processing}>
+                    <TrashIcon className="h-4 w-4 mr-2" />
+                    {processing ? 'Deleting...' : 'Delete'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </main>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

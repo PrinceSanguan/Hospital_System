@@ -102,6 +102,7 @@ interface ViewMedicalRecordProps {
 
 export default function ViewMedicalRecord({ user, record, request }: ViewMedicalRecordProps) {
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [doctorInfo, setDoctorInfo] = useState<{name: string, specialization: string | null}>({
     name: record.assignedDoctor?.name || '',
     specialization: record.assignedDoctor?.doctorProfile?.specialization || null
@@ -246,6 +247,18 @@ export default function ViewMedicalRecord({ user, record, request }: ViewMedical
     }, 100);
   };
 
+  const handleDownload = async () => {
+    try {
+      setIsDownloading(true);
+      window.open(route('patient.records.download', record.id), '_blank');
+    } catch (error) {
+      console.error('Error downloading medical record:', error);
+      alert('Failed to download medical record.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <PatientLayout user={user}>
       <div className={`bg-gray-100 dark:bg-gray-900 ${isPrinting ? 'print:bg-white print:h-auto' : ''}`}>
@@ -298,6 +311,9 @@ export default function ViewMedicalRecord({ user, record, request }: ViewMedical
               <Button variant="outline" onClick={handlePrint} className="flex items-center gap-1">
                 <Printer className="h-4 w-4" />
                 Print
+              </Button>
+              <Button variant="default" onClick={handleDownload} disabled={isDownloading} className="flex items-center gap-1">
+                Download
               </Button>
             </div>
           </div>
@@ -445,18 +461,11 @@ export default function ViewMedicalRecord({ user, record, request }: ViewMedical
           {/* Print-specific layout */}
           <div className="hidden print:block mx-auto" style={{ maxWidth: '800px' }}>
             {/* Title */}
-            <div className="text-center">
-              <h1 className="text-2xl font-bold">Medical Record</h1>
-              <p className="text-sm mt-1">
-                Physician: {getDoctorDisplay()}
-              </p>
-              <p className="text-sm mt-1">
-                Patient: {record.patient?.name}
-              </p>
+            <div className="text-center mb-2">
+              <h1 className="text-xl font-bold">Medical Record</h1>
+              <p className="text-sm">Physician: {getDoctorDisplay()}</p>
+              <p className="text-sm">Patient: {record.patient?.name}</p>
             </div>
-
-            {/* Horizontal line */}
-            <div className="border-t border-gray-300 my-4"></div>
 
             {/* Introduction */}
             <div className="text-sm mb-4">
@@ -464,7 +473,7 @@ export default function ViewMedicalRecord({ user, record, request }: ViewMedical
             </div>
 
             {/* Patient Information Table */}
-            <div className="mb-8">
+            <div className="mb-4">
               <table className="w-full border-collapse mb-0">
                 <thead>
                   <tr>
@@ -482,20 +491,36 @@ export default function ViewMedicalRecord({ user, record, request }: ViewMedical
                     <td className="p-2 border border-gray-300">{details.patient_info?.birthdate || formatDate(record.patient?.date_of_birth) || 'N/A'}</td>
                   </tr>
                   <tr>
-                    <td className="p-2 border border-gray-300">Gender:</td>
-                    <td className="p-2 border border-gray-300">{details.patient_info?.gender || 'Not provided'}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 border border-gray-300">Contact Number:</td>
-                    <td className="p-2 border border-gray-300">{details.patient_info?.phone || 'Not provided'}</td>
-                  </tr>
-                  <tr>
                     <td className="p-2 border border-gray-300">Email:</td>
                     <td className="p-2 border border-gray-300">{record.patient?.email || details.patient_info?.email || 'Not provided'}</td>
                   </tr>
                   <tr>
                     <td className="p-2 border border-gray-300">Address:</td>
                     <td className="p-2 border border-gray-300">{getPatientAddress()}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border border-gray-300">Doctor:</td>
+                    <td className="p-2 border border-gray-300">{getDoctorDisplay()}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border border-gray-300">Record Type:</td>
+                    <td className="p-2 border border-gray-300">{getRecordTypeDisplay(record.record_type)}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border border-gray-300">Status:</td>
+                    <td className="p-2 border border-gray-300">{record.status}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border border-gray-300">Appointment Date:</td>
+                    <td className="p-2 border border-gray-300">{formatDate(record.appointment_date)}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border border-gray-300">Appointment Time:</td>
+                    <td className="p-2 border border-gray-300">{formatTime(details.appointment_time) || '14:00:00'}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border border-gray-300">Created Date:</td>
+                    <td className="p-2 border border-gray-300">{formatDate(record.created_at)}</td>
                   </tr>
                   <tr>
                     <td className="p-2 border border-gray-300">Follow-up Date:</td>
@@ -505,20 +530,10 @@ export default function ViewMedicalRecord({ user, record, request }: ViewMedical
               </table>
             </div>
 
-            {/* Medical History */}
-            {(details.medical_history && typeof details.medical_history === 'string') && (
-              <div className="mb-4">
-                <h3 className="text-base font-bold mb-1">Medical History</h3>
-                <div className="p-3 border border-gray-300 rounded">
-                  <p className="whitespace-pre-line">{details.medical_history || 'Test'}</p>
-                </div>
-              </div>
-            )}
-
             {/* Diagnosis */}
             {details.diagnosis && (
               <div className="mb-4">
-                <h3 className="text-base font-bold mb-1 text-blue-800">Diagnosis</h3>
+                <h3 className="text-base font-bold mb-1">Diagnosis</h3>
                 <div className="p-3 border border-gray-300 rounded">
                   <p className="whitespace-pre-line">{details.diagnosis}</p>
                 </div>
@@ -528,7 +543,7 @@ export default function ViewMedicalRecord({ user, record, request }: ViewMedical
             {/* Prescriptions */}
             {prescriptions.length > 0 && (
               <div className="mb-4">
-                <h3 className="text-base font-bold mb-1 text-blue-800">Prescriptions</h3>
+                <h3 className="text-base font-bold mb-1">Prescriptions</h3>
                 <table className="w-full border-collapse">
                   <thead>
                     <tr>
@@ -557,7 +572,7 @@ export default function ViewMedicalRecord({ user, record, request }: ViewMedical
             {/* Notes */}
             {details.notes && (
               <div className="mb-4">
-                <h3 className="text-base font-bold mb-1 text-blue-800">Notes</h3>
+                <h3 className="text-base font-bold mb-1">Notes</h3>
                 <div className="p-3 border border-gray-300 rounded">
                   <p className="whitespace-pre-line">{details.notes}</p>
                 </div>
