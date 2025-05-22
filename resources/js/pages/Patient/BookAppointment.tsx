@@ -297,8 +297,8 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
       // In production, you would want to remove this fallback
       if (process.env.NODE_ENV !== 'production') {
         console.log('No matching schedules found - using default time slots');
-        // Updated default time slots to show morning slots from 9:00 AM to 12:00 PM
-        const defaultSlots = ['9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM'];
+        // Updated default time slots to show slots from 9:00 AM to 5:00 PM
+        const defaultSlots = ['9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM'];
         setAvailableTimeSlots(defaultSlots);
 
         // After setting available time slots, fetch booked slots
