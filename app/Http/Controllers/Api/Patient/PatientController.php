@@ -1661,4 +1661,116 @@ class PatientController extends Controller
             return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
         }
     }
+
+    /**
+     * Get patient details by ID
+     *
+     * @param int $patientId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getPatientDetails($patientId)
+    {
+        try {
+            $patient = User::where('id', $patientId)
+                ->where('user_role', User::ROLE_PATIENT)
+                ->first();
+
+            if (!$patient) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Patient not found'
+                ], 404);
+            }
+
+            // Get patient profile information
+            $patientProfile = $patient->patientProfile;
+
+            // Fetch any additional patient data
+            $address = $patientProfile->address ?? null;
+            if (!$address) {
+                // Try to get address from the latest record
+                $latestRecord = PatientRecord::where('patient_id', $patientId)
+                    ->whereNotNull('details')
+                    ->latest()
+                    ->first();
+
+                if ($latestRecord && is_string($latestRecord->details)) {
+                    $recordDetails = json_decode($latestRecord->details, true);
+                    if ($recordDetails && isset($recordDetails['patient_info']['address'])) {
+                        $address = $recordDetails['patient_info']['address'];
+                    } elseif ($recordDetails && isset($recordDetails['address'])) {
+                        $address = $recordDetails['address'];
+                    }
+                }
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'patient' => [
+                    'id' => $patient->id,
+                    'name' => $patient->name,
+                    'email' => $patient->email,
+                    'phone' => $patientProfile->phone ?? null,
+                    'address' => $address,
+                    'birthdate' => $patientProfile->date_of_birth ?? null,
+                    'gender' => $patientProfile->gender ?? null,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching patient details: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Error fetching patient details',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get doctor profile by ID
+     *
+     * @param int $doctorId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getDoctorProfile($doctorId)
+    {
+        try {
+            $doctor = User::where('id', $doctorId)
+                ->where('user_role', User::ROLE_DOCTOR)
+                ->first();
+
+            if (!$doctor) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Doctor not found'
+                ], 404);
+            }
+
+            // Get doctor profile information
+            $doctorProfile = $doctor->doctorProfile;
+
+            // Get doctor record from doctors table if it exists
+            $doctorRecord = Doctor::where('user_id', $doctorId)->first();
+
+            return response()->json([
+                'status' => 'success',
+                'doctor' => [
+                    'id' => $doctor->id,
+                    'name' => $doctor->name,
+                    'email' => $doctor->email,
+                    'specialty' => $doctorProfile?->specialization ?? $doctorRecord?->specialization ?? null,
+                    'license_number' => $doctorProfile?->license_number ?? $doctorRecord?->license_number ?? null,
+                    'contact_number' => $doctor->phone ?? $doctorRecord?->contact_number ?? null,
+                    'profile_image' => $doctorProfile?->profile_image ?? null,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching doctor profile: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Error fetching doctor profile',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

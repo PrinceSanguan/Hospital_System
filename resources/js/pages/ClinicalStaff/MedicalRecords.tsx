@@ -300,13 +300,6 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
                               >
                                 <ArrowDownTrayIcon className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => confirmDelete(record.id)}
-                              >
-                                <TrashIcon className="h-4 w-4 text-red-500" />
-                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
