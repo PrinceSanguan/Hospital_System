@@ -116,22 +116,20 @@ interface FormData {
 }
 
 export default function RecordsManagement({ user, records, recordTypes, statusOptions, patients, doctors }: RecordsManagementProps) {
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null);
-
   const { data, setData, post, put, errors, processing, reset } = useForm<FormData>({
-    id: "",
-    patient_id: "",
-    assigned_doctor_id: "none",
-    record_type: "",
-    status: "pending",
-    appointment_date: "",
-    details: "",
+    id: '',
+    patient_id: '',
+    assigned_doctor_id: '',
+    record_type: recordTypes[0],
+    status: statusOptions[0],
+    appointment_date: '',
+    details: '',
     lab_results: {},
     vital_signs: {},
-    prescriptions: []
+    prescriptions: [],
   });
+
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const handleCreate = () => {
     // Convert "none" back to empty string for the backend
@@ -159,23 +157,6 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
         setIsCreateModalOpen(false);
       },
     });
-  };
-
-  const confirmDelete = (record: MedicalRecord) => {
-    setSelectedRecord(record);
-    setIsDeleteModalOpen(true);
-  };
-
-  const handleDelete = () => {
-    if (selectedRecord) {
-      post(route('admin.records.destroy', selectedRecord.id), {
-        method: 'delete',
-        onSuccess: () => {
-          setIsDeleteModalOpen(false);
-          setSelectedRecord(null);
-        },
-      });
-    }
   };
 
   const RecordTypeIcon = ({ type }: { type: string }) => {
@@ -302,9 +283,6 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Status
                 </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Actions
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
@@ -343,14 +321,7 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                        onClick={() => confirmDelete(record)}
-                      >
-                        <Trash className="h-4 w-4" />
-                      </Button>
+                      {/* Removed the delete button */}
                     </div>
                   </td>
                 </tr>
@@ -1090,39 +1061,6 @@ export default function RecordsManagement({ user, records, recordTypes, statusOp
             </Button>
             <Button onClick={data.id ? handleUpdate : handleCreate} disabled={processing}>
               {data.id ? 'Update Record' : 'Create Record'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Modal */}
-      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Delete Record</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this record? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-4 rounded-md bg-red-50 p-4">
-            {selectedRecord && (
-              <div className="text-sm text-red-700">
-                <p><strong>Patient:</strong> {selectedRecord.patient.name}</p>
-                <p><strong>Type:</strong> {selectedRecord.record_type === 'medical_checkup' ? 'Medical Checkup' : 'Laboratory Test'}</p>
-                <p><strong>Date:</strong> {new Date(selectedRecord.appointment_date).toLocaleDateString()}</p>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={processing}
-            >
-              Delete Record
             </Button>
           </DialogFooter>
         </DialogContent>

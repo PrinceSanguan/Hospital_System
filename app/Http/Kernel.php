@@ -70,5 +70,6 @@ class Kernel extends HttpKernel
         'clinical.staff' => \App\Http\Middleware\ClinicalStaffMiddleware::class,
         'patient' => \App\Http\Middleware\PatientMiddleware::class,
         'guest.middleware' => \App\Http\Middleware\GuestMiddleware::class,
+        'log.activity' => \App\Http\Middleware\LogActivity::class,
     ];
 }

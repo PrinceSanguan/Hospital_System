@@ -74,18 +74,14 @@ export function Sidebar() {
                 return <ClipboardDocumentListIcon className="w-5 h-5" />;
             case 'receipts':
                 return <ReceiptRefundIcon className="w-5 h-5" />;
+            case 'logs':
+                return <DocumentIcon className="w-5 h-5" />;
             default:
                 return <DocumentIcon className="w-5 h-5" />;
         }
     };
 
-    // Define clinical staff links
-    const staffLinks = [
-        { name: 'Medical Records', route: 'admin.clinical.info', icon: 'medical' },
-        { name: 'Appointments', route: 'admin.staff.appointments.index', icon: 'appointments' },
-        { name: 'Lab Results', route: 'admin.lab-results.index', icon: 'lab' },
-        { name: 'Receipts', route: 'admin.receipts.index', icon: 'receipts' }
-    ];
+    // Clinical staff links have been removed
 
     return (
         <div className="hidden w-64 flex-col border-r bg-white md:flex dark:border-gray-700 dark:bg-gray-900">
@@ -130,38 +126,8 @@ export function Sidebar() {
 
                     {/* Separator */}
                     <div className="my-2 border-t border-gray-200 dark:border-gray-700"></div>
-
-                    {/* Clinical Staff Functions Section */}
-                    <div className="px-3 mb-2">
-                        <h3 className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                            Clinical Staff Functions
-                        </h3>
-                    </div>
-
-                    {/* Clinical Staff Links */}
-                    {staffLinks.map((item) => (
-                        routeExists(item.route) ? (
-                            <Link href={route(item.route)} key={item.name} className="w-full">
-                                <Button
-                                    variant={isActive(item.route) ? 'secondary' : 'ghost'}
-                                    className="flex w-full items-center justify-start gap-3 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-                                >
-                                    {getIconComponent(item.icon)}
-                                    {item.name}
-                                </Button>
-                            </Link>
-                        ) : (
-                            <Button
-                                key={item.name}
-                                variant="ghost"
-                                className="flex w-full items-center justify-start gap-3 rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
-                                disabled
-                            >
-                                {getIconComponent(item.icon)}
-                                {item.name}
-                            </Button>
-                        )
-                    ))}
+                    
+                    {/* Clinical Staff Functions Section - Removed */}
                 </nav>
             </div>
 

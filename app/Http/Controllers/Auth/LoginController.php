@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
@@ -38,6 +39,17 @@ class LoginController extends Controller
 
             // Check user role and redirect accordingly
             $user = Auth::user();
+            
+            // Log the user login with user information
+            Log::channel('daily')->info('User login', [
+                'user_id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'event_type' => 'LOGIN'
+            ]);
 
             switch ($user->user_role) {
                 case 'admin':
@@ -67,6 +79,21 @@ class LoginController extends Controller
      */
     public function destroy(Request $request)
     {
+        $user = Auth::user();
+        
+        // Log the user logout if a user is authenticated
+        if ($user) {
+            Log::channel('daily')->info('User logout', [
+                'user_id' => $user->id,
+                'name' => $user->name, 
+                'email' => $user->email,
+                'role' => $user->user_role,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'event_type' => 'LOGOUT'
+            ]);
+        }
+        
         Auth::logout();
 
         $request->session()->invalidate();

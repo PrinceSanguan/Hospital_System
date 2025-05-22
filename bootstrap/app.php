@@ -22,6 +22,11 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
+        
+        // Register the LogActivity middleware alias
+        $middleware->alias([
+            'log.activity' => \App\Http\Middleware\LogActivity::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

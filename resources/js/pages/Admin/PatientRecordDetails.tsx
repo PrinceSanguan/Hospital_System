@@ -220,9 +220,88 @@ export default function PatientRecordDetails({ user, record }: PatientRecordDeta
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="whitespace-pre-wrap rounded-md border bg-gray-50 p-4">
-                                    {record.details || 'No details provided for this record.'}
-                                </div>
+                                {record.details ? (
+                                    <div className="space-y-6">
+                                        {(() => {
+                                            try {
+                                                const detailsObj = typeof record.details === 'string' 
+                                                    ? JSON.parse(record.details) 
+                                                    : record.details;
+                                                
+                                                return (
+                                                    <>
+                                                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                                            <div className="rounded-lg border bg-card p-4">
+                                                                <h3 className="mb-3 font-semibold">Appointment Information</h3>
+                                                                <div className="space-y-2">
+                                                                    <div className="flex justify-between border-b pb-1">
+                                                                        <span className="text-muted-foreground">Time</span>
+                                                                        <span className="font-medium">{detailsObj.appointment_time || 'N/A'}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between border-b pb-1">
+                                                                        <span className="text-muted-foreground">Reason</span>
+                                                                        <span className="font-medium">{detailsObj.reason || 'N/A'}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between border-b pb-1">
+                                                                        <span className="text-muted-foreground">Notes</span>
+                                                                        <span className="font-medium">{detailsObj.notes || 'N/A'}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            {detailsObj.patient_info && (
+                                                                <div className="rounded-lg border bg-card p-4">
+                                                                    <h3 className="mb-3 font-semibold">Patient Information</h3>
+                                                                    <div className="space-y-2">
+                                                                        <div className="flex justify-between border-b pb-1">
+                                                                            <span className="text-muted-foreground">Full Name</span>
+                                                                            <span className="font-medium">{detailsObj.patient_info.name || 'N/A'}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between border-b pb-1">
+                                                                            <span className="text-muted-foreground">Birthdate</span>
+                                                                            <span className="font-medium">{detailsObj.patient_info.birthdate || 'N/A'}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between border-b pb-1">
+                                                                            <span className="text-muted-foreground">Age</span>
+                                                                            <span className="font-medium">{detailsObj.patient_info.age || 'N/A'}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between border-b pb-1">
+                                                                            <span className="text-muted-foreground">Height</span>
+                                                                            <span className="font-medium">{detailsObj.patient_info.height || 'N/A'} cm</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between border-b pb-1">
+                                                                            <span className="text-muted-foreground">Weight</span>
+                                                                            <span className="font-medium">{detailsObj.patient_info.weight || 'N/A'} kg</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between border-b pb-1">
+                                                                            <span className="text-muted-foreground">BMI</span>
+                                                                            <span className="font-medium">{detailsObj.patient_info.bmi || 'N/A'}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between border-b pb-1">
+                                                                            <span className="text-muted-foreground">Address</span>
+                                                                            <span className="font-medium">{detailsObj.patient_info.address || 'N/A'}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </>
+                                                );
+                                            } catch (error) {
+                                                // If parsing fails, display as plain text
+                                                return (
+                                                    <div className="whitespace-pre-wrap rounded-md border bg-gray-50 p-4">
+                                                        {record.details}
+                                                    </div>
+                                                );
+                                            }
+                                        })()}
+                                    </div>
+                                ) : (
+                                    <div className="rounded-md border bg-gray-50 p-4 text-center text-gray-500">
+                                        No details provided for this record.
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     </TabsContent>

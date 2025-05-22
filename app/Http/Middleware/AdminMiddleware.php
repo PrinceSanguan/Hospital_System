@@ -64,9 +64,29 @@ class AdminMiddleware
                             'icon' => 'dashboard'
                         ],
                         [
+                            'name' => 'Appointments',
+                            'route' => 'admin.appointments',
+                            'icon' => 'appointments'
+                        ],
+                        [
+                            'name' => 'Doctor Schedule',
+                            'route' => 'admin.doctor-schedules',
+                            'icon' => 'appointments'
+                        ],
+                        [
                             'name' => 'Patient Records',
                             'route' => 'admin.records.index',
                             'icon' => 'records'
+                        ],
+                        [
+                            'name' => 'Medical Records',
+                            'route' => 'admin.medical-records',
+                            'icon' => 'medical'
+                        ],
+                        [
+                            'name' => 'Receipts',
+                            'route' => 'admin.receipts',
+                            'icon' => 'receipts'
                         ],
                         [
                             'name' => 'User Management',

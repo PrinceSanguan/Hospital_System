@@ -36,6 +36,17 @@ class LoginController extends Controller
                     'message' => 'Only patients can access this endpoint'
                 ], 403);
             }
+            
+            // Log the API login event
+            \Illuminate\Support\Facades\Log::channel('daily')->info('API User login', [
+                'user_id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'event_type' => 'API_LOGIN'
+            ]);
 
             // Revoke old tokens (optional but recommended)
             $user->tokens()->delete();

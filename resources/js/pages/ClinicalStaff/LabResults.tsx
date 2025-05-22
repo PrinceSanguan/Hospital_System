@@ -1,31 +1,18 @@
-import { useState, useEffect } from 'react';
-import { Head, Link, useForm, router } from '@inertiajs/react';
+import PatientSearch from '@/components/PatientSearch';
+import { Header } from '@/components/clinicalstaff/header';
+import { Sidebar } from '@/components/clinicalstaff/sidebar';
 import { Button } from '@/components/ui/button';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-    DialogDescription,
-} from '@/components/ui/dialog';
-import { format } from 'date-fns';
-import { ArrowUpTrayIcon, ArrowDownTrayIcon, EyeIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { toast } from '@/components/ui/use-toast';
+import { ArrowDownTrayIcon, ArrowUpTrayIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { Head, useForm } from '@inertiajs/react';
 import axios from 'axios';
+import { format } from 'date-fns';
 import debounce from 'lodash/debounce';
-import PatientSearch from '@/components/PatientSearch';
-import { Sidebar } from '@/components/clinicalstaff/sidebar';
-import { Header } from '@/components/clinicalstaff/header';
+import { useEffect, useState } from 'react';
 
 interface Patient {
     id: number;
@@ -58,8 +45,8 @@ interface Props {
             name: string;
             email: string;
             role: string;
-        }
-    }
+        };
+    };
 }
 
 export default function LabResults({ labResults, patient, isPatientView, auth }: Props) {
@@ -91,30 +78,47 @@ export default function LabResults({ labResults, patient, isPatientView, auth }:
         searchPatients(searchTerm);
     }, [searchTerm]);
 
+    // Reset form data when dialog opens or closes
+    useEffect(() => {
+        reset();
+        setUploadError(null);
+        setFormSubmitted(false);
+    }, [isImportOpen]);
+
     const handlePatientSelect = (patient: Patient) => {
         setData('patient_id', patient.id?.toString() || '');
         setSearchTerm('');
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files?.[0]) {
-            const file = e.target.files[0];
-            // Check file size (10MB)
-            if (file.size > 10 * 1024 * 1024) {
-                setUploadError('File size exceeds 10MB limit');
-                return;
-            }
+        // Clear any previous file and errors
+        setUploadError(null);
 
-            // Check file type
-            const validTypes = ['image/jpeg', 'image/png', 'application/pdf'];
-            if (!validTypes.includes(file.type)) {
-                setUploadError('File type not supported. Please upload PDF, JPG, or PNG files only.');
-                return;
-            }
-
-            setUploadError(null);
-            setData('scan_file', file);
+        // Check if there are files selected
+        if (!e.target.files || e.target.files.length === 0) {
+            setData('scan_file', null);
+            return;
         }
+
+        const file = e.target.files[0];
+
+        // Check file size (10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            setUploadError('File size exceeds 10MB limit');
+            setData('scan_file', null);
+            return;
+        }
+
+        // Check file type
+        const validTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+        if (!validTypes.includes(file.type)) {
+            setUploadError('File type not supported. Please upload PDF, JPG, or PNG files only.');
+            setData('scan_file', null);
+            return;
+        }
+
+        console.log('File selected:', file.name, file.type, file.size);
+        setData('scan_file', file);
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -155,7 +159,7 @@ export default function LabResults({ labResults, patient, isPatientView, auth }:
 
         // Create a FormData object for the multipart form submission
         const formData = new FormData();
-        formData.append('patient_id', data.patient_id || (patient?.id?.toString() || ''));
+        formData.append('patient_id', data.patient_id || patient?.id?.toString() || '');
         formData.append('test_type', data.test_type);
         formData.append('test_date', data.test_date);
         if (data.scan_file) {
@@ -164,41 +168,70 @@ export default function LabResults({ labResults, patient, isPatientView, auth }:
         }
         formData.append('notes', data.notes || '');
 
+        // Add CSRF token to request headers
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
         console.log('Submitting form data to server');
 
-        // Use axios for direct form submission
-        axios.post(route('staff.lab-results.store'), formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-            }
-        })
-        .then(response => {
-            console.log('Lab result saved successfully', response);
-            reset();
-            setIsImportOpen(false);
-            setFormSubmitted(false);
-            window.location.reload();
-        })
-        .catch(error => {
-            console.error('Form submission errors:', error);
-            console.error('Response data:', error.response?.data);
-            setFormSubmitted(false);
+        // Use axios for direct form submission with proper headers
+        axios
+            .post(route('staff.lab-results.store'), formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    'X-CSRF-TOKEN': csrfToken || '',
+                    Accept: 'application/json',
+                },
+            })
+            .then((response) => {
+                console.log('Lab result saved successfully', response);
+                reset();
+                setIsImportOpen(false);
+                setFormSubmitted(false);
+                window.location.reload();
+            })
+            .catch((error) => {
+                console.error('Form submission errors:', error);
+                console.error('Response data:', error.response?.data);
+                setFormSubmitted(false);
 
-            // Set detailed error message
-            if (error.response?.data?.errors) {
-                const firstError = Object.values(error.response.data.errors)[0];
-                if (Array.isArray(firstError) && firstError.length > 0) {
-                    setUploadError(firstError[0]);
+                // Set detailed error message
+                if (error.response?.data?.errors) {
+                    const firstError = Object.values(error.response.data.errors)[0];
+                    if (Array.isArray(firstError) && firstError.length > 0) {
+                        setUploadError(firstError[0]);
+                    } else {
+                        setUploadError('Error uploading file. Please try again.');
+                    }
+                } else if (error.response?.data?.message) {
+                    setUploadError(error.response.data.message);
                 } else {
                     setUploadError('Error uploading file. Please try again.');
                 }
-            } else if (error.response?.data?.message) {
-                setUploadError(error.response.data.message);
-            } else {
-                setUploadError('Error uploading file. Please try again.');
-            }
-        });
+            });
+    };
+
+    const handleDownload = async (id: number, testType: string) => {
+        try {
+            const downloadUrl = route('staff.lab-results.download', id);
+            window.location.href = downloadUrl;
+
+            toast({
+                title: 'Download Started',
+                description: 'Your file should be downloading',
+            });
+        } catch (error) {
+            console.error('Download error:', error);
+            toast({
+                title: 'Download Failed',
+                description: 'Could not download the file.',
+                variant: 'destructive',
+            });
+        }
+    };
+
+    const viewLabResult = (id: number) => {
+        const viewUrl = route('staff.lab-results.view', id);
+        window.open(viewUrl, '_blank');
     };
 
     return (
@@ -212,17 +245,15 @@ export default function LabResults({ labResults, patient, isPatientView, auth }:
                     <Header user={auth.user} />
 
                     <div className="flex-1 overflow-auto p-6">
-                        <div className="max-w-7xl mx-auto">
-                            <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                                <div className="flex justify-between items-center mb-6">
+                        <div className="mx-auto max-w-7xl">
+                            <div className="overflow-hidden bg-white p-6 shadow-sm sm:rounded-lg">
+                                <div className="mb-6 flex items-center justify-between">
                                     <div>
                                         <h2 className="text-2xl font-semibold text-gray-900">
                                             {isPatientView ? `Lab Results for ${patient?.name}` : 'Lab Results'}
                                         </h2>
                                         {isPatientView && (
-                                            <p className="text-sm text-gray-600 mt-1">
-                                                Patient Reference #: {patient?.reference_number}
-                                            </p>
+                                            <p className="mt-1 text-sm text-gray-600">Patient Reference #: {patient?.reference_number}</p>
                                         )}
                                     </div>
                                     <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
@@ -235,20 +266,13 @@ export default function LabResults({ labResults, patient, isPatientView, auth }:
                                         <DialogContent className="sm:max-w-[425px]">
                                             <DialogHeader>
                                                 <DialogTitle>Import Lab Result</DialogTitle>
-                                                <DialogDescription>
-                                                    Upload a lab result for a patient. Fill in all required fields.
-                                                </DialogDescription>
+                                                <DialogDescription>Upload a lab result for a patient. Fill in all required fields.</DialogDescription>
                                             </DialogHeader>
                                             <form onSubmit={handleSubmit} className="space-y-4">
-                                                {!isPatientView && (
-                                                    <PatientSearch
-                                                        onSelect={handlePatientSelect}
-                                                        required={true}
-                                                    />
-                                                )}
+                                                {!isPatientView && <PatientSearch onSelect={handlePatientSelect} required={true} />}
 
                                                 {uploadError && (
-                                                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                                                    <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-red-700">
                                                         {uploadError}
                                                     </div>
                                                 )}
@@ -259,12 +283,10 @@ export default function LabResults({ labResults, patient, isPatientView, auth }:
                                                         id="test_type"
                                                         type="text"
                                                         value={data.test_type}
-                                                        onChange={e => setData('test_type', e.target.value)}
+                                                        onChange={(e) => setData('test_type', e.target.value)}
                                                         required
                                                     />
-                                                    {errors.test_type && (
-                                                        <p className="text-sm text-red-600">{errors.test_type}</p>
-                                                    )}
+                                                    {errors.test_type && <p className="text-sm text-red-600">{errors.test_type}</p>}
                                                 </div>
                                                 <div>
                                                     <Label htmlFor="test_date">Test Date</Label>
@@ -272,12 +294,10 @@ export default function LabResults({ labResults, patient, isPatientView, auth }:
                                                         id="test_date"
                                                         type="datetime-local"
                                                         value={data.test_date}
-                                                        onChange={e => setData('test_date', e.target.value)}
+                                                        onChange={(e) => setData('test_date', e.target.value)}
                                                         required
                                                     />
-                                                    {errors.test_date && (
-                                                        <p className="text-sm text-red-600">{errors.test_date}</p>
-                                                    )}
+                                                    {errors.test_date && <p className="text-sm text-red-600">{errors.test_date}</p>}
                                                 </div>
                                                 <div>
                                                     <Label htmlFor="scan_file">Scan File</Label>
@@ -287,13 +307,15 @@ export default function LabResults({ labResults, patient, isPatientView, auth }:
                                                         onChange={handleFileChange}
                                                         accept=".pdf,.jpg,.jpeg,.png"
                                                         required
+                                                        key={`file-input-${isImportOpen}`}
                                                     />
-                                                    {errors.scan_file && (
-                                                        <p className="text-sm text-red-600">{errors.scan_file}</p>
+                                                    {errors.scan_file && <p className="text-sm text-red-600">{errors.scan_file}</p>}
+                                                    <p className="mt-1 text-sm text-gray-500">Accepted formats: PDF, JPG, JPEG, PNG (max 10MB)</p>
+                                                    {data.scan_file && (
+                                                        <p className="mt-1 text-sm text-green-600">
+                                                            Selected file: {data.scan_file.name} ({Math.round(data.scan_file.size / 1024)} KB)
+                                                        </p>
                                                     )}
-                                                    <p className="text-sm text-gray-500 mt-1">
-                                                        Accepted formats: PDF, JPG, JPEG, PNG (max 10MB)
-                                                    </p>
                                                 </div>
                                                 <div>
                                                     <Label htmlFor="notes">Notes</Label>
@@ -301,11 +323,9 @@ export default function LabResults({ labResults, patient, isPatientView, auth }:
                                                         id="notes"
                                                         type="text"
                                                         value={data.notes}
-                                                        onChange={e => setData('notes', e.target.value)}
+                                                        onChange={(e) => setData('notes', e.target.value)}
                                                     />
-                                                    {errors.notes && (
-                                                        <p className="text-sm text-red-600">{errors.notes}</p>
-                                                    )}
+                                                    {errors.notes && <p className="text-sm text-red-600">{errors.notes}</p>}
                                                 </div>
                                                 <Button type="submit" disabled={processing || formSubmitted}>
                                                     {formSubmitted ? 'Saving...' : 'Import'}
@@ -351,39 +371,28 @@ export default function LabResults({ labResults, patient, isPatientView, auth }:
                                                         </>
                                                     )}
                                                     <TableCell>{result.test_type}</TableCell>
-                                                    <TableCell>
-                                                        {format(new Date(result.test_date), 'PPpp')}
-                                                    </TableCell>
-                                                    <TableCell className="space-x-2">
-                                                        <Link href={route('staff.lab-results.show', result.id)}>
-                                                            <Button variant="outline" size="sm">
-                                                                <EyeIcon className="h-4 w-4 mr-1" />
-                                                                View Lab Result
+                                                    <TableCell>{format(new Date(result.test_date), 'PPpp')}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="flex items-center justify-end space-x-2">
+                                                            <Button variant="outline" size="sm" onClick={() => viewLabResult(result.id)}>
+                                                                <EyeIcon className="h-4 w-4" />
+                                                                <span className="sr-only">View</span>
                                                             </Button>
-                                                        </Link>
-                                                        <a href={route('staff.lab-results.download', result.id)} download>
-                                                            <Button variant="outline" size="sm">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => handleDownload(result.id, result.test_type)}
+                                                            >
                                                                 <ArrowDownTrayIcon className="h-4 w-4" />
+                                                                <span className="sr-only">Download</span>
                                                             </Button>
-                                                        </a>
-                                                        <form
-                                                            onSubmit={(e) => {
-                                                                e.preventDefault();
-                                                                const url = route('staff.lab-results.destroy', result.id);
-                                                                router.delete(url);
-                                                            }}
-                                                            className="inline-block"
-                                                        >
-                                                            <Button variant="outline" size="sm" type="submit">
-                                                                <TrashIcon className="h-4 w-4" />
-                                                            </Button>
-                                                        </form>
+                                                        </div>
                                                     </TableCell>
                                                 </TableRow>
                                             ))
                                         ) : (
                                             <TableRow>
-                                                <TableCell colSpan={isPatientView ? 3 : 5} className="text-center py-6 text-gray-500">
+                                                <TableCell colSpan={isPatientView ? 3 : 5} className="py-6 text-center text-gray-500">
                                                     No lab results found
                                                 </TableCell>
                                             </TableRow>

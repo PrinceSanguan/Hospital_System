@@ -1,0 +1,185 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Appointment;
+use App\Models\Patient;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
+
+class AppointmentsController extends Controller
+{
+    public function index()
+    {
+        $user = Auth::user();
+
+        try {
+            // Clear cache to ensure fresh data (for MySQL)
+            if (DB::connection()->getDriverName() === 'mysql') {
+                DB::statement("SET SESSION query_cache_type=0");
+            }
+
+            // Get all appointments with patient information
+            $appointmentData = Appointment::select('appointments.*')
+                ->join('patients', 'appointments.patient_id', '=', 'patients.id')
+                ->leftJoin('users as doctors', 'appointments.assigned_doctor_id', '=', 'doctors.id')
+                ->orderBy('appointments.appointment_date', 'desc')
+                ->get();
+
+            $appointments = $appointmentData->map(function ($appointment) {
+                try {
+                    // Get patient information
+                    $patient = Patient::find($appointment->patient_id);
+                    if (!$patient) {
+                        Log::warning('Appointment #' . $appointment->id . ' has no associated patient');
+                        return null;
+                    }
+                    
+                    // Get doctor information
+                    $doctor = null;
+                    if ($appointment->assigned_doctor_id) {
+                        $doctor = User::find($appointment->assigned_doctor_id);
+                    }
+                    
+                    // Parse details
+                    $details = [];
+                    if ($appointment->details) {
+                        if (is_string($appointment->details)) {
+                            $details = json_decode($appointment->details, true) ?: [];
+                        }
+                    }
+                    
+                    $time = isset($details['appointment_time']) ? $details['appointment_time'] : '';
+                    $reason = $appointment->reason ?? (isset($details['reason']) ? $details['reason'] : '');
+
+                    // Generate a reference number
+                    $refNumber = $appointment->reference_number ?? ('APP' . str_pad($appointment->id, 6, '0', STR_PAD_LEFT));
+
+                    return [
+                        'id' => $appointment->id,
+                        'ref' => $refNumber,
+                        'date' => Carbon::parse($appointment->appointment_date)->format('M d, Y'),
+                        'time' => $time,
+                        'patient' => [
+                            'id' => $patient->id,
+                            'name' => $patient->name,
+                            'doctor' => $doctor ? 'Dr. ' . $doctor->name : '',
+                        ],
+                        'reason' => $reason,
+                        'status' => $appointment->status,
+                    ];
+                } catch (\Exception $e) {
+                    Log::error('Error processing appointment data: ' . $e->getMessage());
+                    return null;
+                }
+            })->filter()->values();
+
+            // Get status options for filter
+            $statusOptions = Appointment::distinct('status')->pluck('status');
+            
+            // Get appointment types for filter
+            $appointmentTypes = Appointment::distinct('record_type')->pluck('record_type');
+        } catch (\Exception $e) {
+            Log::error('Error fetching appointments: ' . $e->getMessage());
+            $appointments = collect([]);
+            $statusOptions = collect(['pending', 'confirmed', 'cancelled', 'completed']);
+            $appointmentTypes = collect(['doctor_appointment', 'lab_appointment']);
+        }
+
+        return Inertia::render('Admin/Appointments', [
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+            ],
+            'appointments' => $appointments,
+            'statusOptions' => $statusOptions,
+            'appointmentTypes' => $appointmentTypes,
+        ]);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|string|in:pending,confirmed,completed,cancelled',
+            'notes' => 'nullable|string',
+        ]);
+
+        try {
+            DB::beginTransaction();
+            
+            // Find appointment
+            $appointment = Appointment::findOrFail($id);
+            $oldStatus = $appointment->status;
+            $newStatus = $request->status;
+            
+            // Update appointment status
+            $appointment->status = $newStatus;
+            
+            // Update details if notes provided
+            if ($request->filled('notes')) {
+                // Parse existing details
+                $details = [];
+                if ($appointment->details) {
+                    if (is_string($appointment->details)) {
+                        $details = json_decode($appointment->details, true) ?: [];
+                    } else {
+                        $details = (array) $appointment->details;
+                    }
+                }
+                
+                // Add status change note
+                $details['status_notes'] = $request->notes;
+                $details['status_updated_by'] = 'admin';
+                $details['status_updated_at'] = now()->format('Y-m-d H:i:s');
+                
+                $appointment->details = json_encode($details);
+            }
+            
+            $appointment->save();
+            
+            DB::commit();
+            
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Appointment {$newStatus} successfully",
+                    'appointment' => $appointment
+                ]);
+            }
+            
+            return redirect()->route('admin.appointments')->with('success', "Appointment {$newStatus} successfully");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error updating appointment status: ' . $e->getMessage());
+            
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update appointment status',
+                ], 500);
+            }
+            
+            return redirect()->back()->with('error', 'Failed to update appointment status');
+        }
+    }
+
+    public function destroy($id)
+    {
+        try {
+            $appointment = Appointment::findOrFail($id);
+            $appointment->delete();
+            
+            return redirect()->route('admin.appointments')->with('success', 'Appointment deleted successfully');
+        } catch (\Exception $e) {
+            Log::error('Error deleting appointment: ' . $e->getMessage());
+            return redirect()->route('admin.appointments')->with('error', 'Failed to delete appointment');
+        }
+    }
+}

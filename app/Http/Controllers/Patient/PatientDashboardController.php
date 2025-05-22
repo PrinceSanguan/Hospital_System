@@ -18,6 +18,7 @@ use App\Models\Patient;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\LabResult;
 
 class PatientDashboardController extends Controller
 {
@@ -68,10 +69,10 @@ class PatientDashboardController extends Controller
 
         // Get medical records
         $medicalRecords = PatientRecord::where('patient_id', $user->id)
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->where('record_type', 'medical_checkup')
-                      ->orWhere('record_type', 'prescription')
-                      ->orWhere('record_type', 'medical_record');
+                    ->orWhere('record_type', 'prescription')
+                    ->orWhere('record_type', 'medical_record');
             })
             ->with('assignedDoctor')
             ->orderBy('updated_at', 'desc')
@@ -94,8 +95,8 @@ class PatientDashboardController extends Controller
                 ];
             });
 
-                // Get available doctors
-            $doctors = User::where('user_role', User::ROLE_DOCTOR)
+        // Get available doctors
+        $doctors = User::where('user_role', User::ROLE_DOCTOR)
             ->with(['doctorProfile', 'schedules', 'services'])
             ->get()
             ->map(function ($doctor) {
@@ -116,7 +117,7 @@ class PatientDashboardController extends Controller
                 'email' => $user->email,
                 'role' => $user->user_role,
             ],
-            'upcomingAppointments' => $upcomingAppointments->map(function($appointment) {
+            'upcomingAppointments' => $upcomingAppointments->map(function ($appointment) {
                 // Make sure doctor information is always included
                 return [
                     'id' => $appointment->id,
@@ -261,8 +262,10 @@ class PatientDashboardController extends Controller
             }
 
             // Add vital signs if provided
-            if ($request->temperature || $request->pulse_rate || $request->respiratory_rate ||
-                $request->blood_pressure || $request->oxygen_saturation) {
+            if (
+                $request->temperature || $request->pulse_rate || $request->respiratory_rate ||
+                $request->blood_pressure || $request->oxygen_saturation
+            ) {
                 $details['vital_signs'] = [
                     'temperature' => $request->temperature,
                     'pulse_rate' => $request->pulse_rate,
@@ -466,9 +469,9 @@ class PatientDashboardController extends Controller
         $user = Auth::user();
 
         $appointments = PatientRecord::where('patient_id', $user->id)
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->where('record_type', 'medical_checkup')
-                      ->orWhere('record_type', 'laboratory_test');
+                    ->orWhere('record_type', 'laboratory_test');
             })
             ->with('assignedDoctor')
             ->orderBy('appointment_date', 'desc')
@@ -486,7 +489,7 @@ class PatientDashboardController extends Controller
                 'email' => $user->email,
                 'role' => $user->user_role,
             ],
-            'appointments' => $appointments->map(function($appointment) {
+            'appointments' => $appointments->map(function ($appointment) {
                 // Make sure doctor information is always included
                 return [
                     'id' => $appointment->id,
@@ -560,12 +563,12 @@ class PatientDashboardController extends Controller
         $user = Auth::user();
 
         $records = PatientRecord::where('patient_id', $user->id)
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->where('record_type', PatientRecord::TYPE_MEDICAL_CHECKUP)
-                      ->orWhere('record_type', PatientRecord::TYPE_MEDICAL_RECORD)
-                      ->orWhere('record_type', 'medical_record') // Include both forms to ensure compatibility
-                      ->orWhere('record_type', 'prescription')
-                      ->orWhere('record_type', 'medical_checkup'); // Include both forms to ensure compatibility
+                    ->orWhere('record_type', PatientRecord::TYPE_MEDICAL_RECORD)
+                    ->orWhere('record_type', 'medical_record') // Include both forms to ensure compatibility
+                    ->orWhere('record_type', 'prescription')
+                    ->orWhere('record_type', 'medical_checkup'); // Include both forms to ensure compatibility
             })
             ->where('status', 'completed') // Only show completed records to patients
             ->with('assignedDoctor')
@@ -682,42 +685,42 @@ class PatientDashboardController extends Controller
         ]);
     }
 
-            // List all doctors
-        public function listDoctors()
-        {
-            $user = Auth::user();
+    // List all doctors
+    public function listDoctors()
+    {
+        $user = Auth::user();
 
-            $doctors = User::where('user_role', User::ROLE_DOCTOR)
-                ->with(['doctorProfile', 'schedules', 'services'])
-                ->get()
-                ->map(function ($doctor) {
-                    return [
-                        'id' => $doctor->id,
-                        'name' => $doctor->name,
-                        'specialty' => $doctor->doctorProfile->specialization ?? '',
-                        'profile_image' => $doctor->doctorProfile->profile_image ?? null,
-                        'availability' => $doctor->availability ?? [],
-                        'schedules' => $doctor->schedules,
-                        'services' => $doctor->services,
-                    ];
-                });
+        $doctors = User::where('user_role', User::ROLE_DOCTOR)
+            ->with(['doctorProfile', 'schedules', 'services'])
+            ->get()
+            ->map(function ($doctor) {
+                return [
+                    'id' => $doctor->id,
+                    'name' => $doctor->name,
+                    'specialty' => $doctor->doctorProfile->specialization ?? '',
+                    'profile_image' => $doctor->doctorProfile->profile_image ?? null,
+                    'availability' => $doctor->availability ?? [],
+                    'schedules' => $doctor->schedules,
+                    'services' => $doctor->services,
+                ];
+            });
 
-            // Get notifications for the user
-            $notifications = Notification::where('user_id', $user->id)
-                ->orderBy('created_at', 'desc')
-                ->take(5)
-                ->get();
+        // Get notifications for the user
+        $notifications = Notification::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get();
 
-            return Inertia::render('Patient/Doctors', [
-                'user' => [
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'role' => $user->user_role,
-                ],
-                'doctors' => $doctors,
-                'notifications' => $notifications,
-            ]);
-        }
+        return Inertia::render('Patient/Doctors', [
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+            ],
+            'doctors' => $doctors,
+            'notifications' => $notifications,
+        ]);
+    }
 
     // View profile
     public function viewProfile()
@@ -845,7 +848,7 @@ class PatientDashboardController extends Controller
     public function viewDoctor($id)
     {
         $doctor = \App\Models\User::where('user_role', \App\Models\User::ROLE_DOCTOR)
-            ->with(['doctorProfile', 'services' => function($query) {
+            ->with(['doctorProfile', 'services' => function ($query) {
                 $query->where('is_active', true);
             }, 'schedules'])
             ->findOrFail($id);
@@ -887,7 +890,7 @@ class PatientDashboardController extends Controller
         $doctors = User::where('user_role', 'doctor')
             ->with('doctorProfile')
             ->get()
-            ->map(function($doctor) {
+            ->map(function ($doctor) {
                 return [
                     'id' => $doctor->id,
                     'name' => $doctor->name,
@@ -953,20 +956,54 @@ class PatientDashboardController extends Controller
      */
     public function downloadLabResult($id)
     {
-        // Validation: Ensure the lab result belongs to the authenticated user
-        $user = Auth::user();
-        $labResult = PatientRecord::where('id', $id)
-            ->where('patient_id', $user->id)
-            ->where('record_type', 'laboratory_test')
-            ->firstOrFail();
+        try {
+            $user = Auth::user();
 
-        // Get the PDF from storage
-        $pdfPath = $labResult->lab_results;
-        if (!$pdfPath || !Storage::exists($pdfPath)) {
-            return back()->with('error', 'Lab result PDF not found');
+            // Verify patient has access to this lab result
+            $labRecord = PatientRecord::where('id', $id)
+                ->where('patient_id', $user->id)
+                ->where('record_type', 'laboratory_test')
+                ->first();
+
+            if (!$labRecord) {
+                abort(404, 'Lab record not found or access denied');
+            }
+
+            // Use same logic as staff controller
+            $labResultDir = public_path('lab_result');
+
+            if (!is_dir($labResultDir)) {
+                abort(404, 'Lab result directory not found');
+            }
+
+            $files = scandir($labResultDir);
+            $matchingFile = null;
+
+            foreach ($files as $file) {
+                if (strpos($file, 'lab_result_') === 0 && $file !== '.' && $file !== '..') {
+                    $matchingFile = $file;
+                    break;
+                }
+            }
+
+            if (!$matchingFile) {
+                abort(404, 'No lab result file found');
+            }
+
+            $publicFilePath = public_path('lab_result/' . $matchingFile);
+
+            if (!file_exists($publicFilePath)) {
+                abort(404, 'File not found');
+            }
+
+            $extension = pathinfo($publicFilePath, PATHINFO_EXTENSION);
+            $filename = 'lab_result_' . $id . '.' . $extension;
+
+            return response()->download($publicFilePath, $filename);
+        } catch (\Exception $e) {
+            Log::error('Patient lab result download error: ' . $e->getMessage());
+            abort(500, 'Error downloading file');
         }
-
-        return Storage::download($pdfPath, 'lab_result_' . $id . '.pdf');
     }
 
     /**
@@ -974,32 +1011,32 @@ class PatientDashboardController extends Controller
      */
     public function downloadMedicalRecord($id)
     {
-        // Ensure the medical record belongs to the authenticated user
-        $user = Auth::user();
-        $record = PatientRecord::where('id', $id)
-            ->where('patient_id', $user->id)
-            ->with(['patient', 'assignedDoctor.doctorProfile'])
-            ->firstOrFail();
+        try {
+            $user = Auth::user();
 
-        // Get details for the PDF
-        $details = is_string($record->details) ? json_decode($record->details, true) : $record->details;
+            // Find the medical record that belongs to this patient
+            $record = PatientRecord::where('id', $id)
+                ->where('patient_id', $user->id)
+                ->firstOrFail();
 
-        // Prepare doctor information
-        $doctorName = $record->assignedDoctor->name ?? 'Unknown Doctor';
-        $specialization = $record->assignedDoctor->doctorProfile->specialization ?? '';
+            // Assuming there's a file_path field in the medical record
+            if (empty($record->file_path)) {
+                abort(404, 'No file associated with this record');
+            }
 
-        $data = [
-            'record' => $record,
-            'details' => $details,
-            'clinic_name' => 'Famcare Medical Clinic',
-            'clinic_address' => '123 Healthcare Street, Medical District',
-            'clinic_contact' => '+1 (555) 123-4567',
-            'doctor_name' => $doctorName,
-            'doctor_specialization' => $specialization,
-            'date' => now()->format('F d, Y'),
-        ];
+            $publicFilePath = public_path($record->file_path);
 
-        $pdf = Pdf::loadView('pdf.medical_record', $data);
-        return $pdf->download('medical_record_' . $id . '.pdf');
+            if (!file_exists($publicFilePath)) {
+                abort(404, 'File not found');
+            }
+
+            $extension = pathinfo($publicFilePath, PATHINFO_EXTENSION);
+            $filename = 'medical_record_' . $id . '.' . $extension;
+
+            return response()->download($publicFilePath, $filename);
+        } catch (\Exception $e) {
+            Log::error('Patient medical record download error: ' . $e->getMessage());
+            abort(500, 'Error downloading file');
+        }
     }
 }

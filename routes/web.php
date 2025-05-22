@@ -138,66 +138,45 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
   Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
   Route::get('/reports/download', [ReportsController::class, 'downloadReport'])->name('reports.download');
 
-  // Clinical Staff Functions - Available to Admin
   // Medical Records Management
-  Route::get('/clinical-info', [App\Http\Controllers\ClinicalStaff\MedicalRecordsController::class, 'index'])->name('clinical.info');
-  Route::get('/clinical-info/create', [App\Http\Controllers\ClinicalStaff\MedicalRecordsController::class, 'create'])->name('clinical.info.create');
-  Route::post('/clinical-info', [App\Http\Controllers\ClinicalStaff\MedicalRecordsController::class, 'store'])->name('clinical.info.store');
-  Route::get('/clinical-info/{id}', [App\Http\Controllers\ClinicalStaff\MedicalRecordsController::class, 'show'])->name('clinical.info.show');
-  Route::get('/clinical-info/{id}/edit', [App\Http\Controllers\ClinicalStaff\MedicalRecordsController::class, 'edit'])->name('clinical.info.edit');
-  Route::put('/clinical-info/{id}', [App\Http\Controllers\ClinicalStaff\MedicalRecordsController::class, 'update'])->name('clinical.info.update');
-  Route::delete('/clinical-info/{id}', [App\Http\Controllers\ClinicalStaff\MedicalRecordsController::class, 'destroy'])->name('clinical.info.destroy');
-  Route::get('/patients/{patientId}/history', [App\Http\Controllers\ClinicalStaff\MedicalRecordsController::class, 'patientHistory'])->name('patients.history');
-
-  // Prescription Management
-  Route::get('/prescriptions/record/{recordId}', [App\Http\Controllers\ClinicalStaff\MedicalRecordsController::class, 'getPrescriptions'])->name('prescriptions.record');
-  Route::get('/prescriptions/{id}/download', [App\Http\Controllers\ClinicalStaff\MedicalRecordsController::class, 'downloadPrescription'])->name('prescriptions.download');
-
-  // Lab Records Management
-  Route::get('/lab-records', [App\Http\Controllers\ClinicalStaff\LabRecordsController::class, 'index'])->name('lab.records');
-  Route::get('/lab-records/create', [App\Http\Controllers\ClinicalStaff\LabRecordsController::class, 'create'])->name('lab.records.create');
-  Route::post('/lab-records', [App\Http\Controllers\ClinicalStaff\LabRecordsController::class, 'store'])->name('lab.records.store');
-  Route::get('/lab-records/{id}', [App\Http\Controllers\ClinicalStaff\LabRecordsController::class, 'show'])->name('lab.records.show');
-  Route::get('/lab-records/{id}/edit', [App\Http\Controllers\ClinicalStaff\LabRecordsController::class, 'edit'])->name('lab.records.edit');
-  Route::put('/lab-records/{id}', [App\Http\Controllers\ClinicalStaff\LabRecordsController::class, 'update'])->name('lab.records.update');
-  Route::put('/lab-records/{id}/results', [App\Http\Controllers\ClinicalStaff\LabRecordsController::class, 'updateResults'])->name('lab.records.results');
-  Route::delete('/lab-records/{id}', [App\Http\Controllers\ClinicalStaff\LabRecordsController::class, 'destroy'])->name('lab.records.destroy');
-  Route::get('/lab-records/pending/list', [App\Http\Controllers\ClinicalStaff\LabRecordsController::class, 'pending'])->name('lab.records.pending');
-  Route::get('/lab-records/{id}/download', [App\Http\Controllers\ClinicalStaff\LabRecordsController::class, 'downloadResults'])->name('lab.records.download');
+  Route::get('/medical-records', [App\Http\Controllers\Admin\MedicalRecordsController::class, 'index'])->name('medical-records');
+  Route::get('/medical-records/create', [App\Http\Controllers\Admin\MedicalRecordsController::class, 'create'])->name('medical-records.create');
+  Route::post('/medical-records', [App\Http\Controllers\Admin\MedicalRecordsController::class, 'store'])->name('medical-records.store');
+  Route::get('/medical-records/{id}/edit', [App\Http\Controllers\Admin\MedicalRecordsController::class, 'edit'])->name('medical-records.edit');
+  Route::get('/medical-records/{id}', [App\Http\Controllers\Admin\MedicalRecordsController::class, 'show'])->name('medical-records.show');
+  Route::put('/medical-records/{id}', [App\Http\Controllers\Admin\MedicalRecordsController::class, 'update'])->name('medical-records.update');
+  // Disabled delete functionality for patient records on admin side
+  // Route::delete('/medical-records/{id}', [App\Http\Controllers\Admin\MedicalRecordsController::class, 'destroy'])->name('medical-records.destroy');
+  Route::get('/medical-records/{id}/pdf', [App\Http\Controllers\Admin\MedicalRecordsController::class, 'generatePdf'])->name('medical-records.pdf');
+  Route::get('/prescriptions/record/{recordId}', [App\Http\Controllers\Admin\MedicalRecordsController::class, 'getPrescriptions'])->name('prescriptions.record');
+  Route::get('/prescriptions/{id}/download', [App\Http\Controllers\Admin\MedicalRecordsController::class, 'downloadPrescription'])->name('prescriptions.download');
+  Route::get('/patient/{patientId}/history', [App\Http\Controllers\Admin\MedicalRecordsController::class, 'patientHistory'])->name('patient.history');
 
   // Appointments Management
-  Route::get('/staff-appointments', [App\Http\Controllers\ClinicalStaff\AppointmentsController::class, 'index'])->name('staff.appointments.index');
-  Route::get('/staff-appointments/{id}', [App\Http\Controllers\ClinicalStaff\AppointmentsController::class, 'show'])->name('staff.appointments.show');
-  Route::get('/staff-appointments/{id}/edit', [App\Http\Controllers\ClinicalStaff\AppointmentsController::class, 'edit'])->name('staff.appointments.edit');
-  Route::put('/staff-appointments/{id}', [App\Http\Controllers\ClinicalStaff\AppointmentsController::class, 'update'])->name('staff.appointments.update');
-  Route::match(['put', 'post'], '/staff-appointments/{id}/status', [App\Http\Controllers\ClinicalStaff\AppointmentsController::class, 'updateStatus'])->name('staff.appointments.status');
-  Route::get('/staff-appointments/{id}/pdf', [App\Http\Controllers\ClinicalStaff\AppointmentsController::class, 'generatePdf'])->name('staff.appointments.pdf');
-  Route::get('/staff-appointments/{id}/receipt', [App\Http\Controllers\ClinicalStaff\AppointmentsController::class, 'createReceipt'])->name('staff.appointments.receipt');
-  Route::get('/staff-appointments/{id}/lab-results', [App\Http\Controllers\ClinicalStaff\AppointmentsController::class, 'getLabResults'])->name('staff.appointments.lab-results');
+  Route::get('/appointments', [App\Http\Controllers\Admin\AppointmentsController::class, 'index'])->name('appointments');
+  Route::get('/appointments/create', [App\Http\Controllers\Admin\AppointmentsController::class, 'create'])->name('appointments.create');
+  Route::post('/appointments', [App\Http\Controllers\Admin\AppointmentsController::class, 'store'])->name('appointments.store');
+  Route::get('/appointments/{id}', [App\Http\Controllers\Admin\AppointmentsController::class, 'show'])->name('appointments.show');
+  Route::get('/appointments/{id}/pdf', [App\Http\Controllers\Admin\AppointmentsController::class, 'generatePdf'])->name('appointments.pdf');
+  Route::put('/appointments/{id}', [App\Http\Controllers\Admin\AppointmentsController::class, 'update'])->name('appointments.update');
+  Route::delete('/appointments/{id}', [App\Http\Controllers\Admin\AppointmentsController::class, 'destroy'])->name('appointments.destroy');
 
-  // Record Request Management
-  Route::get('/record-requests', [App\Http\Controllers\ClinicalStaff\RecordRequestsController::class, 'index'])->name('record-requests.index');
-  Route::get('/record-requests/pending', [App\Http\Controllers\ClinicalStaff\RecordRequestsController::class, 'pendingRequests'])->name('record-requests.pending');
-  Route::get('/record-requests/medical', [App\Http\Controllers\ClinicalStaff\RecordRequestsController::class, 'medicalRequests'])->name('record-requests.medical');
-  Route::get('/record-requests/lab', [App\Http\Controllers\ClinicalStaff\RecordRequestsController::class, 'labRequests'])->name('record-requests.lab');
-  Route::get('/record-requests/{id}', [App\Http\Controllers\ClinicalStaff\RecordRequestsController::class, 'show'])->name('record-requests.show');
-  Route::post('/record-requests/{id}/approve', [App\Http\Controllers\ClinicalStaff\RecordRequestsController::class, 'approve'])->name('record-requests.approve');
-  Route::post('/record-requests/{id}/deny', [App\Http\Controllers\ClinicalStaff\RecordRequestsController::class, 'deny'])->name('record-requests.deny');
+  // Doctor Schedule Management
+  Route::get('/doctor-schedules', [App\Http\Controllers\Admin\AdminDoctorScheduleController::class, 'index'])->name('doctor-schedules');
+  Route::get('/doctor-schedules/create', [App\Http\Controllers\Admin\AdminDoctorScheduleController::class, 'create'])->name('doctor-schedules.create');
+  Route::post('/doctor-schedules', [App\Http\Controllers\Admin\AdminDoctorScheduleController::class, 'store'])->name('doctor-schedules.store');
+  Route::put('/doctor-schedules/{id}', [App\Http\Controllers\Admin\AdminDoctorScheduleController::class, 'update'])->name('doctor-schedules.update');
+  Route::delete('/doctor-schedules/{id}', [App\Http\Controllers\Admin\AdminDoctorScheduleController::class, 'destroy'])->name('doctor-schedules.destroy');
 
-  // Lab Results Routes
-  Route::get('/lab-results', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'index'])->name('lab-results.index');
-  Route::get('/patients/{patient}/lab-results', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'getPatientLabResults'])->name('lab-results.patient');
-  Route::post('/lab-results', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'store'])->name('lab-results.store');
-  Route::get('/lab-results/{labResult}', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'show'])->name('lab-results.show');
-  Route::get('/lab-results/{labResult}/download', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'download'])->name('lab-results.download');
-  Route::delete('/lab-results/{labResult}', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'destroy'])->name('lab-results.destroy');
+  // Receipts Management
+  Route::get('/receipts', [App\Http\Controllers\Admin\ReceiptsController::class, 'index'])->name('receipts');
+  Route::get('/receipts/create', [App\Http\Controllers\Admin\ReceiptsController::class, 'create'])->name('receipts.create');
+  Route::post('/receipts', [App\Http\Controllers\Admin\ReceiptsController::class, 'store'])->name('receipts.store');
+  Route::get('/receipts/{id}', [App\Http\Controllers\Admin\ReceiptsController::class, 'show'])->name('receipts.show');
+  Route::delete('/receipts/{id}', [App\Http\Controllers\Admin\ReceiptsController::class, 'destroy'])->name('receipts.destroy');
+  Route::get('/receipts/{id}/print', [App\Http\Controllers\Admin\ReceiptsController::class, 'printReceipt'])->name('receipts.print');
 
-  // Receipt routes
-  Route::get('/receipts', [App\Http\Controllers\ClinicalStaff\ReceiptsController::class, 'index'])->name('receipts.index');
-  Route::post('/receipts', [App\Http\Controllers\ClinicalStaff\ReceiptsController::class, 'store'])->name('receipts.store');
-  Route::get('/receipts/{receipt}', [App\Http\Controllers\ClinicalStaff\ReceiptsController::class, 'show'])->name('receipts.show');
-  Route::get('/receipts/{receipt}/download', [App\Http\Controllers\ClinicalStaff\ReceiptsController::class, 'download'])->name('receipts.download');
-  Route::delete('/receipts/{id}', [App\Http\Controllers\ClinicalStaff\ReceiptsController::class, 'destroy'])->name('receipts.destroy');
+  // Clinical Staff Functions have been removed from Admin
 });
 
 /*
@@ -400,12 +379,18 @@ Route::middleware([ClinicalStaffMiddleware::class])->prefix('staff')->name('staf
   Route::put('/doctor-schedules/{id}', [App\Http\Controllers\Staff\DoctorScheduleManagementController::class, 'editSchedule'])->name('doctor-schedules.edit');
 
   // Lab Results Routes
-  Route::get('/lab-results', [LabResultsController::class, 'index'])->name('lab-results.index');
-  Route::get('/patients/{patient}/lab-results', [LabResultsController::class, 'getPatientLabResults'])->name('lab-results.patient');
-  Route::post('/lab-results', [LabResultsController::class, 'store'])->name('lab-results.store');
-  Route::get('/lab-results/{labResult}', [LabResultsController::class, 'show'])->name('lab-results.show');
-  Route::get('/lab-results/{labResult}/download', [LabResultsController::class, 'download'])->name('lab-results.download');
-  Route::delete('/lab-results/{labResult}', [LabResultsController::class, 'destroy'])->name('lab-results.destroy');
+  Route::middleware(['auth', 'verified'])->group(function () {
+    Route::prefix('staff/lab-results')->name('staff.lab-results.')->group(function () {
+      Route::get('/', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'index'])->name('index');
+      Route::post('/', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'store'])->name('store');
+      Route::get('/{id}', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'show'])->name('show');
+      Route::get('/{id}/download', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'download'])->name('download');
+      Route::get('/{id}/view', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'view'])->name('view');
+      Route::get('/{id}/public-url', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'getPublicUrl'])->name('public-url');
+      Route::get('/{id}/direct-download', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'directDownload'])->name('direct-download');
+      Route::delete('/{id}', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'destroy'])->name('destroy');
+    });
+  });
 
   // Receipt routes
   Route::get('/receipts', [ReceiptsController::class, 'index'])->name('receipts.index');
@@ -439,12 +424,12 @@ Route::middleware([PatientMiddleware::class])->prefix('patient')->name('patient.
   // Medical Records
   Route::get('/records', [PatientDashboardController::class, 'listRecords'])->name('records.index');
   Route::get('/records/lab-results', [PatientDashboardController::class, 'listLabResults'])->name('records.lab-results');
+  Route::get('/records/lab-results/{id}', [PatientDashboardController::class, 'viewLabResults'])->name('records.lab-results.show');
+  //Route::get('/records/lab-results/{id}/download', [PatientDashboardController::class, 'downloadLabResult'])->name('records.lab-results.download');
   Route::get('/records/{id}', [PatientDashboardController::class, 'viewRecord'])->name('records.show');
   Route::get('/records/{id}/download', [PatientDashboardController::class, 'downloadMedicalRecord'])->name('records.download');
-  Route::get('/records/lab-results/{id}', [PatientDashboardController::class, 'viewLabResults'])->name('records.lab-results.show');
-
   // Lab Results Download
-  Route::get('/lab-results/{id}/download', [PatientDashboardController::class, 'downloadLabResult'])->name('lab-results.download');
+  Route::get('/records/lab-results/{id}/download', [PatientDashboardController::class, 'downloadLabResult'])->name('lab-results.download');
 
   // Lab Appointments
   Route::get('/lab-appointments/book', [PatientDashboardController::class, 'bookLabAppointment'])->name('lab-appointments.book');
@@ -455,11 +440,6 @@ Route::middleware([PatientMiddleware::class])->prefix('patient')->name('patient.
   Route::get('/doctors/{id}', [PatientDashboardController::class, 'viewDoctor'])->name('doctors.show');
   Route::get('/doctor-schedules', [PatientDashboardController::class, 'viewDoctorSchedules'])->name('doctors.schedules');
 
-  // API routes for doctor information
-  // Route::get('/api/doctors', [\App\Http\Controllers\DoctorProfileController::class, 'listDoctors'])->name('api.doctors');
-  // Route::get('/api/doctors/{id}', [\App\Http\Controllers\DoctorProfileController::class, 'show'])->name('api.doctors.show');
-  // Route::get('/api/doctors/{id}/services', [\App\Http\Controllers\DoctorServiceController::class, 'getDoctorServices'])->name('api.doctors.services');
-  // Route::get('/api/doctor-schedules/{doctorId}', [\App\Http\Controllers\Api\DoctorScheduleController::class, 'getSchedules'])->name('api.doctor-schedules');
 
   // Profile
   Route::get('/profile', [PatientDashboardController::class, 'viewProfile'])->name('profile.edit');
@@ -493,14 +473,16 @@ Route::middleware(['auth', 'role:patient'])->prefix('patient')->name('patient.')
 Route::get('/setup/create-notifications-table', [App\Http\Controllers\SetupController::class, 'createNotificationsTable']);
 
 // Lab Results Routes
-Route::middleware(['auth', 'verified'])->group(function () {
-  Route::prefix('staff/lab-results')->name('staff.lab-results.')->group(function () {
-    Route::get('/', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'index'])->name('index');
-    Route::post('/', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'store'])->name('store');
-    Route::get('/{id}', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'show'])->name('show');
-    Route::get('/{id}/download', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'download'])->name('download');
-    Route::delete('/{id}', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'destroy'])->name('destroy');
-  });
+
+Route::prefix('staff/lab-results')->name('staff.lab-results.')->group(function () {
+  Route::get('/', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'index'])->name('index');
+  Route::post('/', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'store'])->name('store');
+  Route::get('/{id}', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'show'])->name('show');
+  Route::get('/{labResult}/download', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'download'])->name('download');
+  Route::get('/{labResult}/view', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'view'])->name('view');
+  Route::get('/{id}/public-url', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'getPublicUrl'])->name('public-url');
+  Route::get('/{id}/direct-download', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'directDownload'])->name('direct-download');
+  Route::delete('/{id}', [App\Http\Controllers\ClinicalStaff\LabResultsController::class, 'destroy'])->name('destroy');
 });
 
 // Receipt Routes
@@ -547,30 +529,30 @@ Route::get('/test-patient-search', function () {
 });
 
 // Add a route to run the fix command for appointments (can be removed after use)
-Route::get('/fix-appointments', function() {
-    Artisan::call('app:fix-patient-appointments');
-    return redirect('/patient/dashboard')->with('success', 'Appointments fixed successfully!');
+Route::get('/fix-appointments', function () {
+  Artisan::call('app:fix-patient-appointments');
+  return redirect('/patient/dashboard')->with('success', 'Appointments fixed successfully!');
 })->middleware(['auth', 'verified']);
 
 // Doctor profile endpoint for web (non-API)
 Route::middleware(['auth'])->get('/doctors/{id}/profile', function (Illuminate\Http\Request $request, $id) {
-    $doctor = \App\Models\User::where('id', $id)
-        ->where('user_role', \App\Models\User::ROLE_DOCTOR)
-        ->with('doctorProfile')
-        ->first();
+  $doctor = \App\Models\User::where('id', $id)
+    ->where('user_role', \App\Models\User::ROLE_DOCTOR)
+    ->with('doctorProfile')
+    ->first();
 
-    if (!$doctor) {
-        return response()->json(['error' => 'Doctor not found'], 404);
-    }
+  if (!$doctor) {
+    return response()->json(['error' => 'Doctor not found'], 404);
+  }
 
-    return response()->json([
-        'doctor' => [
-            'id' => $doctor->id,
-            'name' => $doctor->name,
-            'email' => $doctor->email,
-            'specialization' => $doctor->doctorProfile?->specialization,
-            'specialty' => $doctor->doctorProfile?->specialization, // Alias for compatibility
-            'qualifications' => $doctor->doctorProfile?->qualifications
-        ]
-    ]);
+  return response()->json([
+    'doctor' => [
+      'id' => $doctor->id,
+      'name' => $doctor->name,
+      'email' => $doctor->email,
+      'specialization' => $doctor->doctorProfile?->specialization,
+      'specialty' => $doctor->doctorProfile?->specialization, // Alias for compatibility
+      'qualifications' => $doctor->doctorProfile?->qualifications
+    ]
+  ]);
 })->name('doctors.profile');

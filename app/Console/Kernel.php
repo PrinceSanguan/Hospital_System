@@ -29,6 +29,20 @@ class Kernel extends ConsoleKernel
 
         require base_path('routes/console.php');
     }
+    
+    /**
+     * The commands to be registered.
+     *
+     * @var array
+     */
+    protected $commands = [
+        \App\Console\Commands\UserLoginHistory::class,
+        \App\Console\Commands\GenerateLoginLogs::class,
+        \App\Console\Commands\TestLogEvents::class,
+        \App\Console\Commands\InsertLoginLogs::class,
+    ];
+        Commands\GenerateLoginLogs::class,
+    ];
 
     protected $commands = [
         Commands\CheckTableExists::class,
