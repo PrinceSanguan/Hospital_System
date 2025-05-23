@@ -158,7 +158,7 @@ export default function LabResults({ user, labRecords }: Props) {
                                                                 variant="outline"
                                                                 size="sm"
                                                                 onClick={() => {
-                                                                    const url = `/staff/lab-results${record.id}/download`;
+                                                                    const url = `/patient/records/lab-results/${record.id}/download`;
                                                                     window.location.href = url;
                                                                 }}
                                                                 className="flex items-center gap-1"

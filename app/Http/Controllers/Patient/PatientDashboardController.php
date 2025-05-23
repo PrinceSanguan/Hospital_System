@@ -959,17 +959,46 @@ class PatientDashboardController extends Controller
         try {
             $user = Auth::user();
 
-            // Verify patient has access to this lab result
+            // Handle lab_ prefixed IDs (from uploaded files)
+            if (str_starts_with($id, 'lab_')) {
+                $labResultId = str_replace('lab_', '', $id);
+                $patient = \App\Models\Patient::where('user_id', $user->id)->first();
+
+                if (!$patient) {
+                    abort(404, 'Patient record not found');
+                }
+
+                $labResult = \App\Models\LabResult::where('id', $labResultId)
+                    ->where('patient_id', $patient->id)
+                    ->first();
+
+                if (!$labResult) {
+                    abort(404, 'Lab result not found or access denied');
+                }
+
+                $publicFilePath = public_path($labResult->file_path);
+
+                if (!file_exists($publicFilePath)) {
+                    abort(404, 'File not found');
+                }
+
+                $extension = pathinfo($publicFilePath, PATHINFO_EXTENSION);
+                $filename = 'lab_result_' . $labResultId . '.' . $extension;
+
+                return response()->download($publicFilePath, $filename);
+            }
+
+            // Handle regular PatientRecord IDs
             $labRecord = PatientRecord::where('id', $id)
                 ->where('patient_id', $user->id)
-                ->where('record_type', 'laboratory_test')
+                ->where('record_type', 'laboratory')
                 ->first();
 
             if (!$labRecord) {
                 abort(404, 'Lab record not found or access denied');
             }
 
-            // Use same logic as staff controller
+            // Find the corresponding file in lab_result directory
             $labResultDir = public_path('lab_result');
 
             if (!is_dir($labResultDir)) {
@@ -979,6 +1008,7 @@ class PatientDashboardController extends Controller
             $files = scandir($labResultDir);
             $matchingFile = null;
 
+            // Look for files that match the pattern
             foreach ($files as $file) {
                 if (strpos($file, 'lab_result_') === 0 && $file !== '.' && $file !== '..') {
                     $matchingFile = $file;
