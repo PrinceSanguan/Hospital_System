@@ -672,7 +672,7 @@ class PatientDashboardController extends Controller
 
         $record = PatientRecord::where('id', $id)
             ->where('patient_id', $user->id)
-            ->with('assignedDoctor')
+            ->with(['assignedDoctor.doctorProfile'])
             ->firstOrFail();
 
         return Inertia::render('Patient/RecordDetails', [
@@ -827,19 +827,70 @@ class PatientDashboardController extends Controller
     {
         $user = Auth::user();
 
-        $record = PatientRecord::where('id', $id)
-            ->where('patient_id', $user->id)
-            ->where('record_type', 'laboratory')
-            ->firstOrFail();
+        try {
+            // Handle lab_ prefixed IDs (from uploaded files)
+            if (str_starts_with($id, 'lab_')) {
+                $labResultId = str_replace('lab_', '', $id);
+                $patient = \App\Models\Patient::where('user_id', $user->id)->first();
 
-        return Inertia::render('Patient/LabResultDetail', [
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ],
-            'record' => $record
-        ]);
+                if (!$patient) {
+                    abort(404, 'Patient record not found');
+                }
+
+                $labResult = \App\Models\LabResult::where('id', $labResultId)
+                    ->where('patient_id', $patient->id)
+                    ->first();
+
+                if (!$labResult) {
+                    abort(404, 'Lab result not found or access denied');
+                }
+
+                // Create a mock record structure for uploaded lab results
+                $mockRecord = [
+                    'id' => 'lab_' . $labResult->id,
+                    'patient_id' => $patient->id,
+                    'record_type' => 'laboratory_file',
+                    'appointment_date' => $labResult->test_date,
+                    'status' => 'completed',
+                    'details' => json_encode([
+                        'lab_type' => $labResult->test_type,
+                        'notes' => $labResult->notes,
+                        'file_path' => $labResult->file_path,
+                        'result_date' => $labResult->created_at,
+                    ]),
+                    'created_at' => $labResult->created_at,
+                    'updated_at' => $labResult->updated_at,
+                    'is_file' => true
+                ];
+
+                return Inertia::render('Patient/LabResultDetail', [
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                    ],
+                    'record' => (object) $mockRecord
+                ]);
+            }
+
+            // Handle regular PatientRecord IDs
+            $record = PatientRecord::where('id', $id)
+                ->where('patient_id', $user->id)
+                ->where('record_type', 'laboratory')
+                ->firstOrFail();
+
+            return Inertia::render('Patient/LabResultDetail', [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ],
+                'record' => $record
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Patient lab result view error: ' . $e->getMessage());
+            abort(500, 'Error viewing lab result');
+        }
     }
 
     /**

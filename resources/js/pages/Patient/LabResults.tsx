@@ -154,27 +154,51 @@ export default function LabResults({ user, labRecords }: Props) {
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-2">
                                                         {isFileRecord ? (
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => {
-                                                                    const url = `/patient/records/lab-results/${record.id}/download`;
-                                                                    window.location.href = url;
-                                                                }}
-                                                                className="flex items-center gap-1"
-                                                            >
-                                                                Download
-                                                            </Button>
-                                                        ) : (
-                                                            <Button variant="ghost" size="sm" asChild>
-                                                                <Link
-                                                                    href={`/patient/records/lab-results/${record.id}`}
+                                                            <>
+                                                                <Button variant="ghost" size="sm" asChild>
+                                                                    <Link
+                                                                        href={`/patient/records/lab-results/${record.id}`}
+                                                                        className="flex items-center gap-1"
+                                                                    >
+                                                                        <span>View</span>
+                                                                        <ChevronRight className="h-4 w-4" />
+                                                                    </Link>
+                                                                </Button>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        const url = `/patient/records/lab-results/${record.id}/download`;
+                                                                        window.location.href = url;
+                                                                    }}
                                                                     className="flex items-center gap-1"
                                                                 >
-                                                                    <span>View</span>
-                                                                    <ChevronRight className="h-4 w-4" />
-                                                                </Link>
-                                                            </Button>
+                                                                    Download
+                                                                </Button>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Button variant="ghost" size="sm" asChild>
+                                                                    <Link
+                                                                        href={`/patient/records/lab-results/${record.id}`}
+                                                                        className="flex items-center gap-1"
+                                                                    >
+                                                                        <span>View</span>
+                                                                        <ChevronRight className="h-4 w-4" />
+                                                                    </Link>
+                                                                </Button>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        const url = `/patient/records/lab-results/${record.id}/download`;
+                                                                        window.location.href = url;
+                                                                    }}
+                                                                    className="flex items-center gap-1"
+                                                                >
+                                                                    Download
+                                                                </Button>
+                                                            </>
                                                         )}
                                                     </div>
                                                 </TableCell>
