@@ -83,6 +83,7 @@ interface Prescription {
   frequency: string;
   duration: string;
   instructions: string;
+  quantity: string;
 }
 
 interface MedicalRecordDetails {
@@ -150,7 +151,8 @@ export default function MedicalRecordsEdit({ user, record, patients, doctors }: 
               dosage: parsed.dosage || '',
               frequency: parsed.frequency || '',
               duration: parsed.duration || '',
-              instructions: parsed.instructions || ''
+              instructions: parsed.instructions || '',
+              quantity: parsed.quantity || ''
             };
           }
         } catch {
@@ -160,7 +162,8 @@ export default function MedicalRecordsEdit({ user, record, patients, doctors }: 
             dosage: '',
             frequency: '',
             duration: '',
-            instructions: ''
+            instructions: '',
+            quantity: ''
           };
         }
 
@@ -180,7 +183,8 @@ export default function MedicalRecordsEdit({ user, record, patients, doctors }: 
       dosage: '',
       frequency: '',
       duration: '',
-      instructions: ''
+      instructions: '',
+      quantity: ''
     };
   };
 
@@ -594,7 +598,7 @@ export default function MedicalRecordsEdit({ user, record, patients, doctors }: 
                             </Select>
                           </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                           <div className="space-y-2">
                             <Label>Frequency</Label>
                             <Select
@@ -619,6 +623,14 @@ export default function MedicalRecordsEdit({ user, record, patients, doctors }: 
                               placeholder="e.g. 7 days"
                               value={prescription.duration}
                               onChange={(e) => updatePrescription(index, 'duration', e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Quantity</Label>
+                            <Input
+                              placeholder="e.g. 30 tablets"
+                              value={prescription.quantity}
+                              onChange={(e) => updatePrescription(index, 'quantity', e.target.value)}
                             />
                           </div>
                         </div>

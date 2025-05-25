@@ -90,6 +90,7 @@ interface PrescriptionItem {
   frequency: string;
   duration: string;
   instructions: string;
+  quantity: string;
 }
 
 interface MedicalRecord {
@@ -123,6 +124,7 @@ interface Prescription {
   frequency: string;
   duration: string;
   instructions: string;
+  quantity: string;
   prescription_date: string;
   reference_number: string;
   status: string;
@@ -704,6 +706,7 @@ export default function MedicalRecordsView({ user, record, doctors = [] }: Medic
                             <th className="text-left p-3 border border-gray-200">Dosage</th>
                             <th className="text-left p-3 border border-gray-200">Frequency</th>
                             <th className="text-left p-3 border border-gray-200">Duration</th>
+                            <th className="text-left p-3 border border-gray-200">Quantity</th>
                             <th className="text-left p-3 border border-gray-200">Instructions</th>
                           </tr>
                         </thead>
@@ -715,6 +718,7 @@ export default function MedicalRecordsView({ user, record, doctors = [] }: Medic
                                 <td className="p-3 border border-gray-200">{prescription.dosage}</td>
                                 <td className="p-3 border border-gray-200">{prescription.frequency}</td>
                                 <td className="p-3 border border-gray-200">{prescription.duration}</td>
+                                <td className="p-3 border border-gray-200">{prescription.quantity || 'N/A'}</td>
                                 <td className="p-3 border border-gray-200">{prescription.instructions}</td>
                               </tr>
                             ))
@@ -725,6 +729,7 @@ export default function MedicalRecordsView({ user, record, doctors = [] }: Medic
                                 <td className="p-3 border border-gray-200">{typeof prescription === 'string' ? '' : prescription.dosage}</td>
                                 <td className="p-3 border border-gray-200">{typeof prescription === 'string' ? '' : prescription.frequency}</td>
                                 <td className="p-3 border border-gray-200">{typeof prescription === 'string' ? '' : prescription.duration}</td>
+                                <td className="p-3 border border-gray-200">{typeof prescription === 'string' ? '' : (prescription.quantity || 'N/A')}</td>
                                 <td className="p-3 border border-gray-200">{typeof prescription === 'string' ? '' : prescription.instructions}</td>
                               </tr>
                             ))
@@ -914,6 +919,7 @@ export default function MedicalRecordsView({ user, record, doctors = [] }: Medic
                         <th className="text-left p-1 border border-gray-300 bg-gray-50">Dosage</th>
                         <th className="text-left p-1 border border-gray-300 bg-gray-50">Frequency</th>
                         <th className="text-left p-1 border border-gray-300 bg-gray-50">Duration</th>
+                        <th className="text-left p-1 border border-gray-300 bg-gray-50">Quantity</th>
                         <th className="text-left p-1 border border-gray-300 bg-gray-50">Instructions</th>
                       </tr>
                     </thead>
@@ -925,6 +931,7 @@ export default function MedicalRecordsView({ user, record, doctors = [] }: Medic
                             <td className="p-1 border border-gray-300">{prescription.dosage}</td>
                             <td className="p-1 border border-gray-300">{prescription.frequency}</td>
                             <td className="p-1 border border-gray-300">{prescription.duration}</td>
+                            <td className="p-1 border border-gray-300">{prescription.quantity || 'N/A'}</td>
                             <td className="p-1 border border-gray-300">{prescription.instructions}</td>
                           </tr>
                         ))
@@ -935,6 +942,7 @@ export default function MedicalRecordsView({ user, record, doctors = [] }: Medic
                             <td className="p-1 border border-gray-300">{typeof prescription === 'string' ? '' : prescription.dosage}</td>
                             <td className="p-1 border border-gray-300">{typeof prescription === 'string' ? '' : prescription.frequency}</td>
                             <td className="p-1 border border-gray-300">{typeof prescription === 'string' ? '' : prescription.duration}</td>
+                            <td className="p-1 border border-gray-300">{typeof prescription === 'string' ? '' : (prescription.quantity || 'N/A')}</td>
                             <td className="p-1 border border-gray-300">{typeof prescription === 'string' ? '' : prescription.instructions}</td>
                           </tr>
                         ))
