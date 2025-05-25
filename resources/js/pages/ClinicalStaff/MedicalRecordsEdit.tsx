@@ -199,7 +199,9 @@ export default function MedicalRecordsEdit({ user, record, patients, doctors }: 
       blood_pressure: details.vital_signs?.blood_pressure?.toString() || '',
       pulse_rate: details.vital_signs?.pulse_rate?.toString() || '',
       respiratory_rate: details.vital_signs?.respiratory_rate?.toString() || '',
-      oxygen_saturation: details.vital_signs?.oxygen_saturation?.toString() || ''
+      oxygen_saturation: details.vital_signs?.oxygen_saturation?.toString() || '',
+      height: details.vital_signs?.height?.toString() || '',
+      weight: details.vital_signs?.weight?.toString() || ''
     },
     prescriptions: convertPrescriptions(),
     followup_date: details.followup_date || ''
@@ -418,6 +420,112 @@ export default function MedicalRecordsEdit({ user, record, patients, doctors }: 
                     {errors.status && (
                       <p className="text-sm text-red-500">{errors.status}</p>
                     )}
+                  </div>
+
+                  {/* Vital Signs */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Vital Signs</h3>
+                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
+                      <div className="grid grid-cols-1 gap-4">
+                        <div className="flex flex-wrap gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="vital_signs.temperature">Temperature (°C)</Label>
+                            <Input
+                              id="vital_signs.temperature"
+                              value={data.vital_signs.temperature}
+                              onChange={(e) => setData('vital_signs', {
+                                ...data.vital_signs,
+                                temperature: e.target.value
+                              })}
+                              placeholder="36.5"
+                              className="w-24"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="vital_signs.blood_pressure">Blood Pressure</Label>
+                            <Input
+                              id="vital_signs.blood_pressure"
+                              value={data.vital_signs.blood_pressure}
+                              onChange={(e) => setData('vital_signs', {
+                                ...data.vital_signs,
+                                blood_pressure: e.target.value
+                              })}
+                              placeholder="120/80"
+                              className="w-24"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="vital_signs.pulse_rate">Pulse Rate (bpm)</Label>
+                            <Input
+                              id="vital_signs.pulse_rate"
+                              value={data.vital_signs.pulse_rate}
+                              onChange={(e) => setData('vital_signs', {
+                                ...data.vital_signs,
+                                pulse_rate: e.target.value
+                              })}
+                              placeholder="80"
+                              className="w-24"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="vital_signs.respiratory_rate">Respiratory Rate</Label>
+                            <Input
+                              id="vital_signs.respiratory_rate"
+                              value={data.vital_signs.respiratory_rate}
+                              onChange={(e) => setData('vital_signs', {
+                                ...data.vital_signs,
+                                respiratory_rate: e.target.value
+                              })}
+                              placeholder="16"
+                              className="w-24"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="vital_signs.oxygen_saturation">Oxygen Saturation (%)</Label>
+                            <Input
+                              id="vital_signs.oxygen_saturation"
+                              value={data.vital_signs.oxygen_saturation}
+                              onChange={(e) => setData('vital_signs', {
+                                ...data.vital_signs,
+                                oxygen_saturation: e.target.value
+                              })}
+                              placeholder="98"
+                              className="w-24"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="vital_signs.height">Height (cm)</Label>
+                            <Input
+                              id="vital_signs.height"
+                              value={data.vital_signs.height}
+                              onChange={(e) => setData('vital_signs', {
+                                ...data.vital_signs,
+                                height: e.target.value
+                              })}
+                              placeholder="170"
+                              className="w-24"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="vital_signs.weight">Weight (kg)</Label>
+                            <Input
+                              id="vital_signs.weight"
+                              value={data.vital_signs.weight}
+                              onChange={(e) => setData('vital_signs', {
+                                ...data.vital_signs,
+                                weight: e.target.value
+                              })}
+                              placeholder="70"
+                              className="w-24"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Diagnosis */}

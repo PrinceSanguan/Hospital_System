@@ -252,7 +252,10 @@ class RecordsController extends Controller
 
             $record->details = $request->details;
 
+            // Check if the status is being changed to 'completed'
+            $statusChangedToCompleted = false;
             if ($request->filled('status')) {
+                $statusChangedToCompleted = $request->status === 'completed' && $record->status !== 'completed';
                 $record->status = $request->status;
             }
 
@@ -297,6 +300,23 @@ class RecordsController extends Controller
                 'related_id' => $record->id,
                 'related_type' => 'record',
             ]);
+
+            // Create notifications for clinical staff if the record was completed
+            if ($statusChangedToCompleted) {
+                // Get all clinical staff users
+                $clinicalStaff = User::where('user_role', User::ROLE_CLINICAL_STAFF)->get();
+
+                foreach ($clinicalStaff as $staff) {
+                    Notification::create([
+                        'user_id' => $staff->id,
+                        'type' => Notification::TYPE_MEDICAL_RECORD_COMPLETED,
+                        'title' => 'Medical Record Completed',
+                        'message' => 'A medical record has been completed by Dr. ' . Auth::user()->name . '. Patient: ' . User::find($record->patient_id)->name,
+                        'related_id' => $record->id,
+                        'related_type' => 'record',
+                    ]);
+                }
+            }
 
             // Return JSON response instead of redirecting
             return response()->json([
