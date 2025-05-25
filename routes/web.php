@@ -249,6 +249,14 @@ Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')-
   Route::get('/records/{id}/print-prescriptions', [RecordsController::class, 'printPrescriptions'])->name('records.print-prescriptions');
   Route::get('/records/patient/{patientId}', [RecordsController::class, 'getPatientRecords'])->name('patient.records');
 
+  // Medical Records (Clinical Info) - matching staff functionality but for doctor's patients only
+  Route::get('/clinical-info', [RecordsController::class, 'clinicalInfo'])->name('clinical.info');
+  Route::get('/clinical-info/{id}', [RecordsController::class, 'viewMedicalRecord'])->name('clinical.info.show');
+  Route::get('/clinical-info/{id}/edit', [RecordsController::class, 'editMedicalRecord'])->name('clinical.info.edit');
+  Route::put('/clinical-info/{id}', [RecordsController::class, 'updateMedicalRecord'])->name('clinical.info.update');
+  Route::get('/prescriptions/record/{recordId}', [RecordsController::class, 'getPrescriptions'])->name('prescriptions.record');
+  Route::get('/prescriptions/{id}/download', [RecordsController::class, 'downloadPrescription'])->name('prescriptions.download');
+
   // Notifications Management
   Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
   Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.mark.read');

@@ -1,24 +1,21 @@
 import { Button } from '@/components/ui/button';
 import { Link, usePage } from '@inertiajs/react';
 import {
-    LayoutDashboard,
-    Users,
-    FileText,
-    Calendar,
-    Settings,
-    Stethoscope,
-    UserCircle,
-    Clock
+    Grid,
+    User,
+    File,
+    CalendarDays
 } from 'lucide-react';
 
-interface User {
+interface DoctorUser {
+    id: number;
     name: string;
     email: string;
     role?: string;
 }
 
 interface SidebarProps {
-    user: User;
+    user: DoctorUser;
     unreadNotifications?: number;
 }
 
@@ -34,7 +31,9 @@ export function Sidebar({ user, unreadNotifications = 0 }: SidebarProps) {
     const pageData = usePage();
     const props = pageData.props as Record<string, unknown>;
 
-    const routes = (props?.ziggy?.routes as Record<string, unknown>) || {};
+    // Safe access to routes with proper type checking
+    const ziggy = props?.ziggy as { routes?: Record<string, unknown> } | undefined;
+    const routes = ziggy?.routes || {};
 
     const routeExists = (name: string) => {
         return Object.keys(routes).includes(name);
@@ -46,19 +45,25 @@ export function Sidebar({ user, unreadNotifications = 0 }: SidebarProps) {
             name: 'Dashboard',
             route: 'doctor.dashboard',
             path: '/doctor/dashboard',
-            icon: <LayoutDashboard size={18} />
+            icon: <Grid size={18} />
         },
         {
             name: 'Patients',
             route: 'doctor.patients.index',
             path: '/doctor/patients',
-            icon: <Users size={18} />
+            icon: <User size={18} />
         },
         {
             name: 'Appointments',
             route: 'doctor.appointments.index',
             path: '/doctor/appointments',
-            icon: <Calendar size={18} />
+            icon: <CalendarDays size={18} />
+        },
+        {
+            name: 'Medical Records',
+            route: 'doctor.clinical.info',
+            path: '/doctor/clinical-info',
+            icon: <File size={18} />
         },
     ];
 

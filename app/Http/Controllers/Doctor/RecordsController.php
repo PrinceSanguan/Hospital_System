@@ -466,4 +466,272 @@ class RecordsController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Show medical records (clinical info) for the doctor's patients only
+     */
+    public function clinicalInfo(Request $request)
+    {
+        $user = Auth::user();
+
+        // Build query - only for records assigned to this doctor
+        $query = PatientRecord::where('assigned_doctor_id', $user->id)
+            ->with(['patient', 'assignedDoctor']);
+
+        // Apply filters if provided
+        if ($request->filled('record_type') && $request->record_type !== 'all') {
+            $query->where('record_type', $request->record_type);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('patient', function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            })
+            ->orWhere('details', 'like', "%{$search}%");
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Get records paginated, sorted by latest updated
+        $medicalRecords = $query->latest('updated_at')->paginate(10);
+
+        return Inertia::render('Doctor/MedicalRecords', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+            ],
+            'medicalRecords' => $medicalRecords,
+        ]);
+    }
+
+    /**
+     * View a specific medical record, only if it belongs to one of the doctor's patients
+     */
+    public function viewMedicalRecord($id)
+    {
+        $user = Auth::user();
+
+        // Find the record, ensuring it belongs to this doctor's patients
+        $record = PatientRecord::with(['patient', 'assignedDoctor.doctorProfile'])
+            ->where('assigned_doctor_id', $user->id)
+            ->findOrFail($id);
+
+        // Get all doctors to help with doctor information display
+        $doctors = User::where('user_role', User::ROLE_DOCTOR)
+            ->with('doctorProfile')
+            ->get();
+
+        return Inertia::render('Doctor/MedicalRecordsView', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+            ],
+            'record' => $record,
+            'doctors' => $doctors,
+        ]);
+    }
+
+    /**
+     * Edit a medical record, only if it belongs to one of the doctor's patients
+     */
+    public function editMedicalRecord($id)
+    {
+        $user = Auth::user();
+
+        // Find the record, ensuring it belongs to this doctor's patients
+        $record = PatientRecord::with(['patient', 'assignedDoctor'])
+            ->where('assigned_doctor_id', $user->id)
+            ->where('id', $id)
+            ->firstOrFail();
+
+        // Get patients and doctors lists for the form
+        $patients = User::where('user_role', User::ROLE_PATIENT)
+            ->whereIn('id', function($query) use ($user) {
+                $query->select('patient_id')
+                    ->from('patient_records')
+                    ->where('assigned_doctor_id', $user->id)
+                    ->distinct();
+            })
+            ->get();
+
+        $doctors = User::where('id', $user->id)
+            ->get(); // Only this doctor should be in the list
+
+        return Inertia::render('Doctor/MedicalRecordsEdit', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+            ],
+            'record' => $record,
+            'patients' => $patients,
+            'doctors' => $doctors,
+        ]);
+    }
+
+    /**
+     * Update a medical record, only if it belongs to one of the doctor's patients
+     */
+    public function updateMedicalRecord(Request $request, $id)
+    {
+        // Validate request data
+        $validated = $request->validate([
+            'patient_id' => 'required|exists:users,id',
+            'assigned_doctor_id' => 'required|exists:users,id',
+            'record_type' => 'required|string',
+            'appointment_date' => 'required|date',
+            'status' => 'required|string',
+        ]);
+
+        // Ensure the doctor can only update their own records
+        $doctor_id = Auth::id();
+        if ($validated['assigned_doctor_id'] != $doctor_id) {
+            return redirect()->back()->with('error', 'You can only assign records to yourself');
+        }
+
+        // Find the record and ensure it belongs to this doctor
+        $record = PatientRecord::where('id', $id)
+            ->where('assigned_doctor_id', $doctor_id)
+            ->firstOrFail();
+
+        // Update record fields
+        $record->patient_id = $validated['patient_id'];
+        $record->assigned_doctor_id = $validated['assigned_doctor_id']; // Should be the doctor's ID
+        $record->record_type = $validated['record_type'];
+        $record->appointment_date = $validated['appointment_date'];
+        $record->status = $validated['status'];
+
+        // Update vital signs if provided
+        if ($request->has('vital_signs')) {
+            $record->vital_signs = $request->input('vital_signs');
+        }
+
+        // Update prescriptions if provided
+        if ($request->has('prescriptions')) {
+            $record->prescriptions = $request->input('prescriptions');
+
+            // Save prescriptions to the prescriptions table
+            $this->savePrescriptions(
+                $request->input('prescriptions'),
+                $validated['patient_id'],
+                $validated['assigned_doctor_id'],
+                $id,
+                $validated['appointment_date']
+            );
+        }
+
+        // Handle medical record details
+        if ($request->has('diagnosis') || $request->has('notes') || $request->has('appointment_time') || $request->has('followup_date')) {
+            $details = json_decode($record->details, true) ?: [];
+
+            $details['appointment_time'] = $request->input('appointment_time', $details['appointment_time'] ?? null);
+            $details['diagnosis'] = $request->input('diagnosis', $details['diagnosis'] ?? '');
+            $details['notes'] = $request->input('notes', $details['notes'] ?? '');
+            $details['followup_date'] = $request->input('followup_date', $details['followup_date'] ?? null);
+
+            $record->details = json_encode($details);
+        } elseif ($request->has('details')) {
+            $record->details = $request->input('details');
+        }
+
+        $record->save();
+
+        return redirect()->route('doctor.clinical.info')
+            ->with('success', 'Medical record updated successfully');
+    }
+
+    /**
+     * Get prescriptions for a record
+     */
+    public function getPrescriptions($recordId)
+    {
+        // Ensure the record belongs to one of this doctor's patients
+        $doctor_id = Auth::id();
+        $record = PatientRecord::where('id', $recordId)
+            ->where('assigned_doctor_id', $doctor_id)
+            ->firstOrFail();
+
+        $prescriptions = \App\Models\Prescription::where('record_id', $recordId)
+            ->where('doctor_id', $doctor_id)
+            ->get();
+
+        return response()->json($prescriptions);
+    }
+
+    /**
+     * Download a prescription
+     */
+    public function downloadPrescription($id)
+    {
+        // Ensure the prescription belongs to one of this doctor's patients
+        $doctor_id = Auth::id();
+        $prescription = \App\Models\Prescription::where('id', $id)
+            ->where('doctor_id', $doctor_id)
+            ->firstOrFail();
+
+        $patient = User::findOrFail($prescription->patient_id);
+        $doctor = User::findOrFail($prescription->doctor_id);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.prescription', [
+            'prescription' => $prescription,
+            'patient' => $patient,
+            'doctor' => $doctor,
+        ]);
+
+        return $pdf->download('prescription_' . $prescription->id . '.pdf');
+    }
+
+    /**
+     * Helper method to save prescriptions to the Prescription model
+     */
+    private function savePrescriptions($prescriptions, $patientId, $doctorId, $recordId, $date)
+    {
+        // Delete existing prescriptions for this record to avoid duplicates
+        \App\Models\Prescription::where('record_id', $recordId)->delete();
+
+        // Make sure prescriptions is an array
+        if (!is_array($prescriptions)) {
+            try {
+                $prescriptions = json_decode($prescriptions, true);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed to parse prescriptions: " . $e->getMessage());
+                return;
+            }
+        }
+
+        foreach ($prescriptions as $prescription) {
+            // Skip empty prescriptions
+            if (empty($prescription['medication'])) {
+                continue;
+            }
+
+            try {
+                \App\Models\Prescription::create([
+                    'patient_id' => $patientId,
+                    'record_id' => $recordId,
+                    'doctor_id' => $doctorId,
+                    'medication' => $prescription['medication'],
+                    'dosage' => $prescription['dosage'] ?? '',
+                    'frequency' => $prescription['frequency'] ?? '',
+                    'duration' => $prescription['duration'] ?? '',
+                    'instructions' => $prescription['instructions'] ?? '',
+                    'quantity' => $prescription['quantity'] ?? '',
+                    'prescription_date' => $date,
+                    'reference_number' => 'RX-' . time() . '-' . rand(1000, 9999),
+                    'status' => 'active',
+                ]);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed to save prescription: " . $e->getMessage());
+            }
+        }
+    }
 }
