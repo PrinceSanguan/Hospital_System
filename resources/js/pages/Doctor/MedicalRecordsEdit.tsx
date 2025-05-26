@@ -91,7 +91,6 @@ interface MedicalRecordDetails {
   vital_signs?: Record<string, string | number>;
   diagnosis?: string;
   prescriptions?: Prescription[] | string[];
-  notes?: string;
   followup_date?: string;
   [key: string]: string | number | string[] | Prescription[] | Record<string, string | number> | undefined;
 }
@@ -195,7 +194,6 @@ export default function MedicalRecordsEdit({ user, record, patients }: MedicalRe
     appointment_date: record.appointment_date || format(new Date(), 'yyyy-MM-dd'),
     appointment_time: details.appointment_time || '09:00',
     diagnosis: details.diagnosis || '',
-    notes: details.notes || '',
     status: record.status || 'pending',
     vital_signs: {
       temperature: details.vital_signs?.temperature?.toString() || '',
@@ -626,18 +624,6 @@ export default function MedicalRecordsEdit({ user, record, patients }: MedicalRe
                         )}
                       </div>
                     ))}
-                  </div>
-
-                  {/* Notes */}
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">Notes</Label>
-                    <Textarea
-                      id="notes"
-                      placeholder="Enter any additional notes"
-                      value={data.notes}
-                      onChange={(e) => setData('notes', e.target.value)}
-                      rows={3}
-                    />
                   </div>
 
                   {/* Follow-up Date */}

@@ -690,16 +690,6 @@ export default function MedicalRecordsView({ user, record, doctors = [] }: Medic
                   </div>
                 )}
 
-                {/* Notes */}
-                {details.notes && (
-                  <div className="mb-6">
-                    <h3 className="text-lg font-bold mb-2">Notes</h3>
-                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
-                      <p className="whitespace-pre-line">{details.notes}</p>
-                    </div>
-                  </div>
-                )}
-
                 {/* Medical History */}
                 {details.medical_history && (
                   <div className="mb-6">
@@ -863,14 +853,6 @@ export default function MedicalRecordsView({ user, record, doctors = [] }: Medic
                     )}
                   </tbody>
                 </table>
-              </div>
-            )}
-
-            {/* Notes */}
-            {details.notes && (
-              <div className="print-section">
-                <h2>Notes</h2>
-                <p>{details.notes}</p>
               </div>
             )}
 

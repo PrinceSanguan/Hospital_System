@@ -211,14 +211,7 @@ export default function PrintRecord({ user, record }: PrintRecordProps) {
                         {details.treatment && (
                             <div>
                                 <p className="text-sm text-gray-500">Treatment:</p>
-                                <p className="font-medium">{String(details.treatment)}</p>
-                            </div>
-                        )}
-
-                        {details.notes && (
-                            <div>
-                                <p className="text-sm text-gray-500">Notes:</p>
-                                <p className="font-medium whitespace-pre-line">{String(details.notes)}</p>
+                                <p className="font-medium">{typeof details.treatment === 'string' ? details.treatment : ''}</p>
                             </div>
                         )}
                     </div>

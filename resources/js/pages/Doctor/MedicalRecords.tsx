@@ -207,14 +207,14 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
                     View and manage medical records for your patients
                   </CardDescription>
                 </div>
-                <div className="flex space-x-2">
+                {/* <div className="flex space-x-2">
                   <Button className="inline-flex items-center" asChild>
                     <Link href={route('doctor.records.create')}>
                       <PlusIcon className="h-4 w-4 mr-2" />
                       Add Record
                     </Link>
                   </Button>
-                </div>
+                </div> */}
               </CardHeader>
               <CardContent>
                 <div className="rounded-md border">

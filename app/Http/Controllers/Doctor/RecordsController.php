@@ -220,7 +220,8 @@ class RecordsController extends Controller
             'related_type' => 'record',
         ]);
 
-        return redirect()->route('doctor.patients.show', $request->patient_id)
+        // Redirect to clinical info page instead of patient page
+        return redirect()->route('doctor.clinical.info')
             ->with('success', 'Record created successfully');
     }
 
@@ -367,6 +368,7 @@ class RecordsController extends Controller
 
         return Inertia::render('Doctor/RecordCreate', [
             'user' => [
+                'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->user_role,
