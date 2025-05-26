@@ -86,10 +86,10 @@ const Schedule: React.FC<Props> = ({ user, schedules, staff }) => {
 
   const formatDate = (dateString: string | null): string => {
     if (!dateString) return 'N/A';
-    const options: Intl.DateTimeFormatOptions = { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+    const options: Intl.DateTimeFormatOptions = {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
@@ -395,14 +395,7 @@ const Schedule: React.FC<Props> = ({ user, schedules, staff }) => {
                                   <Edit className="h-4 w-4 mr-1" />
                                   Edit
                                 </Button>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => handleDelete(schedule.id)}
-                                >
-                                  <Trash2 className="h-4 w-4 mr-1" />
-                                  Delete
-                                </Button>
+
                               </div>
                             </TableCell>
                           </TableRow>

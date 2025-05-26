@@ -27,6 +27,8 @@ interface AppointmentProps {
     record_type: string;
     details: string | null;
     status: string;
+    approved_by?: number;
+    approved_by_name?: string;
   }>;
 }
 
@@ -121,14 +123,24 @@ export default function Appointments({
                           <span>{format(appointmentDate, 'h:mm a')}</span>
                         </div>
 
-                        <Badge className={
-                          appointment.status.toLowerCase() === 'confirmed' ? 'bg-green-100 text-green-800' :
-                          appointment.status.toLowerCase() === 'completed' ? 'bg-blue-100 text-blue-800' :
-                          appointment.status.toLowerCase() === 'cancelled' ? 'bg-red-600 text-white' :
-                          'bg-yellow-100 text-yellow-800'
-                        }>
-                          {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
-                        </Badge>
+                        <div className="flex flex-col items-end">
+                          <Badge className={
+                            appointment.status.toLowerCase() === 'confirmed' ? 'bg-green-100 text-green-800' :
+                            appointment.status.toLowerCase() === 'completed' ? 'bg-blue-100 text-blue-800' :
+                            appointment.status.toLowerCase() === 'cancelled' ? 'bg-red-600 text-white' :
+                            'bg-yellow-100 text-yellow-800'
+                          }>
+                            {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
+                          </Badge>
+                          {(appointment.status.toLowerCase() === 'confirmed' || appointment.status.toLowerCase() === 'cancelled') &&
+                           appointment.approved_by_name && (
+                            <div className="text-xs mt-1">
+                              <span className={appointment.status.toLowerCase() === 'confirmed' ? 'text-green-600' : 'text-red-600'}>
+                                By: {appointment.approved_by_name}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );

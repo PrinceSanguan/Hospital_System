@@ -49,6 +49,8 @@ interface Appointment {
     details: AppointmentNote[] | string | null;
     created_at: string;
     updated_at: string;
+    approved_by?: number;
+    approved_by_name?: string;
 }
 
 interface AppointmentDetailsProps {
@@ -257,7 +259,9 @@ export default function AppointmentDetails({ user, appointment, patientFiles = [
         axios.post(route('doctor.appointments.updateStatus'), {
             appointment_id: appointment.id,
             status: status === 'completed' ? 'confirmed' : (status === 'cancelled' ? 'cancelled' : 'confirmed'),
-            notes: data.notes
+            notes: data.notes,
+            approved_by: user.id,
+            approved_by_name: user.name
         })
         .then(() => {
                 setShowConfirmComplete(false);
@@ -353,6 +357,27 @@ export default function AppointmentDetails({ user, appointment, patientFiles = [
                                 </div>
                             </div>
 
+                            {/* Show who approved or declined the appointment */}
+                            {appointment.status === 'confirmed' && appointment.approved_by_name && (
+                                <div className="border border-green-100 bg-green-50 p-4 rounded-md">
+                                    <h3 className="font-medium text-green-800 flex items-center mb-2">
+                                        <CheckCircle className="mr-2 h-4 w-4" />
+                                        Approved By
+                                    </h3>
+                                    <p className="text-green-700">{appointment.approved_by_name}</p>
+                                </div>
+                            )}
+
+                            {appointment.status === 'cancelled' && appointment.approved_by_name && (
+                                <div className="border border-red-100 bg-red-50 p-4 rounded-md">
+                                    <h3 className="font-medium text-red-800 flex items-center mb-2">
+                                        <XCircle className="mr-2 h-4 w-4" />
+                                        Declined By
+                                    </h3>
+                                    <p className="text-red-700">{appointment.approved_by_name}</p>
+                                </div>
+                            )}
+
                             {/* Patient Uploaded Files Section */}
                             {patientFiles.length > 0 && (
                                 <div>
@@ -419,7 +444,9 @@ export default function AppointmentDetails({ user, appointment, patientFiles = [
                                                 // Use axios directly instead of Inertia's post
                                                 axios.post(route('doctor.appointments.updateStatus'), {
                                                     appointment_id: appointment.id,
-                                                    status: 'confirmed'
+                                                    status: 'confirmed',
+                                                    approved_by: user.id,
+                                                    approved_by_name: user.name
                                                 })
                                                 .then(() => {
                                                     window.location.href = route('doctor.dashboard');

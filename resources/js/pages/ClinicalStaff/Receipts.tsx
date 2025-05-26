@@ -312,18 +312,7 @@ export default function Receipts({ user, receipts, useAdminLayout }: ReceiptsPro
                                                         <ArrowDownTrayIcon className="h-4 w-4" />
                                                     </Button>
                                                 </a>
-                                                <form
-                                                    onSubmit={(e) => {
-                                                        e.preventDefault();
-                                                        const url = route('staff.receipts.destroy', receipt.id);
-                                                        router.delete(url);
-                                                    }}
-                                                    className="inline-block"
-                                                >
-                                                    <Button variant="outline" size="sm" type="submit">
-                                                        <TrashIcon className="h-4 w-4" />
-                                                    </Button>
-                                                </form>
+
                                             </TableCell>
                                         </TableRow>
                                     ))

@@ -40,13 +40,13 @@ class AppointmentsController extends Controller
                         Log::warning('Appointment #' . $appointment->id . ' has no associated patient');
                         return null;
                     }
-                    
+
                     // Get doctor information
                     $doctor = null;
                     if ($appointment->assigned_doctor_id) {
                         $doctor = User::find($appointment->assigned_doctor_id);
                     }
-                    
+
                     // Parse details
                     $details = [];
                     if ($appointment->details) {
@@ -54,7 +54,7 @@ class AppointmentsController extends Controller
                             $details = json_decode($appointment->details, true) ?: [];
                         }
                     }
-                    
+
                     $time = isset($details['appointment_time']) ? $details['appointment_time'] : '';
                     $reason = $appointment->reason ?? (isset($details['reason']) ? $details['reason'] : '');
 
@@ -82,7 +82,7 @@ class AppointmentsController extends Controller
 
             // Get status options for filter
             $statusOptions = Appointment::distinct('status')->pluck('status');
-            
+
             // Get appointment types for filter
             $appointmentTypes = Appointment::distinct('record_type')->pluck('record_type');
         } catch (\Exception $e) {
@@ -113,15 +113,15 @@ class AppointmentsController extends Controller
 
         try {
             DB::beginTransaction();
-            
+
             // Find appointment
             $appointment = Appointment::findOrFail($id);
             $oldStatus = $appointment->status;
             $newStatus = $request->status;
-            
+
             // Update appointment status
             $appointment->status = $newStatus;
-            
+
             // Update details if notes provided
             if ($request->filled('notes')) {
                 // Parse existing details
@@ -133,19 +133,19 @@ class AppointmentsController extends Controller
                         $details = (array) $appointment->details;
                     }
                 }
-                
+
                 // Add status change note
                 $details['status_notes'] = $request->notes;
                 $details['status_updated_by'] = 'admin';
                 $details['status_updated_at'] = now()->format('Y-m-d H:i:s');
-                
+
                 $appointment->details = json_encode($details);
             }
-            
+
             $appointment->save();
-            
+
             DB::commit();
-            
+
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => true,
@@ -153,36 +153,36 @@ class AppointmentsController extends Controller
                     'appointment' => $appointment
                 ]);
             }
-            
+
             return redirect()->route('admin.appointments')->with('success', "Appointment {$newStatus} successfully");
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error updating appointment status: ' . $e->getMessage());
-            
+
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to update appointment status',
                 ], 500);
             }
-            
+
             return redirect()->back()->with('error', 'Failed to update appointment status');
         }
     }    public function show($id)
     {
         $user = Auth::user();
-        
+
         try {
             // Get appointment details
             $appointment = Appointment::with('patient')->findOrFail($id);
-            
+
             // Get patient information
             $patient = Patient::find($appointment->patient_id);
             if (!$patient) {
                 Log::warning('Appointment #' . $appointment->id . ' has no associated patient');
                 return redirect()->route('admin.appointments')->with('error', 'Patient information not found');
             }
-            
+
             // Get doctor information
             $doctor = null;
             if ($appointment->assigned_doctor_id) {
@@ -200,17 +200,17 @@ class AppointmentsController extends Controller
                 if (isset($details['medical_records']) && is_string($details['medical_records'])) {
                     // Try to decode the medical_records specifically
                     $medicalRecords = json_decode($details['medical_records'], true);
-                    
+
                     // If valid JSON, replace the string with the array
                     if (json_last_error() === JSON_ERROR_NONE && is_array($medicalRecords)) {
                         $details['medical_records'] = $medicalRecords;
-                        
+
                         // Log successful parsing of medical records
                         Log::info('Successfully parsed medical_records JSON for appointment: ' . $id);
                     } else {
                         // Log failed attempt to parse medical records
                         Log::warning('Failed to parse medical_records as JSON for appointment: ' . $id . '. Error: ' . json_last_error_msg());
-                        
+
                         // Create a structured array with the raw value as notes
                         $details['medical_records'] = [
                             'notes' => $details['medical_records'],
@@ -223,11 +223,11 @@ class AppointmentsController extends Controller
                         ];
                     }
                 }
-                
+
                 // Recursively check for string-encoded JSON objects
                 $details = $this->parseNestedJsonObjects($details);
             }
-            
+
             // Format appointment data
             $formattedAppointment = [
                 'id' => $appointment->id,
@@ -253,7 +253,7 @@ class AppointmentsController extends Controller
                 'created_at' => Carbon::parse($appointment->created_at)->format('M d, Y h:i A'),
                 'updated_at' => Carbon::parse($appointment->updated_at)->format('M d, Y h:i A'),
             ];
-            
+
             return Inertia::render('Admin/AppointmentDetails', [
                 'user' => [
                     'name' => $user->name,
@@ -276,7 +276,7 @@ class AppointmentsController extends Controller
     {
         try {
             $appointment = Appointment::with(['patient'])->findOrFail($id);
-            
+
             // Get patient information
             $patient = Patient::find($appointment->patient_id);
             if (!$patient) {
@@ -285,7 +285,7 @@ class AppointmentsController extends Controller
                     'message' => 'Patient information not found'
                 ], 404);
             }
-            
+
             // Get doctor information
             $doctor = null;
             if ($appointment->assigned_doctor_id) {
@@ -299,16 +299,16 @@ class AppointmentsController extends Controller
                 } else {
                     $details = (array) $appointment->details;
                 }
-                
+
                 // Check if medical_records exists and is a string
                 if (isset($details['medical_records']) && is_string($details['medical_records'])) {
                     // Try to decode the medical_records specifically
                     $medicalRecords = json_decode($details['medical_records'], true);
-                    
+
                     // If valid JSON, replace the string with the array
                     if (json_last_error() === JSON_ERROR_NONE && is_array($medicalRecords)) {
                         $details['medical_records'] = $medicalRecords;
-                        
+
                         // Log successful parsing of medical records
                         Log::info('Successfully parsed medical_records JSON for PDF generation: ' . $id);
                     } else {
@@ -316,11 +316,11 @@ class AppointmentsController extends Controller
                         Log::warning('Failed to parse medical_records as JSON for PDF generation: ' . $id . '. Error: ' . json_last_error_msg());
                     }
                 }
-                
+
                 // Recursively parse any nested JSON strings
                 $details = $this->parseNestedJsonObjects($details);
             }
-            
+
             // Format data for PDF
             $data = [
                 'appointment' => [
@@ -353,10 +353,10 @@ class AppointmentsController extends Controller
                 ],
                 'details' => $details
             ];
-            
+
             // Generate PDF using DOMPDF
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdfs.appointment', $data);
-            
+
             // Return the PDF for download
             return $pdf->download('appointment_' . $appointment->id . '.pdf');
         } catch (\Exception $e) {
@@ -374,7 +374,7 @@ class AppointmentsController extends Controller
         try {
             $appointment = Appointment::findOrFail($id);
             $appointment->delete();
-            
+
             return redirect()->route('admin.appointments')->with('success', 'Appointment deleted successfully');
         } catch (\Exception $e) {
             Log::error('Error deleting appointment: ' . $e->getMessage());
@@ -403,7 +403,7 @@ class AppointmentsController extends Controller
                         // Try to clean up the string if it might be a double-encoded JSON
                         $cleanedValue = str_replace('\"', '"', $value);
                         $cleanedValue = preg_replace('/^"(.*)"$/', '$1', $cleanedValue);
-                        
+
                         $decoded = json_decode($cleanedValue, true);
                         if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                             $data[$key] = $decoded;
@@ -423,7 +423,7 @@ class AppointmentsController extends Controller
                         }
                     }
                 }
-            } 
+            }
             // Check if value is a string and looks like JSON
             else if (is_string($value) && (substr($value, 0, 1) === '{' || substr($value, 0, 1) === '[')) {
                 $decoded = json_decode($value, true);
@@ -438,7 +438,7 @@ class AppointmentsController extends Controller
                 $data[$key] = $this->parseNestedJsonObjects($value);
             }
         }
-        
+
         return $data;
     }
 
@@ -453,7 +453,7 @@ class AppointmentsController extends Controller
     {
         try {
             $appointment = Appointment::findOrFail($id);
-            
+
             // Parse details
             $details = [];
             if ($appointment->details) {
@@ -462,11 +462,11 @@ class AppointmentsController extends Controller
                 } else {
                     $details = (array) $appointment->details;
                 }
-                
+
                 // First try to parse medical_records directly
                 if (isset($details['medical_records']) && is_string($details['medical_records'])) {
                     Log::info('medical_records before parsing: ' . $details['medical_records']);
-                    
+
                     $medicalRecords = json_decode($details['medical_records'], true);
                     if (json_last_error() === JSON_ERROR_NONE && is_array($medicalRecords)) {
                         $details['medical_records'] = $medicalRecords;
@@ -475,10 +475,10 @@ class AppointmentsController extends Controller
                         Log::warning('Failed to parse medical_records: ' . json_last_error_msg());
                     }
                 }
-                
+
                 // Then apply the recursive parsing
                 $parsed = $this->parseNestedJsonObjects($details);
-                
+
                 // Check if medical_records is still a string after parsing
                 if (isset($parsed['medical_records']) && is_string($parsed['medical_records'])) {
                     Log::warning('medical_records is still a string after parsing');
@@ -486,7 +486,7 @@ class AppointmentsController extends Controller
                     Log::info('medical_records was successfully converted to an array');
                 }
             }
-            
+
             // Return detailed information about the structure
             return response()->json([
                 'raw_details' => $appointment->details,

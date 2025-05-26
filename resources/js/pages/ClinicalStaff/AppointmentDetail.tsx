@@ -70,6 +70,8 @@ interface AppointmentProps {
         reason?: string;
         details: AppointmentDetails | string;
         reference_number?: string;
+        approved_by?: number;
+        approved_by_name?: string;
     };
     user: User;
 }
@@ -210,7 +212,9 @@ export default function AppointmentDetail({ appointment, user }: AppointmentProp
         try {
             const response = await axios.post(route('staff.appointments.status', appointment.id), {
                 status,
-                notes
+                notes,
+                approved_by: user.id,
+                approved_by_name: user.name
             });
 
             if (response.data.success) {
@@ -355,6 +359,18 @@ export default function AppointmentDetail({ appointment, user }: AppointmentProp
                                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Additional Notes:</p>
                                     <p>{details.notes || 'No additional notes'}</p>
                                 </div>
+                                {appointment.status === 'confirmed' && appointment.approved_by_name && (
+                                    <div>
+                                        <p className="text-sm font-medium text-green-600 dark:text-green-400">Approved By:</p>
+                                        <p>{appointment.approved_by_name}</p>
+                                    </div>
+                                )}
+                                {appointment.status === 'cancelled' && appointment.approved_by_name && (
+                                    <div>
+                                        <p className="text-sm font-medium text-red-600 dark:text-red-400">Declined By:</p>
+                                        <p>{appointment.approved_by_name}</p>
+                                    </div>
+                                )}
                                 {appointment.doctor && (
                                     <div className="flex items-center justify-between border-t pt-4 mt-4">
                                         <div>

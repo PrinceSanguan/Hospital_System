@@ -409,7 +409,7 @@ export default function Dashboard({
                                 onClick={() => directAppointmentResponse(appointment, 'deny')}
                               >
                                 <XCircle size={16} />
-                                Deny
+                                Decline
                               </Button>
                             </div>
                           </TableCell>
@@ -595,7 +595,7 @@ export default function Dashboard({
                             onClick={() => directAppointmentResponse(appointment, 'deny')}
                           >
                             <XCircle size={16} />
-                            Deny
+                            Decline
                           </Button>
                         </div>
                       )}

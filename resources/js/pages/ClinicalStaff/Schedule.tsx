@@ -563,15 +563,7 @@ const Schedule: React.FC<Props> = ({ schedules, flash }) => {
                                       >
                                         {formatTimeToAmPm(schedule.start_time)}
                                       </Button>
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => handleDelete(schedule.id)}
-                                        className="h-7 w-7 p-0 text-red-600 hover:text-red-800"
-                                        title="Delete this time slot"
-                                      >
-                                        <X className="h-3 w-3" />
-                                      </Button>
+
                                     </div>
                                   ))}
                                 </div>

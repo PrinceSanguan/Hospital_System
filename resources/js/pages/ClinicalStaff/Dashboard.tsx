@@ -100,7 +100,9 @@ export default function StaffDashboard({
         try {
             const response = await axios.post(route('staff.appointments.status', id), {
                 status: newStatus,
-                notes: 'Status updated by clinical staff from dashboard'
+                notes: `Status updated by ${user.name}`,
+                approved_by: user.id,
+                approved_by_name: user.name
             });
 
             if (response.data.success) {
@@ -286,11 +288,11 @@ export default function StaffDashboard({
                                                                                     className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100"
                                                                                     onClick={() => openDenyDialog(appointment.id)}
                                                                                 >
-                                                                                    Deny
+                                                                                    Decline
                                                                                 </Button>
                                                                             </TooltipTrigger>
                                                                             <TooltipContent>
-                                                                                <p>Deny appointment</p>
+                                                                                <p>Decline appointment</p>
                                                                             </TooltipContent>
                                                                         </Tooltip>
                                                                     </TooltipProvider>

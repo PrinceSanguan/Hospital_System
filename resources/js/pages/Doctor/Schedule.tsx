@@ -446,13 +446,7 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ user, schedules, staff }) =
                                   <Button variant="outline" size="sm" onClick={() => openEditModal(schedule)}>
                                     Edit
                                   </Button>
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => openDeleteModal(schedule)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+
                                   <Button
                                     variant="secondary"
                                     size="sm"
@@ -806,26 +800,7 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ user, schedules, staff }) =
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Modal */}
-      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Delete Schedule</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this schedule? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="button" variant="destructive" onClick={handleDeleteSchedule}>
-              <Trash2 className="mr-2 h-4 w-4" /> Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Create Multiple Schedules Modal */}
       <Dialog open={isMultipleModalOpen} onOpenChange={setIsMultipleModalOpen}>

@@ -333,13 +333,7 @@ const DoctorScheduleManagement: React.FC = () => {
                                 </Button>
                               )}
 
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => openDeleteModal(schedule.id)}
-                              >
-                                Delete
-                              </Button>
+
                             </div>
                           </TableCell>
                         </TableRow>

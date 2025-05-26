@@ -45,9 +45,31 @@ export function Header({ user }: { user: User }) {
                 <div className="font-semibold md:hidden">Famcare Admin</div>
 
                 <div className="ml-auto flex items-center gap-4">
-                    <Button variant="ghost" size="icon" className="text-gray-500">
-                        <BellIcon className="h-5 w-5" />
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="relative">
+                                <BellIcon className="h-5 w-5" />
+                                <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                                    0
+                                </span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-80 p-0" align="end">
+                            <div className="border-b p-4">
+                                <h4 className="text-sm font-semibold">Notifications</h4>
+                            </div>
+                            <div className="max-h-80 overflow-auto">
+                                <div className="p-4 text-center text-sm text-gray-500">
+                                    No notifications
+                                </div>
+                            </div>
+                            <div className="border-t p-2">
+                                <Button asChild variant="ghost" size="sm" className="w-full">
+                                    <Link href={route('admin.notifications.index')}>View all notifications</Link>
+                                </Button>
+                            </div>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <Separator orientation="vertical" className="h-8" />
 
                     {/* Go back to admin button - now positioned next to the admin icon */}

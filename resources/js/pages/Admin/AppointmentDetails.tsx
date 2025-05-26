@@ -119,6 +119,8 @@ interface AppointmentData {
   details: AppointmentDetails;
   created_at: string;
   updated_at: string;
+  approved_by?: number;
+  approved_by_name?: string;
 }
 
 interface AppointmentDetailsProps {
@@ -134,11 +136,11 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
   const [showConfirmModal, setShowConfirmModal] = React.useState(false);
   const [confirmAction, setConfirmAction] = React.useState<'approve' | 'reject'>('approve');
   const [showMedicalRecordsModal, setShowMedicalRecordsModal] = React.useState(false);
-  
+
   // Function to render status badge with appropriate color
   const renderStatusBadge = (status: string) => {
     let variant = "outline";
-    
+
     switch (status.toLowerCase()) {
       case "completed":
         variant = "success";
@@ -180,12 +182,14 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
     try {
       const response = await axios.put(route('admin.appointments.update', appointment.id), {
         status: newStatus,
-        notes: `Status updated by admin: ${user.name}`
+        notes: `Status updated by admin: ${user.name}`,
+        approved_by: user.id,
+        approved_by_name: user.name
       });
 
       if (response.data.success) {
         toast.success(`Appointment ${newStatus} successfully`);
-        
+
         // Redirect back to the appointments list after a brief delay
         setTimeout(() => {
           router.visit(route('admin.appointments'));
@@ -210,8 +214,8 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
       <div className="container mx-auto py-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               className="mr-4"
               onClick={() => router.visit(route('admin.appointments'))}
             >
@@ -261,9 +265,9 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                   </div>
                 </div>
               </div>
-              
+
               <Separator />
-              
+
               <div>
                 <div className="flex items-start mb-2">
                   <MessageSquare className="h-5 w-5 mr-2 text-gray-500" />
@@ -277,7 +281,7 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
               {appointment.doctor && (
                 <>
                   <Separator />
-                  
+
                   <div className="flex items-start">
                     <UserSquare className="h-5 w-5 mr-2 text-gray-500" />
                     <div>
@@ -292,7 +296,7 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
               {appointment.details && appointment.details.status_notes && (
                 <>
                   <Separator />
-                  
+
                   <div className="flex items-start">
                     <FileText className="h-5 w-5 mr-2 text-gray-500" />
                     <div>
@@ -307,12 +311,40 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                   </div>
                 </>
               )}
-              
+
+              {/* Display who approved the appointment */}
+              {appointment.status === 'confirmed' && appointment.approved_by_name && (
+                <>
+                  <Separator />
+                  <div className="flex items-start">
+                    <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
+                    <div>
+                      <p className="text-sm text-green-600">Approved By</p>
+                      <p className="font-medium">{appointment.approved_by_name}</p>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Display who declined the appointment */}
+              {appointment.status === 'cancelled' && appointment.approved_by_name && (
+                <>
+                  <Separator />
+                  <div className="flex items-start">
+                    <XCircle className="h-5 w-5 mr-2 text-red-500" />
+                    <div>
+                      <p className="text-sm text-red-600">Declined By</p>
+                      <p className="font-medium">{appointment.approved_by_name}</p>
+                    </div>
+                  </div>
+                </>
+              )}
+
               {/* Additional appointment details */}
               {appointment.details && appointment.details.vital_signs && (
                 <>
                   <Separator />
-                  
+
                   <div>
                     <h3 className="font-medium mb-2">Vital Signs</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -358,7 +390,7 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
               {appointment.details && appointment.details.medical_records && (
                 <>
                   <Separator />
-                  
+
                   <div>
                     <div className="flex items-center justify-between">
                       <h3 className="font-medium mb-2 flex items-center">
@@ -375,19 +407,19 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                         View Details
                       </Button>
                     </div>
-                    
+
                     <p className="text-sm text-gray-500 mt-2">
                       Click the "View Details" button to see full medical records
                     </p>
                   </div>
                 </>
               )}
-              
+
               {/* File Attachments Section */}
               {appointment.details && appointment.details.uploaded_files && appointment.details.uploaded_files.length > 0 && (
                 <>
                   <Separator />
-                  
+
                   <div>
                     <h3 className="font-medium mb-2">Attached Files</h3>
                     <div className="space-y-2">
@@ -397,8 +429,8 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                             <FileText className="h-4 w-4 mr-2 text-gray-500" />
                             <span>{file.name}</span>
                           </div>
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
                             onClick={() => window.open(file.url || file.path, '_blank')}
                           >
@@ -416,7 +448,7 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                 Created: {appointment.created_at}<br />
                 Last Updated: {appointment.updated_at}
               </div>
-              
+
               {appointment.status === 'pending' && (
                 <div className="flex gap-2">
                   <Button
@@ -454,7 +486,7 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                     <p className="text-sm text-gray-500">Patient ID: {appointment.patient.id}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start">
                   <Mail className="h-5 w-5 mr-2 text-gray-500" />
                   <div>
@@ -462,7 +494,7 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                     <p className="font-medium">{appointment.patient.email}</p>
                   </div>
                 </div>
-                
+
                 {appointment.patient.phone && (
                   <div className="flex items-start">
                     <Phone className="h-5 w-5 mr-2 text-gray-500" />
@@ -472,7 +504,7 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                     </div>
                   </div>
                 )}
-                
+
                 {appointment.patient.birthdate && (
                   <div className="flex items-start">
                     <CalendarDays className="h-5 w-5 mr-2 text-gray-500" />
@@ -482,7 +514,7 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                     </div>
                   </div>
                 )}
-                
+
                 {appointment.patient.gender && (
                   <div className="flex items-start">
                     <UserCircle className="h-5 w-5 mr-2 text-gray-500" />
@@ -494,8 +526,8 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                 )}
               </CardContent>
               <CardFooter>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full"
                   onClick={() => {
                     // Implement view patient details functionality here
@@ -512,36 +544,36 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
               <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>              <CardContent className="space-y-2">
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start" 
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
                   onClick={() => router.visit(route('admin.appointments'))}
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to Appointments
                 </Button>
 
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start" 
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
                   onClick={() => window.open(route('admin.appointments.pdf', appointment.id), '_blank')}
                 >
                   <Download className="mr-2 h-4 w-4" />
                   Download Appointment PDF
                 </Button>
-                
+
                 {appointment.status === 'pending' && (
                   <>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="w-full justify-start bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100"
                       onClick={openApproveDialog}
                     >
                       <CheckCircle className="mr-2 h-4 w-4" />
                       Accept Appointment
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="w-full justify-start bg-red-50 text-red-600 border-red-100 hover:bg-red-100"
                       onClick={openDenyDialog}
                     >
@@ -554,7 +586,7 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
             </Card>
           </div>
         </div>
-        
+
         {/* Confirmation Modal for approve/deny */}
         <ConfirmationModal
           isOpen={showConfirmModal}
@@ -587,7 +619,7 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                       <p className="whitespace-pre-line">{appointment.details.medical_records.diagnosis}</p>
                     </div>
                   )}
-                  
+
                   {/* Treatment */}
                   {appointment.details.medical_records.treatment && (
                     <div className="bg-slate-50 p-4 rounded-md">
@@ -595,7 +627,7 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                       <p className="whitespace-pre-line">{appointment.details.medical_records.treatment}</p>
                     </div>
                   )}
-                  
+
                   {/* Prescription */}
                   {appointment.details.medical_records.prescription && (
                     <div className="bg-slate-50 p-4 rounded-md">
@@ -603,7 +635,7 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                       <p className="whitespace-pre-line">{appointment.details.medical_records.prescription}</p>
                     </div>
                   )}
-                  
+
                   {/* Notes */}
                   {appointment.details.medical_records.notes && (
                     <div className="bg-slate-50 p-4 rounded-md">
@@ -611,7 +643,7 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                       <p className="whitespace-pre-line">{appointment.details.medical_records.notes}</p>
                     </div>
                   )}
-                  
+
                   {/* Follow Up */}
                   {appointment.details.medical_records.follow_up && (
                     <div className="bg-slate-50 p-4 rounded-md">
@@ -619,7 +651,7 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                       <p className="whitespace-pre-line">{appointment.details.medical_records.follow_up}</p>
                     </div>
                   )}
-                  
+
                   {/* Medical History */}
                   {appointment.details.medical_records.history && (
                     <div className="bg-slate-50 p-4 rounded-md">
@@ -627,9 +659,9 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                       <p className="whitespace-pre-line">{appointment.details.medical_records.history}</p>
                     </div>
                   )}
-                  
+
                   {/* Lab Results */}
-                  {appointment.details.medical_records.lab_results && 
+                  {appointment.details.medical_records.lab_results &&
                    appointment.details.medical_records.lab_results.length > 0 && (
                     <div className="bg-slate-50 p-4 rounded-md">
                       <h3 className="font-medium text-lg mb-2 text-slate-800">Lab Results</h3>
@@ -645,8 +677,8 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                           </thead>
                           <tbody>
                             {appointment.details.medical_records.lab_results.map((result, index) => (
-                              <tr 
-                                key={index} 
+                              <tr
+                                key={index}
                                 className={`${result.is_abnormal ? 'bg-red-50' : 'bg-green-50'}`}
                               >
                                 <td className="p-2 border-b border-slate-200">{result.test_name}</td>
@@ -670,7 +702,7 @@ export default function AppointmentDetails({ user, appointment }: AppointmentDet
                    !appointment.details.medical_records.notes &&
                    !appointment.details.medical_records.follow_up &&
                    !appointment.details.medical_records.history &&
-                   (!appointment.details.medical_records.lab_results || 
+                   (!appointment.details.medical_records.lab_results ||
                     appointment.details.medical_records.lab_results.length === 0) && (
                     <div className="text-center p-8 bg-slate-50 rounded-md">
                       <AlertCircle className="mx-auto h-10 w-10 text-gray-400 mb-4" />

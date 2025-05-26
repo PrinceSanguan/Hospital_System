@@ -9,7 +9,8 @@ import {
   Microscope,
   Stethoscope,
   ChevronDown,
-  LayoutDashboard
+  LayoutDashboard,
+  Bell
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -70,7 +71,36 @@ export function PatientLayout({ children, user }: PatientLayoutProps) {
               Famcare
             </Link>
           </div>
-          <div className="ml-auto flex items-center">
+          <div className="ml-auto flex items-center gap-2">
+            {/* Notifications Bell */}
+            <div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative">
+                    <Bell size={20} />
+                    <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                      0
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-80 p-0" align="end">
+                  <div className="border-b p-4">
+                    <h4 className="text-sm font-semibold">Notifications</h4>
+                  </div>
+                  <div className="max-h-80 overflow-auto">
+                    <div className="p-4 text-center text-sm text-gray-500">
+                      No notifications
+                    </div>
+                  </div>
+                  <div className="border-t p-2">
+                    <Button asChild variant="ghost" size="sm" className="w-full">
+                      <Link href={route('patient.notifications.index')}>View all notifications</Link>
+                    </Button>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2">

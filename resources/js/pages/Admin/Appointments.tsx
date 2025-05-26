@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useForm, router } from "@inertiajs/react";
-import { 
-  Search, 
-  Filter, 
-  Eye, 
-  PencilLine, 
-  Trash, 
+import {
+  Search,
+  Filter,
+  Eye,
+  PencilLine,
+  Trash,
   Download,
   CalendarPlus,
   CheckCircle,
@@ -56,6 +56,8 @@ interface Appointment {
   patient: Patient;
   reason: string;
   status: string;
+  approved_by?: number;
+  approved_by_name?: string;
 }
 
 interface AppointmentsProps {
@@ -78,22 +80,22 @@ export default function Appointments({ user, appointments, statusOptions, appoin
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'approve' | 'reject'>('approve');
   const [appointmentIdToUpdate, setAppointmentIdToUpdate] = useState<number | null>(null);
-  
+
   const { delete: destroy, processing } = useForm();
 
   // Filter appointments based on search query and filters
   const filteredAppointments = appointments.filter(appointment => {
-    const matchesSearch = 
-      appointment.patient.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const matchesSearch =
+      appointment.patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       appointment.ref.toLowerCase().includes(searchQuery.toLowerCase()) ||
       appointment.reason.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesStatus = statusFilter === "All Statuses" || appointment.status === statusFilter.toLowerCase();
-    
+
     // Type filter is based on the reason since we don't have a direct type field
-    const matchesType = typeFilter === "All Types" || 
+    const matchesType = typeFilter === "All Types" ||
       appointment.reason.toLowerCase().includes(typeFilter.toLowerCase());
-    
+
     return matchesSearch && matchesStatus && matchesType;
   });
 
@@ -117,7 +119,9 @@ export default function Appointments({ user, appointments, statusOptions, appoin
     try {
       const response = await axios.put(route('admin.appointments.update', id), {
         status: newStatus,
-        notes: `Status updated by admin: ${user.name}`
+        notes: `Status updated by admin: ${user.name}`,
+        approved_by: user.id,
+        approved_by_name: user.name
       });
 
       if (response.data.success) {
@@ -134,7 +138,7 @@ export default function Appointments({ user, appointments, statusOptions, appoin
 
         // Replace the appointments with updated data
         window.location.reload();
-        
+
         // Show success message
         toast.success(`Appointment ${newStatus} successfully`);
       } else {
@@ -173,7 +177,7 @@ export default function Appointments({ user, appointments, statusOptions, appoin
   // Function to render status badge with appropriate color
   const renderStatusBadge = (status: string) => {
     let variant = "outline";
-    
+
     switch (status.toLowerCase()) {
       case "completed":
         variant = "success";
@@ -206,7 +210,7 @@ export default function Appointments({ user, appointments, statusOptions, appoin
             <p className="text-muted-foreground">Manage and respond to appointment requests</p>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="p-4 border-b">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -223,7 +227,7 @@ export default function Appointments({ user, appointments, statusOptions, appoin
                   />
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-1">Status</label>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -240,7 +244,7 @@ export default function Appointments({ user, appointments, statusOptions, appoin
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-1">Appointment Type</label>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -259,14 +263,14 @@ export default function Appointments({ user, appointments, statusOptions, appoin
               </div>
             </div>
           </div>
-          
+
           <div className="px-4 py-2 border-b bg-gray-50">
             <h3 className="text-lg font-semibold">Appointment List</h3>
             <p className="text-sm text-muted-foreground">
               Showing {filteredAppointments.length} appointments
             </p>
           </div>
-          
+
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -276,6 +280,7 @@ export default function Appointments({ user, appointments, statusOptions, appoin
                   <th className="p-4 font-medium text-gray-500">Date & Time</th>
                   <th className="p-4 font-medium text-gray-500">Reasons</th>
                   <th className="p-4 font-medium text-gray-500">Status</th>
+                  <th className="p-4 font-medium text-gray-500">Approved By</th>
                   <th className="p-4 font-medium text-gray-500 text-right">Actions</th>
                 </tr>
               </thead>
@@ -295,6 +300,15 @@ export default function Appointments({ user, appointments, statusOptions, appoin
                         <div className="text-sm text-gray-500">{appointment.time}</div>
                       </td>
                       <td className="p-4">{appointment.reason}</td>                      <td className="p-4">{renderStatusBadge(appointment.status)}</td>
+                      <td className="p-4">
+                        {(appointment.status === 'confirmed' || appointment.status === 'cancelled') && appointment.approved_by_name ? (
+                          <span className={appointment.status === 'confirmed' ? 'text-green-600' : 'text-red-600'}>
+                            {appointment.approved_by_name}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end">                          {/* Status action buttons for pending appointments */}
                           {appointment.status === 'pending' && (
@@ -328,17 +342,17 @@ export default function Appointments({ user, appointments, statusOptions, appoin
                                       onClick={() => openDenyDialog(appointment.id)}
                                     >
                                       <XCircle className="h-4 w-4 mr-1" />
-                                      Deny
+                                      Decline
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p>Deny this appointment</p>
+                                    <p>Decline this appointment</p>
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
                             </>
                           )}
-                        
+
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" className="h-8 w-8 p-0">
@@ -359,7 +373,7 @@ export default function Appointments({ user, appointments, statusOptions, appoin
                                 </svg>
                               </Button>
                             </DropdownMenuTrigger>                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 className="cursor-pointer"
                                 onClick={() => router.visit(route('admin.appointments.show', appointment.id))}
                               >
@@ -369,7 +383,7 @@ export default function Appointments({ user, appointments, statusOptions, appoin
                               <DropdownMenuItem className="cursor-pointer">
                                 <PencilLine className="mr-2 h-4 w-4" />
                                 <span>Edit</span>
-                              </DropdownMenuItem>                              <DropdownMenuItem 
+                              </DropdownMenuItem>                              <DropdownMenuItem
                                 className="cursor-pointer"
                                 onClick={() => window.open(route('admin.appointments.pdf', appointment.id), '_blank')}
                               >

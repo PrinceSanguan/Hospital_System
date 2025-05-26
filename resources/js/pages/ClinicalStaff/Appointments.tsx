@@ -91,6 +91,8 @@ interface Appointment {
     reason?: string;
     has_lab_results?: boolean;
     has_medical_record?: boolean;
+    approved_by?: number;
+    approved_by_name?: string;
 }
 
 interface AppointmentsProps {
@@ -224,7 +226,9 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
         try {
             const response = await axios.post(route('staff.appointments.status', id), {
                 status: newStatus,
-                notes: 'Status updated by clinical staff'
+                notes: `Status updated by ${user.name}`,
+                approved_by: user.id,
+                approved_by_name: user.name
             });
 
             if (response.data.success) {
@@ -366,6 +370,7 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                                                 <TableHead>Date & Time</TableHead>
                                                 <TableHead>Reasons</TableHead>
                                                 <TableHead>Status</TableHead>
+                                                <TableHead>Approved By</TableHead>
                                                 <TableHead className="text-center">Actions</TableHead>
                                             </TableRow>
                                         </TableHeader>
@@ -389,6 +394,15 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                                                         {appointment.reason || 'Not specified'}
                                                     </TableCell>
                                                     <TableCell>{getStatusBadge(appointment.status)}</TableCell>
+                                                    <TableCell>
+                                                        {(appointment.status === 'confirmed' || appointment.status === 'cancelled') && appointment.approved_by_name ? (
+                                                            <span className={appointment.status === 'confirmed' ? 'text-green-600' : 'text-red-600'}>
+                                                                {appointment.approved_by_name}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-gray-400">-</span>
+                                                        )}
+                                                    </TableCell>
                                                     <TableCell>
                                                         <div className="flex items-center justify-center space-x-2">
                                                             {/* Status actions for pending appointments */}
@@ -415,17 +429,17 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                                                                     <TooltipProvider>
                                                                         <Tooltip>
                                                                             <TooltipTrigger asChild>
-                                                                                <Button
-                                                                                    variant="outline"
-                                                                                    size="sm"
-                                                                                    className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100"
-                                                                                    onClick={() => openDenyDialog(appointment.id)}
-                                                                                >
-                                                                                    Deny
-                                                                                </Button>
-                                                                            </TooltipTrigger>
-                                                                            <TooltipContent>
-                                                                                <p>Deny appointment</p>
+                                                                                                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100"
+                              onClick={() => openDenyDialog(appointment.id)}
+                            >
+                              Decline
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Decline appointment</p>
                                                                             </TooltipContent>
                                                                         </Tooltip>
                                                                     </TooltipProvider>

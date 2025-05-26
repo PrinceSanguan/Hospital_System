@@ -42,6 +42,8 @@ interface Appointment {
     record_type: string;
     status: string;
     details: string;
+    approved_by?: number;
+    approved_by_name?: string;
 }
 
 interface AppointmentsProps {
@@ -307,6 +309,7 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                                             <TableHead>Date & Time</TableHead>
                                             <TableHead>Reason</TableHead>
                                             <TableHead>Status</TableHead>
+                                            <TableHead>Approved By</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -335,6 +338,15 @@ export default function Appointments({ user, appointments = [] }: AppointmentsPr
                                                     >
                                                         {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
                                                     </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {(appointment.status === 'confirmed' || appointment.status === 'cancelled') && appointment.approved_by_name ? (
+                                                        <span className={appointment.status === 'confirmed' ? 'text-green-600' : 'text-red-600'}>
+                                                            {appointment.approved_by_name}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-gray-400">-</span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end items-center gap-2">

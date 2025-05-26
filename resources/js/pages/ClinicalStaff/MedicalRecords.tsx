@@ -342,25 +342,7 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
               </CardContent>
             </Card>
 
-            {/* Delete Confirmation Dialog */}
-            <Dialog open={deleteDialog} onOpenChange={setDeleteDialog}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Confirm Deletion</DialogTitle>
-                </DialogHeader>
-                <p className="py-4">Are you sure you want to delete this medical record? This action cannot be undone.</p>
-                <DialogFooter>
-                  <Button variant="outline" onClick={closeDeleteDialog} disabled={processing}>
-                    <XMarkIcon className="h-4 w-4 mr-2" />
-                    Cancel
-                  </Button>
-                  <Button variant="destructive" onClick={handleDelete} disabled={processing}>
-                    <TrashIcon className="h-4 w-4 mr-2" />
-                    {processing ? 'Deleting...' : 'Delete'}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+
           </main>
         </div>
       </div>

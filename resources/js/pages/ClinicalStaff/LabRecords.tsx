@@ -211,13 +211,7 @@ export default function LabRecords({ user, labRecords }: LabRecordsProps) {
                                   <FileEdit className="h-4 w-4" />
                                 </Link>
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => confirmDelete(record.id)}
-                              >
-                                <Trash className="h-4 w-4 text-red-500" />
-                              </Button>
+
                             </div>
                           </TableCell>
                         </TableRow>
