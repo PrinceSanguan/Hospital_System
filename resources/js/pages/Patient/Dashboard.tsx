@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Link, router } from '@inertiajs/react';
 import { Bell, Calendar, Calendar as CalendarIcon, Clock, FileText, Home, Menu, Microscope, Stethoscope, UserIcon } from 'lucide-react';
-import { useState } from 'react';
+import { JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal, useState } from 'react';
 
 // Calendar component imports
 import { addDays, format, isBefore, isToday } from 'date-fns';
@@ -104,6 +104,19 @@ const formatDayOfWeek = (dayNumber: number): string => {
     return days[dayNumber];
 };
 
+const saveNotificationState = (notifications: typeof notificationsState) => {
+    const readNotifications = notifications.filter((n) => n.read).map((n) => n.id);
+    localStorage.setItem('readNotifications', JSON.stringify(readNotifications));
+};
+
+const loadNotificationState = (notifications: typeof notifications) => {
+    const readIds = JSON.parse(localStorage.getItem('readNotifications') || '[]');
+    return notifications.map((n) => ({
+        ...n,
+        read: n.read || readIds.includes(n.id),
+    }));
+};
+
 export default function PatientDashboard({
     user,
     upcomingAppointments = [],
@@ -165,9 +178,9 @@ export default function PatientDashboard({
     const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
 
     // Calculate unread notifications
-    const [notificationsState, setNotificationsState] = useState(notifications);
+    const [notificationsState, setNotificationsState] = useState(() => loadNotificationState(notifications));
     const [showNotifications, setShowNotifications] = useState(false);
-    const unreadNotificationsCount = notificationsState.filter((notification) => !notification.read).length;
+    const unreadNotificationsCount = notificationsState.filter((notification: { read: any }) => !notification.read).length;
 
     // Calculate appointments for today
     const appointmentsTodayCount = upcomingAppointments.filter((appointment) => {
@@ -388,9 +401,9 @@ export default function PatientDashboard({
                             size="icon"
                             className="relative"
                             onClick={() => {
-                                // Mark notifications as read in local state only
-                                setNotificationsState((prev) => prev.map((n) => ({ ...n, read: true })));
-                                // Toggle visibility of notifications panel
+                                const updatedNotifications = notificationsState.map((n: any) => ({ ...n, read: true }));
+                                setNotificationsState(updatedNotifications);
+                                saveNotificationState(updatedNotifications);
                                 setShowNotifications(!showNotifications);
                             }}
                         >
@@ -413,7 +426,9 @@ export default function PatientDashboard({
                                             size="sm"
                                             className="h-7 px-2 text-xs"
                                             onClick={() => {
-                                                setNotificationsState((prev) => prev.map((n) => ({ ...n, read: true })));
+                                                const updatedNotifications = notificationsState.map((n) => ({ ...n, read: true }));
+                                                setNotificationsState(updatedNotifications);
+                                                saveNotificationState(updatedNotifications);
                                             }}
                                         >
                                             Mark all as read
@@ -425,25 +440,77 @@ export default function PatientDashboard({
                                         <div className="p-4 text-center text-sm text-gray-500">No notifications</div>
                                     ) : (
                                         <div className="divide-y">
-                                            {notificationsState.map((notification) => (
-                                                <div
-                                                    key={notification.id}
-                                                    className={`p-4 ${notification.read ? '' : 'bg-blue-50'} cursor-pointer`}
-                                                    onClick={() => {
-                                                        // Mark as read in local state
-                                                        setNotificationsState((prev) =>
-                                                            prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)),
-                                                        );
+                                            {notificationsState.map(
+                                                (notification: {
+                                                    id: Key | null | undefined;
+                                                    read: any;
+                                                    title:
+                                                        | string
+                                                        | number
+                                                        | bigint
+                                                        | boolean
+                                                        | ReactElement<unknown, string | JSXElementConstructor<any>>
+                                                        | Iterable<ReactNode>
+                                                        | ReactPortal
+                                                        | Promise<
+                                                              | string
+                                                              | number
+                                                              | bigint
+                                                              | boolean
+                                                              | ReactPortal
+                                                              | ReactElement<unknown, string | JSXElementConstructor<any>>
+                                                              | Iterable<ReactNode>
+                                                              | null
+                                                              | undefined
+                                                          >
+                                                        | null
+                                                        | undefined;
+                                                    message:
+                                                        | string
+                                                        | number
+                                                        | bigint
+                                                        | boolean
+                                                        | ReactElement<unknown, string | JSXElementConstructor<any>>
+                                                        | Iterable<ReactNode>
+                                                        | ReactPortal
+                                                        | Promise<
+                                                              | string
+                                                              | number
+                                                              | bigint
+                                                              | boolean
+                                                              | ReactPortal
+                                                              | ReactElement<unknown, string | JSXElementConstructor<any>>
+                                                              | Iterable<ReactNode>
+                                                              | null
+                                                              | undefined
+                                                          >
+                                                        | null
+                                                        | undefined;
+                                                    created_at: string | number | Date;
+                                                }) => (
+                                                    <div
+                                                        key={notification.id}
+                                                        className={`p-4 ${notification.read ? '' : 'bg-blue-50'} cursor-pointer`}
+                                                        onClick={() => {
+                                                            // Mark as read in local state
+                                                            const updatedNotifications = notificationsState.map((n) =>
+                                                                n.id === notification.id ? { ...n, read: true } : n,
+                                                            );
+                                                            setNotificationsState(updatedNotifications);
+                                                            saveNotificationState(updatedNotifications);
 
-                                                        // Navigate to appointments list
-                                                        router.visit(route('patient.appointments.index'));
-                                                    }}
-                                                >
-                                                    <p className="text-sm font-medium">{notification.title}</p>
-                                                    <p className="text-sm">{notification.message}</p>
-                                                    <p className="mt-1 text-xs text-gray-500">{new Date(notification.created_at).toLocaleString()}</p>
-                                                </div>
-                                            ))}
+                                                            // Navigate to appointments list
+                                                            router.visit(route('patient.appointments.index'));
+                                                        }}
+                                                    >
+                                                        <p className="text-sm font-medium">{notification.title}</p>
+                                                        <p className="text-sm">{notification.message}</p>
+                                                        <p className="mt-1 text-xs text-gray-500">
+                                                            {new Date(notification.created_at).toLocaleString()}
+                                                        </p>
+                                                    </div>
+                                                ),
+                                            )}
                                         </div>
                                     )}
                                 </div>
