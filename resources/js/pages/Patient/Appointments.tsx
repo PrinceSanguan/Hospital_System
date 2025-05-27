@@ -1,11 +1,10 @@
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PatientLayout } from '@/layouts/PatientLayout';
-import { Head, router } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { format } from 'date-fns';
-import { Bell, Clock, Microscope, Stethoscope } from 'lucide-react';
+import { Clock, Microscope, Stethoscope } from 'lucide-react';
 import { useState } from 'react';
 
 interface AppointmentProps {
@@ -27,20 +26,10 @@ interface AppointmentProps {
         approved_by?: number;
         approved_by_name?: string;
     }>;
-    notifications: Array<{
-        id: number;
-        title: string;
-        message: string;
-        read: boolean;
-        created_at: string;
-    }>;
 }
 
-export default function Appointments({ user, appointments = [], notifications = [] }: AppointmentProps) {
+export default function Appointments({ user, appointments = [] }: AppointmentProps) {
     const [activeTab, setActiveTab] = useState('all');
-
-    // Calculate unread notifications
-    const unreadNotificationsCount = notifications.filter((notification) => !notification.read).length;
 
     // Filter appointments based on active tab
     const filteredAppointments = appointments.filter((appointment) => {
@@ -74,20 +63,9 @@ export default function Appointments({ user, appointments = [], notifications = 
         <PatientLayout user={user}>
             <Head title="My Appointments" />
 
-            {/* Header with notification */}
-            <div className="mb-8 flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">My Appointments</h1>
-                    <p className="mt-1 text-gray-600">View and manage your scheduled appointments</p>
-                </div>
-                <Button variant="ghost" size="icon" className="relative" onClick={() => router.visit(route('patient.notifications.index'))}>
-                    <Bell size={20} />
-                    {unreadNotificationsCount > 0 && (
-                        <Badge className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-                            {unreadNotificationsCount}
-                        </Badge>
-                    )}
-                </Button>
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold text-gray-900">My Appointments</h1>
+                <p className="mt-1 text-gray-600">View and manage your scheduled appointments</p>
             </div>
 
             <Card>
