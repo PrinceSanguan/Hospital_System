@@ -196,7 +196,6 @@ export default function MedicalRecordsEdit({ user, record, patients, doctors }: 
     appointment_date: record.appointment_date || format(new Date(), 'yyyy-MM-dd'),
     appointment_time: details.appointment_time || '09:00',
     diagnosis: details.diagnosis || '',
-    notes: details.notes || '',
     status: record.status || 'pending',
     vital_signs: {
       temperature: details.vital_signs?.temperature?.toString() || '',
@@ -658,18 +657,6 @@ export default function MedicalRecordsEdit({ user, record, patients, doctors }: 
                         )}
                       </div>
                     ))}
-                  </div>
-
-                  {/* Notes */}
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">Notes</Label>
-                    <Textarea
-                      id="notes"
-                      placeholder="Enter any additional notes"
-                      value={data.notes}
-                      onChange={(e) => setData('notes', e.target.value)}
-                      rows={3}
-                    />
                   </div>
 
                   {/* Follow-up Date */}

@@ -295,7 +295,6 @@ const DoctorScheduleManagement: React.FC = () => {
                       <TableHead>Time</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Notes</TableHead>
-                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
