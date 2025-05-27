@@ -21,12 +21,13 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from '@/components/ui/badge';
-import { PlusIcon, EyeIcon, TrashIcon, XMarkIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, EyeIcon, TrashIcon, ArrowDownTrayIcon, PencilIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import axios from 'axios';
 
@@ -78,6 +79,7 @@ interface MedicalRecord {
   id: number;
   patient: Patient;
   assignedDoctor: Doctor;
+  doctor_id?: number;
   record_type: string;
   appointment_date: string;
   status: string;
@@ -102,13 +104,13 @@ interface MedicalRecordsProps {
 }
 
 export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsProps) {
-  const [deleteDialog, setDeleteDialog] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState<number | null>(null);
   const [prescriptions, setPrescriptions] = useState<{ [key: number]: Prescription[] }>({});
   const [loading, setLoading] = useState<{ [key: number]: boolean }>({});
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // Initialize Inertia form
-  const { delete: deleteRecord, processing } = useForm();
+  const { delete: deleteRecord } = useForm();
 
   // Filter out cancelled records
   const filteredRecords = medicalRecords.data.filter(record =>
@@ -117,12 +119,12 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
 
   const confirmDelete = (id: number) => {
     setRecordToDelete(id);
-    setDeleteDialog(true);
+    setIsDeleteDialogOpen(true);
   };
 
   const closeDeleteDialog = () => {
     setRecordToDelete(null);
-    setDeleteDialog(false);
+    setIsDeleteDialogOpen(false);
   };
 
   const handleDelete = () => {
@@ -175,7 +177,7 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
       case 'completed':
         return <Badge className="bg-green-500">Completed</Badge>;
       case 'pending':
-        return <Badge variant="outline" className="text-orange-500 border-orange-500">Pending</Badge>;
+        return <Badge variant="outline" className="text-orange-500 border-orange-500">Pending Approval</Badge>;
       case 'cancelled':
         return <Badge className="bg-red-600 text-white">Cancelled</Badge>;
       default:
@@ -196,31 +198,6 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
       default:
         return recordType.replace('_', ' ');
     }
-  };
-
-  const getDetailsValue = (record: MedicalRecord, key: string): string => {
-    let details: RecordDetails;
-
-    if (typeof record.details === 'string') {
-      try {
-        details = JSON.parse(record.details) as RecordDetails;
-      } catch {
-        return 'N/A';
-      }
-    } else {
-      details = record.details;
-    }
-
-    // Return either diagnosis or lab_type based on record type
-    if (key === 'info') {
-      if (record.record_type === 'laboratory') {
-        return details?.lab_type || 'N/A';
-      } else {
-        return details?.diagnosis || 'N/A';
-      }
-    }
-
-    return 'N/A';
   };
 
   const formatDate = (dateString: string): string => {
@@ -265,51 +242,98 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
                     <TableRow>
                       <TableHead>Date</TableHead>
                       <TableHead>Patient</TableHead>
-                      <TableHead>Record Type</TableHead>
-                      <TableHead>Details</TableHead>
+                      <TableHead>Doctor</TableHead>
+                      <TableHead>Type</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredRecords.length > 0 ? (
-                      filteredRecords.map((record) => (
-                        <TableRow key={record.id}>
-                          <TableCell>{formatDate(record.appointment_date)}</TableCell>
-                          <TableCell className="font-medium">{record.patient?.name || 'Unknown Patient'}</TableCell>
-                          <TableCell>{getRecordTypeDisplay(record.record_type)}</TableCell>
-                          <TableCell className="max-w-xs truncate">{getDetailsValue(record, 'info')}</TableCell>
-                          <TableCell>{getStatusBadge(record.status)}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end items-center gap-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                asChild
-                              >
-                                <Link href={route('staff.clinical.info.show', record.id)}>
-                                  <EyeIcon className="h-4 w-4" />
-                                </Link>
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDownloadPrescription(record.id)}
-                                disabled={loading[record.id]}
-                                className="opacity-70 hover:opacity-100"
-                              >
-                                <ArrowDownTrayIcon className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
+                    {filteredRecords.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-4">
+                        <TableCell colSpan={6} className="text-center py-6 text-gray-500">
                           No medical records found
                         </TableCell>
                       </TableRow>
+                    ) : (
+                      filteredRecords.map((record) => {
+                        // Check if this is a pending appointment that shouldn't be editable
+                        const isPendingAppointment = record.record_type === 'medical_checkup' &&
+                                                    record.status.toLowerCase() === 'pending';
+
+                        return (
+                          <TableRow key={record.id}>
+                            <TableCell>
+                              {formatDate(record.appointment_date)}
+                            </TableCell>
+                            <TableCell>
+                              {record.patient?.name || 'Unknown Patient'}
+                            </TableCell>
+                            <TableCell>
+                              {record.assignedDoctor ?
+                                `Dr. ${record.assignedDoctor.name}` :
+                                'Unassigned'}
+                            </TableCell>
+                            <TableCell>
+                              {getRecordTypeDisplay(record.record_type)}
+                            </TableCell>
+                            <TableCell>
+                              {getStatusBadge(record.status)}
+                              {isPendingAppointment && (
+                                <span className="ml-2 text-xs text-gray-500 italic block">
+                                  Awaiting doctor approval
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end items-center space-x-2">
+                                <Button variant="ghost" size="icon" asChild>
+                                  <Link href={route('staff.clinical.info.show', record.id)}>
+                                    <EyeIcon className="h-4 w-4" />
+                                  </Link>
+                                </Button>
+
+                                {record.record_type === 'prescription' && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDownloadPrescription(record.id)}
+                                    disabled={loading[record.id]}
+                                  >
+                                    <ArrowDownTrayIcon className="h-4 w-4" />
+                                  </Button>
+                                )}
+
+                                {/* Only show edit link if not a pending appointment */}
+                                {!isPendingAppointment ? (
+                                  <Button variant="ghost" size="icon" asChild>
+                                    <Link href={route('staff.clinical.info.edit', record.id)}>
+                                      <PencilIcon className="h-4 w-4" />
+                                    </Link>
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    disabled
+                                    title="Cannot edit pending appointments until approved by doctor"
+                                  >
+                                    <PencilIcon className="h-4 w-4 text-gray-300" />
+                                  </Button>
+                                )}
+
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => confirmDelete(record.id)}
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>
@@ -342,7 +366,21 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
               </CardContent>
             </Card>
 
-
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Confirm Deletion</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to delete this medical record? This action cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="flex justify-end space-x-2">
+                  <Button variant="outline" onClick={closeDeleteDialog}>Cancel</Button>
+                  <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </main>
         </div>
       </div>

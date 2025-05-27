@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import axios from 'axios';
 import { Badge } from '@/components/ui/badge';
 import { PrinterIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { Head } from '@inertiajs/react';
 
 // Define a separate user interface for the component
 interface ComponentUser {
@@ -125,9 +126,10 @@ interface MedicalRecordsViewProps {
   user: ComponentUser;
   record: MedicalRecord;
   doctors?: Doctor[];
+  isPending?: boolean;
 }
 
-export default function MedicalRecordsView({ user, record }: MedicalRecordsViewProps) {
+export default function MedicalRecordsView({ user, record, doctors = [], isPending = false }: MedicalRecordsViewProps) {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [, setLoading] = useState<boolean>(false);
   const [doctorInfo, setDoctorInfo] = useState<{name: string, specialization: string | null}>({
@@ -338,6 +340,8 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
   return (
     <AdminLayout user={user}>
       <div className="container mx-auto p-4">
+        <Head title={`Medical Record - ${record.patient?.name || 'Patient'}`} />
+
         {/* Back button */}
         <div className="mb-4">
           <Button
@@ -349,6 +353,23 @@ export default function MedicalRecordsView({ user, record }: MedicalRecordsViewP
             Back
           </Button>
         </div>
+
+        {/* Pending Appointment Warning Banner */}
+        {isPending && (
+          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 print:hidden">
+            <div className="flex items-center">
+              <div className="py-1">
+                <svg className="h-6 w-6 text-yellow-500 mr-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-bold">Pending Appointment</p>
+                <p className="text-sm">This medical record is for a pending appointment. It will not be editable until the doctor accepts the appointment.</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Main medical record card */}
         <Card className="mb-6">
