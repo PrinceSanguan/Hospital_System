@@ -22,6 +22,11 @@ class MedicalRecordsController extends Controller
         $user = Auth::user();
 
         $medicalRecords = PatientRecord::with(['patient', 'assignedDoctor'])
+            ->whereNot(function($query) {
+                // Exclude records that are associated with pending appointments
+                $query->where('record_type', PatientRecord::TYPE_MEDICAL_CHECKUP)
+                      ->where('status', PatientRecord::STATUS_PENDING);
+            })
             ->latest('updated_at')
             ->paginate(10);
 
@@ -116,6 +121,10 @@ class MedicalRecordsController extends Controller
         $record = PatientRecord::with(['patient', 'assignedDoctor.doctorProfile'])
             ->findOrFail($id);
 
+        // Check if this is a pending appointment
+        $isPending = $record->record_type === PatientRecord::TYPE_MEDICAL_CHECKUP &&
+                     $record->status === PatientRecord::STATUS_PENDING;
+
         // Get all doctors to help with doctor information display
         $doctors = User::where('user_role', User::ROLE_DOCTOR)
             ->with('doctorProfile')
@@ -130,6 +139,7 @@ class MedicalRecordsController extends Controller
             ],
             'record' => $record,
             'doctors' => $doctors,
+            'isPending' => $isPending,
         ]);
     }
 
@@ -142,6 +152,13 @@ class MedicalRecordsController extends Controller
         $record = PatientRecord::with(['patient', 'assignedDoctor'])
             ->where('id', $id)
             ->firstOrFail();
+
+        // Check if this is a pending appointment - if so, don't allow editing
+        if ($record->record_type === PatientRecord::TYPE_MEDICAL_CHECKUP &&
+            $record->status === PatientRecord::STATUS_PENDING) {
+            return redirect()->route('staff.clinical.info')
+                ->with('error', 'Medical records for pending appointments cannot be edited until the appointment is accepted.');
+        }
 
         $patients = User::where('user_role', User::ROLE_PATIENT)->get();
         $doctors = User::where('user_role', User::ROLE_DOCTOR)->get();
@@ -174,6 +191,13 @@ class MedicalRecordsController extends Controller
 
         $record = PatientRecord::where('id', $id)
             ->firstOrFail();
+
+        // Check if this is a pending appointment - if so, don't allow updating
+        if ($record->record_type === PatientRecord::TYPE_MEDICAL_CHECKUP &&
+            $record->status === PatientRecord::STATUS_PENDING) {
+            return redirect()->route('staff.clinical.info')
+                ->with('error', 'Medical records for pending appointments cannot be updated until the appointment is accepted.');
+        }
 
         $record->patient_id = $validated['patient_id'];
         $record->assigned_doctor_id = $validated['assigned_doctor_id'];

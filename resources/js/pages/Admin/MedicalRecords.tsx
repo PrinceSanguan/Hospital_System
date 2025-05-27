@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import AdminLayout from '@/layouts/AdminLayout';
 import { Link, router } from "@inertiajs/react";
 import { Badge } from "@/components/ui/badge";
-import { ArrowDownTrayIcon, PlusIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, PlusIcon, EyeIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 
 interface Patient {
@@ -152,33 +152,75 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
               </thead>
               <tbody>
                 {filteredRecords.length > 0 ? (
-                  filteredRecords.map((record) => (
-                    <tr key={record.id} className="border-b border-gray-100">
-                      <td className="py-3 px-4 text-sm text-gray-800">{formatDate(record.appointment_date || record.date)}</td>
-                      <td className="py-3 px-4 text-sm text-gray-800">{record.patient.name}</td>
-                      <td className="py-3 px-4 text-sm text-gray-800">{record.record_type.replace('_', ' ')}</td>
-                      <td className="py-3 px-4 text-sm text-gray-800">{extractDiagnosis(record)}</td>
-                      <td className="py-3 px-4 text-sm">
-                        {renderStatusBadge(record.status)}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex justify-end space-x-2">
-                          <button
-                            onClick={() => viewRecordDetails(record)}
-                            className="p-1 text-gray-500 hover:text-gray-700"
-                          >
-                            <EyeIcon className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => window.open(route('admin.medical-records.pdf', record.id), '_blank')}
-                            className="p-1 text-gray-500 hover:text-gray-700"
-                          >
-                            <ArrowDownTrayIcon className="h-5 w-5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  filteredRecords.map((record) => {
+                    // Check if this is a pending appointment that shouldn't be editable
+                    const isPendingAppointment = record.record_type === 'medical_checkup' &&
+                                                record.status.toLowerCase() === 'pending';
+
+                    return (
+                      <tr key={record.id} className="border-b border-gray-100">
+                        <td className="py-3 px-4 text-sm text-gray-800">{formatDate(record.appointment_date || record.date)}</td>
+                        <td className="py-3 px-4 text-sm text-gray-800">{record.patient.name}</td>
+                        <td className="py-3 px-4 text-sm text-gray-800">{record.record_type.replace('_', ' ')}</td>
+                        <td className="py-3 px-4 text-sm text-gray-800">{extractDiagnosis(record)}</td>
+                        <td className="py-3 px-4 text-sm">
+                          {renderStatusBadge(record.status)}
+                          {isPendingAppointment && (
+                            <span className="ml-2 text-xs text-gray-500 italic block">
+                              Awaiting doctor approval
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex justify-end space-x-2">
+                            <button
+                              onClick={() => viewRecordDetails(record)}
+                              className="p-1 text-gray-500 hover:text-gray-700"
+                              title="View Record"
+                            >
+                              <EyeIcon className="h-5 w-5" />
+                            </button>
+
+                            <button
+                              onClick={() => window.open(route('admin.medical-records.pdf', record.id), '_blank')}
+                              className="p-1 text-gray-500 hover:text-gray-700"
+                              title="Download PDF"
+                            >
+                              <ArrowDownTrayIcon className="h-5 w-5" />
+                            </button>
+
+                            {/* Edit button - disabled for pending appointments */}
+                            {!isPendingAppointment ? (
+                              <Link
+                                href={route('admin.medical-records.edit', record.id)}
+                                className="p-1 text-gray-500 hover:text-gray-700"
+                                title="Edit Record"
+                              >
+                                <PencilIcon className="h-5 w-5" />
+                              </Link>
+                            ) : (
+                              <button
+                                disabled
+                                className="p-1 text-gray-300 cursor-not-allowed"
+                                title="Cannot edit pending appointments until approved by doctor"
+                              >
+                                <PencilIcon className="h-5 w-5" />
+                              </button>
+                            )}
+
+                            {/* Delete button */}
+                            <button
+                              onClick={() => confirmDelete(record.id)}
+                              className="p-1 text-gray-500 hover:text-red-700"
+                              title="Delete Record"
+                            >
+                              <TrashIcon className="h-5 w-5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan={6} className="text-center py-6 text-gray-500">

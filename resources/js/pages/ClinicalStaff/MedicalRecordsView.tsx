@@ -134,9 +134,10 @@ interface MedicalRecordsViewProps {
   user: ComponentUser;
   record: MedicalRecord;
   doctors?: Doctor[];
+  isPending?: boolean;
 }
 
-export default function MedicalRecordsView({ user, record, doctors = [] }: MedicalRecordsViewProps) {
+export default function MedicalRecordsView({ user, record, doctors = [], isPending = false }: MedicalRecordsViewProps) {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [doctorInfo, setDoctorInfo] = useState<{name: string, specialization: string | null}>({
@@ -411,7 +412,7 @@ export default function MedicalRecordsView({ user, record, doctors = [] }: Medic
         <main className="flex-1 overflow-y-auto bg-gray-100 p-4 md:p-6 dark:bg-gray-900 print:bg-white print:p-0 print:dark:bg-white print:overflow-visible">
           <Head title={`Medical Record - ${record.patient?.name || 'Patient'}`} />
 
-          {/* Print-specific styles - Simplified to match template */}
+          {/* Print-specific styles */}
           <style type="text/css" media="print">{`
             @page {
               size: A4 portrait;
@@ -439,91 +440,84 @@ export default function MedicalRecordsView({ user, record, doctors = [] }: Medic
               display: block !important;
             }
 
-            /* Force page break after patient information */
-            .page-break-after {
-              page-break-after: always;
-            }
-
-            /* Ensure sections start on new page if they would be split */
-            .avoid-break {
-              break-inside: avoid;
-            }
-
-            /* Table styling for print */
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-bottom: 1em;
-              font-size: 9pt;
-            }
-
-            th, td {
-              border: 1px solid #ccc;
-              padding: 4px;
-              text-align: left;
-            }
-
-            th {
-              background-color: #f3f4f6;
-              font-weight: bold;
-            }
-
-            /* Header styling */
+            /* Print-specific styling */
             .print-header {
               text-align: center;
-              margin-bottom: 1cm;
+              margin-bottom: 20px;
+              padding-bottom: 10px;
+              border-bottom: 1px solid #ccc;
             }
 
             .print-header h1 {
-              font-size: 16pt;
+              font-size: 18pt;
               font-weight: bold;
-              margin-bottom: 0.3em;
+              margin: 0 0 5px 0;
             }
 
-            /* Make sure all section content is visible */
-            .section-content {
-              display: block !important;
-              visibility: visible !important;
-              height: auto !important;
-              overflow: visible !important;
-              margin-bottom: 10px;
-            }
-
-            /* Reduce section title spacing */
-            h2 {
-              font-size: 14pt;
-              margin-top: 0.5cm;
-              margin-bottom: 0.3cm;
-            }
-
-            h3 {
+            .print-header p {
+              margin: 5px 0;
               font-size: 11pt;
-              margin-top: 0.3cm;
-              margin-bottom: 0.2cm;
             }
 
-            /* Ensure content doesn't overflow */
-            .print-container {
+            .print-section {
+              margin-bottom: 15px;
+            }
+
+            .print-section h2 {
+              font-size: 14pt;
+              margin-bottom: 10px;
+              font-weight: bold;
+            }
+
+            .print-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 10px;
+            }
+
+            .print-data-item {
+              margin-bottom: 8px;
+            }
+
+            .print-data-label {
+              font-weight: bold;
+              margin-right: 5px;
+            }
+
+            .print-table {
               width: 100%;
-              box-sizing: border-box;
-              overflow: visible;
+              border-collapse: collapse;
+              margin: 10px 0;
             }
 
-            /* Reduce paragraph spacing */
-            p {
-              margin: 0.2cm 0;
+            .print-table th, .print-table td {
+              border: 1px solid #ddd;
+              padding: 5px;
+              text-align: left;
             }
 
-            /* Ensure everything inside rounded divs is visible */
-            .rounded {
-              overflow: visible !important;
-            }
-
-            /* Prevent borders from being cut off */
-            .border {
-              box-sizing: border-box;
+            .print-table th {
+              background-color: #f0f0f0;
+              font-weight: bold;
             }
           `}</style>
+
+          {/* Pending Appointment Warning Banner */}
+          {isPending && (
+            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 print:hidden">
+              <div className="flex items-center">
+                <div className="py-1">
+                  <svg className="h-6 w-6 text-yellow-500 mr-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-bold">Pending Appointment</p>
+                  <p className="text-sm">This medical record is for a pending appointment. It will not be editable until the doctor accepts the appointment.</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Header Actions - hide when printing */}
           <div className="flex items-center mb-6 print:hidden">
@@ -740,16 +734,6 @@ export default function MedicalRecordsView({ user, record, doctors = [] }: Medic
                   </div>
                 )}
 
-                {/* Notes */}
-                {details.notes && (
-                  <div className="mb-6">
-                    <h3 className="text-lg font-bold mb-2">Notes</h3>
-                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
-                      <p className="whitespace-pre-line">{details.notes}</p>
-                    </div>
-                  </div>
-                )}
-
                 {/* Medical History */}
                 {details.medical_history && (
                   <div className="mb-6">
@@ -763,9 +747,9 @@ export default function MedicalRecordsView({ user, record, doctors = [] }: Medic
             </CardContent>
           </Card>
 
-          {/* Print-specific layout - updated to match the image template exactly */}
+          {/* Print-specific layout - updated to match the doctor's format */}
           <div className="hidden print:block print-container mx-auto" style={{ maxWidth: '100%' }}>
-              {/* Title */}
+            {/* Title */}
             <div className="print-header">
               <h1>Medical Record</h1>
               <p>
@@ -776,209 +760,165 @@ export default function MedicalRecordsView({ user, record, doctors = [] }: Medic
               </p>
             </div>
 
-            {/* Introduction */}
-            <div className="mb-2">
-              <p>The following information is a comprehensive medical record of the patient, intended for professional use only. This document ensures a detailed overview of the patient's medical history and current health status.</p>
+            {/* Patient Information */}
+            <div className="print-section">
+              <h2>Patient Information</h2>
+              <div className="print-grid">
+                <div className="print-data-item">
+                  <span className="print-data-label">Name:</span>
+                  <span>{record.patient?.name || 'Unknown Patient'}</span>
+                </div>
+                <div className="print-data-item">
+                  <span className="print-data-label">Record Type:</span>
+                  <span>{getRecordTypeDisplay(record.record_type)}</span>
+                </div>
+                <div className="print-data-item">
+                  <span className="print-data-label">Address:</span>
+                  <span>{patientAddress()}</span>
+                </div>
+                <div className="print-data-item">
+                  <span className="print-data-label">Status:</span>
+                  <span>{record.status}</span>
+                </div>
+                <div className="print-data-item">
+                  <span className="print-data-label">Record Date:</span>
+                  <span>{formatDate(record.appointment_date)}</span>
+                </div>
+                <div className="print-data-item">
+                  <span className="print-data-label">Follow-up Date:</span>
+                  <span>{formatDate(details.followup_date) || 'N/A'}</span>
+                </div>
+                <div className="print-data-item">
+                  <span className="print-data-label">Time:</span>
+                  <span>{formatTime(details.appointment_time) || ''}</span>
+                </div>
+                <div className="print-data-item">
+                  <span className="print-data-label">Created On:</span>
+                  <span>{formatDate(record.created_at)}</span>
+                </div>
+              </div>
             </div>
 
-            {/* Patient Information Table - simplified for printing */}
-            <div className="mb-4 page-break-after">
-              <table className="w-full border-collapse mb-0">
-                <thead>
-                  <tr>
-                    <th className="text-left p-1 w-1/3 border border-gray-300 bg-gray-50 font-medium">Patient Information</th>
-                    <th className="text-left p-1 w-2/3 border border-gray-300 bg-gray-50 font-medium">Details</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td className="p-1 border border-gray-300">Name:</td>
-                    <td className="p-1 border border-gray-300">{record.patient?.name || 'Unknown Patient'}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-1 border border-gray-300">Date of Birth:</td>
-                    <td className="p-1 border border-gray-300">{details.patient_info?.birthdate || formatDate(record.patient?.date_of_birth) || 'Not provided'}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-1 border border-gray-300">Email:</td>
-                    <td className="p-1 border border-gray-300">{record.patient?.email || details.patient_info?.email || 'Not provided'}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-1 border border-gray-300">Address:</td>
-                    <td className="p-1 border border-gray-300">{patientAddress()}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-1 border border-gray-300">Doctor:</td>
-                    <td className="p-1 border border-gray-300">{getDoctorDisplay()}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-1 border border-gray-300">Record Type:</td>
-                    <td className="p-1 border border-gray-300">{getRecordTypeDisplay(record.record_type)}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-1 border border-gray-300">Status:</td>
-                    <td className="p-1 border border-gray-300">{record.status}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-1 border border-gray-300">Appointment Date:</td>
-                    <td className="p-1 border border-gray-300">{formatDate(record.appointment_date)}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-1 border border-gray-300">Appointment Time:</td>
-                    <td className="p-1 border border-gray-300">{formatTime(details.appointment_time) || 'Not specified'}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-1 border border-gray-300">Created Date:</td>
-                    <td className="p-1 border border-gray-300">{formatDate(record.created_at) || 'Not available'}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-1 border border-gray-300">Follow-up Date:</td>
-                    <td className="p-1 border border-gray-300">{formatDate(details.followup_date) || 'N/A'}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            {/* Medical Details - second page */}
-            <div className="avoid-break">
-              <h2 className="text-xl font-bold mb-2">Medical Details</h2>
-
-              {/* Vital Signs for print view */}
-              <div className="mb-3 avoid-break section-content">
-                <h3 className="text-base font-bold mb-1">Vital Signs</h3>
-                <div className="p-2 border border-gray-300 rounded">
-                  <div className="grid grid-cols-1 gap-1">
-                    <div className="flex flex-wrap gap-x-3 gap-y-1">
-                      {details.vital_signs?.temperature && (
-                        <div>
-                          <span className="text-gray-600">Temperature: </span>
-                          <span className="font-medium">{details.vital_signs.temperature} °C</span>
-                        </div>
-                      )}
-                      {details.vital_signs?.blood_pressure && (
-                        <div>
-                          <span className="text-gray-600">Blood Pressure: </span>
-                          <span className="font-medium">{details.vital_signs.blood_pressure}</span>
-                        </div>
-                      )}
-                      {details.vital_signs?.pulse_rate && (
-                        <div>
-                          <span className="text-gray-600">Pulse Rate: </span>
-                          <span className="font-medium">{details.vital_signs.pulse_rate} bpm</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-x-3 gap-y-1">
-                      {details.vital_signs?.respiratory_rate && (
-                        <div>
-                          <span className="text-gray-600">Respiratory Rate: </span>
-                          <span className="font-medium">{details.vital_signs.respiratory_rate} breaths/min</span>
-                        </div>
-                      )}
-                      {details.vital_signs?.oxygen_saturation && (
-                        <div>
-                          <span className="text-gray-600">Oxygen Saturation: </span>
-                          <span className="font-medium">{details.vital_signs.oxygen_saturation}%</span>
-                        </div>
-                      )}
-                      {details.vital_signs?.height && (
-                        <div>
-                          <span className="text-gray-600">Height: </span>
-                          <span className="font-medium">{details.vital_signs.height}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-x-3 gap-y-1">
-                      {details.vital_signs?.weight && (
-                        <div>
-                          <span className="text-gray-600">Weight: </span>
-                          <span className="font-medium">{details.vital_signs.weight}</span>
-                        </div>
-                      )}
-                    </div>
+            {/* Vital Signs */}
+            <div className="print-section">
+              <h2>Vital Signs</h2>
+              <div className="print-grid">
+                {details.vital_signs?.temperature && (
+                  <div className="print-data-item">
+                    <span className="print-data-label">Temperature:</span>
+                    <span>{details.vital_signs.temperature} °C</span>
                   </div>
-                </div>
-              </div>
-
-              {/* Diagnosis - Show even if empty or has minimal content */}
-              <div className="mb-3 avoid-break section-content">
-                <h3 className="text-base font-bold mb-1">Diagnosis</h3>
-                <div className="p-2 border border-gray-300 rounded">
-                  <p className="whitespace-pre-line">{details.diagnosis || 'No diagnosis recorded'}</p>
-                </div>
-              </div>
-
-              {/* Prescriptions - Always display the section even if empty */}
-              <div className="mb-3 avoid-break section-content">
-                <h3 className="text-base font-bold mb-1">Prescriptions</h3>
-                {(prescriptions.length > 0 || (details.prescriptions && details.prescriptions.length > 0)) ? (
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr>
-                        <th className="text-left p-1 border border-gray-300 bg-gray-50">Medication</th>
-                        <th className="text-left p-1 border border-gray-300 bg-gray-50">Dosage</th>
-                        <th className="text-left p-1 border border-gray-300 bg-gray-50">Frequency</th>
-                        <th className="text-left p-1 border border-gray-300 bg-gray-50">Duration</th>
-                        <th className="text-left p-1 border border-gray-300 bg-gray-50">Quantity</th>
-                        <th className="text-left p-1 border border-gray-300 bg-gray-50">Instructions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {prescriptions.length > 0 ? (
-                        prescriptions.map((prescription, index) => (
-                          <tr key={prescription.id || index}>
-                            <td className="p-1 border border-gray-300">{prescription.medication}</td>
-                            <td className="p-1 border border-gray-300">{prescription.dosage}</td>
-                            <td className="p-1 border border-gray-300">{prescription.frequency}</td>
-                            <td className="p-1 border border-gray-300">{prescription.duration}</td>
-                            <td className="p-1 border border-gray-300">{prescription.quantity || 'N/A'}</td>
-                            <td className="p-1 border border-gray-300">{prescription.instructions}</td>
-                          </tr>
-                        ))
-                      ) : (
-                        details.prescriptions && details.prescriptions.map((prescription: string | PrescriptionItem, index: number) => (
-                          <tr key={index}>
-                            <td className="p-1 border border-gray-300">{typeof prescription === 'string' ? prescription : prescription.medication}</td>
-                            <td className="p-1 border border-gray-300">{typeof prescription === 'string' ? '' : prescription.dosage}</td>
-                            <td className="p-1 border border-gray-300">{typeof prescription === 'string' ? '' : prescription.frequency}</td>
-                            <td className="p-1 border border-gray-300">{typeof prescription === 'string' ? '' : prescription.duration}</td>
-                            <td className="p-1 border border-gray-300">{typeof prescription === 'string' ? '' : (prescription.quantity || 'N/A')}</td>
-                            <td className="p-1 border border-gray-300">{typeof prescription === 'string' ? '' : prescription.instructions}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                ) : (
-                  <div className="p-2 border border-gray-300 rounded">
-                    <p>No prescriptions recorded</p>
+                )}
+                {details.vital_signs?.blood_pressure && (
+                  <div className="print-data-item">
+                    <span className="print-data-label">Blood Pressure:</span>
+                    <span>{details.vital_signs.blood_pressure}</span>
+                  </div>
+                )}
+                {details.vital_signs?.pulse_rate && (
+                  <div className="print-data-item">
+                    <span className="print-data-label">Pulse Rate:</span>
+                    <span>{details.vital_signs.pulse_rate} bpm</span>
+                  </div>
+                )}
+                {details.vital_signs?.respiratory_rate && (
+                  <div className="print-data-item">
+                    <span className="print-data-label">Respiratory Rate:</span>
+                    <span>{details.vital_signs.respiratory_rate} breaths/min</span>
+                  </div>
+                )}
+                {details.vital_signs?.oxygen_saturation && (
+                  <div className="print-data-item">
+                    <span className="print-data-label">Oxygen Saturation:</span>
+                    <span>{details.vital_signs.oxygen_saturation}%</span>
+                  </div>
+                )}
+                {details.vital_signs?.height && (
+                  <div className="print-data-item">
+                    <span className="print-data-label">Height:</span>
+                    <span>{details.vital_signs.height}</span>
+                  </div>
+                )}
+                {details.vital_signs?.weight && (
+                  <div className="print-data-item">
+                    <span className="print-data-label">Weight:</span>
+                    <span>{details.vital_signs.weight}</span>
                   </div>
                 )}
               </div>
-
-              {/* Notes - Show even if empty */}
-              <div className="mb-3 avoid-break section-content">
-                <h3 className="text-base font-bold mb-1">Notes</h3>
-                <div className="p-2 border border-gray-300 rounded">
-                  <p className="whitespace-pre-line">{details.notes || 'No additional notes'}</p>
-                </div>
-              </div>
-
-              {/* Medical History - Show if exists */}
-              {details.medical_history && (
-                <div className="mb-3 avoid-break section-content">
-                  <h3 className="text-base font-bold mb-1">Medical History</h3>
-                  <div className="p-2 border border-gray-300 rounded">
-                    <p className="whitespace-pre-line">{details.medical_history}</p>
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Footer for print - simplified */}
-            <div className="mt-4 text-center">
-              <p className="text-sm text-gray-500">Famcare Healthcare System</p>
-              <p className="text-sm text-gray-500">Page 2</p>
+            {/* Diagnosis */}
+            {details.diagnosis && (
+              <div className="print-section">
+                <h2>Diagnosis</h2>
+                <p>{details.diagnosis}</p>
+              </div>
+            )}
+
+            {/* Prescriptions */}
+            {(prescriptions.length > 0 || (details.prescriptions && details.prescriptions.length > 0)) && (
+              <div className="print-section">
+                <h2>Prescriptions</h2>
+                <table className="print-table">
+                  <thead>
+                    <tr>
+                      <th>Medication</th>
+                      <th>Dosage</th>
+                      <th>Frequency</th>
+                      <th>Duration</th>
+                      <th>Quantity</th>
+                      <th>Instructions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {prescriptions.length > 0 ? (
+                      prescriptions.map((prescription, index) => (
+                        <tr key={index}>
+                          <td>{prescription.medication}</td>
+                          <td>{prescription.dosage}</td>
+                          <td>{prescription.frequency}</td>
+                          <td>{prescription.duration}</td>
+                          <td>{prescription.quantity || 'N/A'}</td>
+                          <td>{prescription.instructions}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      details.prescriptions && details.prescriptions.map((prescription: string | PrescriptionItem, index: number) => (
+                        <tr key={index}>
+                          <td>{typeof prescription === 'string' ? prescription : prescription.medication}</td>
+                          <td>{typeof prescription === 'string' ? '' : prescription.dosage}</td>
+                          <td>{typeof prescription === 'string' ? '' : prescription.frequency}</td>
+                          <td>{typeof prescription === 'string' ? '' : prescription.duration}</td>
+                          <td>{typeof prescription === 'string' ? '' : (prescription.quantity || 'N/A')}</td>
+                          <td>{typeof prescription === 'string' ? '' : prescription.instructions}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Medical History */}
+            {details.medical_history && (
+              <div className="print-section">
+                <h2>Medical History</h2>
+                <p>{details.medical_history}</p>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="print-section" style={{ marginTop: '50px', borderTop: '1px solid #ccc', paddingTop: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <div style={{ textAlign: 'center', width: '200px' }}>
+                  <div style={{ borderTop: '1px solid #000', marginTop: '50px', paddingTop: '10px' }}>
+                    {getDoctorDisplay()}
+                    <br />
+                    Signature
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </main>

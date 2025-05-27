@@ -268,14 +268,18 @@ export default function ViewMedicalRecord({ user, record, request }: ViewMedical
         <style type="text/css" media="print">{`
           @page {
             size: A4 portrait;
-            margin: 2cm;
+            margin: 1.5cm;
           }
 
           body {
             background-color: white !important;
             font-family: 'Arial', sans-serif;
             color: black !important;
-            font-size: 11pt;
+            font-size: 10pt;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
           }
 
           /* Hide screen-only elements */
@@ -286,6 +290,67 @@ export default function ViewMedicalRecord({ user, record, request }: ViewMedical
           /* Show print-only elements */
           .hidden.print\\:block {
             display: block !important;
+          }
+
+          /* Print-specific styling */
+          .print-header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ccc;
+          }
+
+          .print-header h1 {
+            font-size: 18pt;
+            font-weight: bold;
+            margin: 0 0 5px 0;
+          }
+
+          .print-header p {
+            margin: 5px 0;
+            font-size: 11pt;
+          }
+
+          .print-section {
+            margin-bottom: 15px;
+          }
+
+          .print-section h2 {
+            font-size: 14pt;
+            margin-bottom: 10px;
+            font-weight: bold;
+          }
+
+          .print-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+          }
+
+          .print-data-item {
+            margin-bottom: 8px;
+          }
+
+          .print-data-label {
+            font-weight: bold;
+            margin-right: 5px;
+          }
+
+          .print-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+          }
+
+          .print-table th, .print-table td {
+            border: 1px solid #ddd;
+            padding: 5px;
+            text-align: left;
+          }
+
+          .print-table th {
+            background-color: #f0f0f0;
+            font-weight: bold;
           }
         `}</style>
 
@@ -459,109 +524,138 @@ export default function ViewMedicalRecord({ user, record, request }: ViewMedical
           </Card>
 
           {/* Print-specific layout */}
-          <div className="hidden print:block mx-auto" style={{ maxWidth: '800px' }}>
+          <div className="hidden print:block print-container mx-auto" style={{ maxWidth: '100%' }}>
             {/* Title */}
-            <div className="text-center mb-2">
-              <h1 className="text-xl font-bold">Medical Record</h1>
-              <p className="text-sm">Physician: {getDoctorDisplay()}</p>
-              <p className="text-sm">Patient: {record.patient?.name}</p>
+            <div className="print-header">
+              <h1>Medical Record</h1>
+              <p>
+                Physician: {getDoctorDisplay()}
+              </p>
+              <p>
+                Viewing medical record from {formatDate(record.appointment_date)}
+              </p>
             </div>
 
-            {/* Introduction */}
-            <div className="text-sm mb-4">
-              <p>The following information is a comprehensive medical record of the patient, intended for professional use only. This document ensures a detailed overview of the patient's medical history and current health status.</p>
+            {/* Patient Information */}
+            <div className="print-section">
+              <h2>Patient Information</h2>
+              <div className="print-grid">
+                <div className="print-data-item">
+                  <span className="print-data-label">Name:</span>
+                  <span>{record.patient?.name || 'Unknown Patient'}</span>
+                </div>
+                <div className="print-data-item">
+                  <span className="print-data-label">Record Type:</span>
+                  <span>{getRecordTypeDisplay(record.record_type)}</span>
+                </div>
+                <div className="print-data-item">
+                  <span className="print-data-label">Address:</span>
+                  <span>{getPatientAddress()}</span>
+                </div>
+                <div className="print-data-item">
+                  <span className="print-data-label">Status:</span>
+                  <span>{record.status}</span>
+                </div>
+                <div className="print-data-item">
+                  <span className="print-data-label">Record Date:</span>
+                  <span>{formatDate(record.appointment_date)}</span>
+                </div>
+                <div className="print-data-item">
+                  <span className="print-data-label">Follow-up Date:</span>
+                  <span>{formatDate(details.followup_date) || 'N/A'}</span>
+                </div>
+                <div className="print-data-item">
+                  <span className="print-data-label">Time:</span>
+                  <span>{formatTime(details.appointment_time) || ''}</span>
+                </div>
+                <div className="print-data-item">
+                  <span className="print-data-label">Created On:</span>
+                  <span>{formatDate(record.created_at)}</span>
+                </div>
+              </div>
             </div>
 
-            {/* Patient Information Table */}
-            <div className="mb-4">
-              <table className="w-full border-collapse mb-0">
-                <thead>
-                  <tr>
-                    <th className="text-left p-2 w-1/3 border border-gray-300 bg-gray-50 font-medium">Patient Information</th>
-                    <th className="text-left p-2 w-2/3 border border-gray-300 bg-gray-50 font-medium">Details</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td className="p-2 border border-gray-300">Name:</td>
-                    <td className="p-2 border border-gray-300">{record.patient?.name || 'Unknown Patient'}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 border border-gray-300">Date of Birth:</td>
-                    <td className="p-2 border border-gray-300">{details.patient_info?.birthdate || formatDate(record.patient?.date_of_birth) || 'N/A'}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 border border-gray-300">Email:</td>
-                    <td className="p-2 border border-gray-300">{record.patient?.email || details.patient_info?.email || 'Not provided'}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 border border-gray-300">Address:</td>
-                    <td className="p-2 border border-gray-300">{getPatientAddress()}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 border border-gray-300">Doctor:</td>
-                    <td className="p-2 border border-gray-300">{getDoctorDisplay()}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 border border-gray-300">Record Type:</td>
-                    <td className="p-2 border border-gray-300">{getRecordTypeDisplay(record.record_type)}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 border border-gray-300">Status:</td>
-                    <td className="p-2 border border-gray-300">{record.status}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 border border-gray-300">Appointment Date:</td>
-                    <td className="p-2 border border-gray-300">{formatDate(record.appointment_date)}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 border border-gray-300">Appointment Time:</td>
-                    <td className="p-2 border border-gray-300">{formatTime(details.appointment_time) || '14:00:00'}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 border border-gray-300">Created Date:</td>
-                    <td className="p-2 border border-gray-300">{formatDate(record.created_at)}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 border border-gray-300">Follow-up Date:</td>
-                    <td className="p-2 border border-gray-300">{formatDate(details.followup_date) || 'N/A'}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            {/* Vital Signs */}
+            {details.vital_signs && (
+              <div className="print-section">
+                <h2>Vital Signs</h2>
+                <div className="print-grid">
+                  {details.vital_signs?.temperature && (
+                    <div className="print-data-item">
+                      <span className="print-data-label">Temperature:</span>
+                      <span>{details.vital_signs.temperature} °C</span>
+                    </div>
+                  )}
+                  {details.vital_signs?.blood_pressure && (
+                    <div className="print-data-item">
+                      <span className="print-data-label">Blood Pressure:</span>
+                      <span>{details.vital_signs.blood_pressure}</span>
+                    </div>
+                  )}
+                  {details.vital_signs?.pulse_rate && (
+                    <div className="print-data-item">
+                      <span className="print-data-label">Pulse Rate:</span>
+                      <span>{details.vital_signs.pulse_rate} bpm</span>
+                    </div>
+                  )}
+                  {details.vital_signs?.respiratory_rate && (
+                    <div className="print-data-item">
+                      <span className="print-data-label">Respiratory Rate:</span>
+                      <span>{details.vital_signs.respiratory_rate} breaths/min</span>
+                    </div>
+                  )}
+                  {details.vital_signs?.oxygen_saturation && (
+                    <div className="print-data-item">
+                      <span className="print-data-label">Oxygen Saturation:</span>
+                      <span>{details.vital_signs.oxygen_saturation}%</span>
+                    </div>
+                  )}
+                  {details.vital_signs?.height && (
+                    <div className="print-data-item">
+                      <span className="print-data-label">Height:</span>
+                      <span>{details.vital_signs.height}</span>
+                    </div>
+                  )}
+                  {details.vital_signs?.weight && (
+                    <div className="print-data-item">
+                      <span className="print-data-label">Weight:</span>
+                      <span>{details.vital_signs.weight}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Diagnosis */}
             {details.diagnosis && (
-              <div className="mb-4">
-                <h3 className="text-base font-bold mb-1">Diagnosis</h3>
-                <div className="p-3 border border-gray-300 rounded">
-                  <p className="whitespace-pre-line">{details.diagnosis}</p>
-                </div>
+              <div className="print-section">
+                <h2>Diagnosis</h2>
+                <p>{details.diagnosis}</p>
               </div>
             )}
 
             {/* Prescriptions */}
             {prescriptions.length > 0 && (
-              <div className="mb-4">
-                <h3 className="text-base font-bold mb-1">Prescriptions</h3>
-                <table className="w-full border-collapse">
+              <div className="print-section">
+                <h2>Prescriptions</h2>
+                <table className="print-table">
                   <thead>
                     <tr>
-                      <th className="text-left p-2 border border-gray-300 bg-gray-50">Medication</th>
-                      <th className="text-left p-2 border border-gray-300 bg-gray-50">Dosage</th>
-                      <th className="text-left p-2 border border-gray-300 bg-gray-50">Frequency</th>
-                      <th className="text-left p-2 border border-gray-300 bg-gray-50">Duration</th>
-                      <th className="text-left p-2 border border-gray-300 bg-gray-50">Instructions</th>
+                      <th>Medication</th>
+                      <th>Dosage</th>
+                      <th>Frequency</th>
+                      <th>Duration</th>
+                      <th>Instructions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {prescriptions.map((prescription, index) => (
                       <tr key={index}>
-                        <td className="p-2 border border-gray-300">{prescription.medication}</td>
-                        <td className="p-2 border border-gray-300">{prescription.dosage}</td>
-                        <td className="p-2 border border-gray-300">{prescription.frequency}</td>
-                        <td className="p-2 border border-gray-300">{prescription.duration}</td>
-                        <td className="p-2 border border-gray-300">{prescription.instructions}</td>
+                        <td>{prescription.medication}</td>
+                        <td>{prescription.dosage}</td>
+                        <td>{prescription.frequency}</td>
+                        <td>{prescription.duration}</td>
+                        <td>{prescription.instructions}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -571,17 +665,31 @@ export default function ViewMedicalRecord({ user, record, request }: ViewMedical
 
             {/* Notes */}
             {details.notes && (
-              <div className="mb-4">
-                <h3 className="text-base font-bold mb-1">Notes</h3>
-                <div className="p-3 border border-gray-300 rounded">
-                  <p className="whitespace-pre-line">{details.notes}</p>
-                </div>
+              <div className="print-section">
+                <h2>Notes</h2>
+                <p>{details.notes}</p>
               </div>
             )}
 
-            {/* Footer for print */}
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-500">Famcare Healthcare System</p>
+            {/* Medical History */}
+            {details.medical_history && typeof details.medical_history === 'string' && (
+              <div className="print-section">
+                <h2>Medical History</h2>
+                <p>{details.medical_history}</p>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="print-section" style={{ marginTop: '50px', borderTop: '1px solid #ccc', paddingTop: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <div style={{ textAlign: 'center', width: '200px' }}>
+                  <div style={{ borderTop: '1px solid #000', marginTop: '50px', paddingTop: '10px' }}>
+                    {getDoctorDisplay()}
+                    <br />
+                    Signature
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </main>
