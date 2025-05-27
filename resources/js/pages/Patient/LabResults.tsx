@@ -3,9 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PatientLayout } from '@/layouts/PatientLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
-import { ChevronRight, ClipboardList } from 'lucide-react';
+import { Bell, ChevronRight, ClipboardList } from 'lucide-react';
 
 interface User {
     id: number;
@@ -49,6 +49,13 @@ interface PaginatedLabRecords {
 interface Props {
     user: User;
     labRecords: PaginatedLabRecords;
+    notifications: Array<{
+        id: number;
+        title: string;
+        message: string;
+        read: boolean;
+        created_at: string;
+    }>;
 }
 
 // Function to parse details with better error handling
@@ -91,14 +98,33 @@ const handleDownload = (recordId: string): void => {
     }
 };
 
-export default function LabResults({ user, labRecords }: Props) {
+export default function LabResults({ user, labRecords, notifications = [] }: Props) {
     // Ensure labRecords and labRecords.data exist
     const records = labRecords?.data || [];
+
+    // Calculate unread notifications
+    const unreadNotificationsCount = notifications.filter((notification) => !notification.read).length;
 
     return (
         <PatientLayout user={user}>
             <Head title="Laboratory Results" />
             <div className="container mx-auto p-6">
+                {/* Header with notification */}
+                <div className="mb-6 flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">Laboratory Results</h1>
+                        <p className="mt-1 text-gray-600">View your laboratory test results</p>
+                    </div>
+                    <Button variant="ghost" size="icon" className="relative" onClick={() => router.visit(route('patient.notifications.index'))}>
+                        <Bell size={20} />
+                        {unreadNotificationsCount > 0 && (
+                            <Badge className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                                {unreadNotificationsCount}
+                            </Badge>
+                        )}
+                    </Button>
+                </div>
+
                 <Card className="mx-auto w-full">
                     <CardHeader className="bg-primary/5">
                         <div className="flex items-center gap-2">

@@ -401,7 +401,7 @@ export default function PatientDashboard({
                             size="icon"
                             className="relative"
                             onClick={() => {
-                                const updatedNotifications = notificationsState.map((n: any) => ({ ...n, read: true }));
+                                const updatedNotifications = notificationsState.map((n) => ({ ...n, read: true }));
                                 setNotificationsState(updatedNotifications);
                                 saveNotificationState(updatedNotifications);
                                 setShowNotifications(!showNotifications);
