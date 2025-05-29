@@ -438,6 +438,7 @@ Route::middleware([PatientMiddleware::class])->prefix('patient')->name('patient.
   Route::get('/records/{id}/download', [PatientDashboardController::class, 'downloadMedicalRecord'])->name('records.download');
   // Lab Results Download
   Route::get('/records/lab-results/{id}/download', [PatientDashboardController::class, 'downloadLabResult'])->name('lab-results.download');
+  Route::get('/records/lab-results/{id}/view', [PatientDashboardController::class, 'viewLabResult'])->name('lab-results.view');
 
   // Lab Appointments
   Route::get('/lab-appointments/book', [PatientDashboardController::class, 'bookLabAppointment'])->name('lab-appointments.book');

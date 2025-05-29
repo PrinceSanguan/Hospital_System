@@ -115,6 +115,16 @@ export default function LabResultDetail({ user, record }: LabResultDetailProps) 
                             <div className="mt-6 border-t pt-6">
                                 <Button
                                     onClick={() => {
+                                        const url = `/patient/records/lab-results/${record.id}/view`;
+                                        window.open(url, '_blank');
+                                    }}
+                                    className="mr-4"
+                                    variant="outline"
+                                >
+                                    View Result
+                                </Button>
+                                <Button
+                                    onClick={() => {
                                         const url = `/patient/records/lab-results/${record.id}/download`;
                                         window.location.href = url;
                                     }}

@@ -894,6 +894,98 @@ class PatientDashboardController extends Controller
     }
 
     /**
+     * View lab result in browser
+     */
+    public function viewLabResult($id)
+    {
+        try {
+            $user = Auth::user();
+
+            // Handle lab_ prefixed IDs (from uploaded files)
+            if (str_starts_with($id, 'lab_')) {
+                $labResultId = str_replace('lab_', '', $id);
+                $patient = \App\Models\Patient::where('user_id', $user->id)->first();
+
+                if (!$patient) {
+                    abort(404, 'Patient record not found');
+                }
+
+                $labResult = \App\Models\LabResult::where('id', $labResultId)
+                    ->where('patient_id', $patient->id)
+                    ->first();
+
+                if (!$labResult) {
+                    abort(404, 'Lab result not found or access denied');
+                }
+
+                $publicFilePath = public_path($labResult->file_path);
+
+                if (!file_exists($publicFilePath)) {
+                    abort(404, 'File not found');
+                }
+
+                // Get file content and type
+                $fileContent = file_get_contents($publicFilePath);
+                $mimeType = mime_content_type($publicFilePath);
+                $fileName = basename($labResult->file_path);
+
+                return response($fileContent)
+                    ->header('Content-Type', $mimeType)
+                    ->header('Content-Disposition', 'inline; filename="' . $fileName . '"');
+            }
+
+            // Handle regular PatientRecord IDs
+            $labRecord = PatientRecord::where('id', $id)
+                ->where('patient_id', $user->id)
+                ->where('record_type', 'laboratory')
+                ->first();
+
+            if (!$labRecord) {
+                abort(404, 'Lab record not found or access denied');
+            }
+
+            // Find the corresponding file in lab_result directory
+            $labResultDir = public_path('lab_result');
+
+            if (!is_dir($labResultDir)) {
+                abort(404, 'Lab result directory not found');
+            }
+
+            $files = scandir($labResultDir);
+            $matchingFile = null;
+
+            // Look for files that match the pattern
+            foreach ($files as $file) {
+                if (strpos($file, 'lab_result_') === 0 && $file !== '.' && $file !== '..') {
+                    $matchingFile = $file;
+                    break;
+                }
+            }
+
+            if (!$matchingFile) {
+                abort(404, 'No lab result file found');
+            }
+
+            $publicFilePath = public_path('lab_result/' . $matchingFile);
+
+            if (!file_exists($publicFilePath)) {
+                abort(404, 'File not found');
+            }
+
+            // Get file content and type
+            $fileContent = file_get_contents($publicFilePath);
+            $mimeType = mime_content_type($publicFilePath);
+
+            return response($fileContent)
+                ->header('Content-Type', $mimeType)
+                ->header('Content-Disposition', 'inline; filename="' . $matchingFile . '"');
+        } catch (\Exception $e) {
+            Log::error('Patient lab result view error: ' . $e->getMessage());
+            abort(500, 'Error viewing lab result');
+        }
+    }
+
+    /**
      * Display a detailed view of a specific doctor's profile.
      */
     public function viewDoctor($id)
