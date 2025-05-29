@@ -28,7 +28,15 @@ export function PatientLayout({ children, user }: PatientLayoutProps) {
     // Function to check if the route matches
     const isActive = (path: string) => {
         if (typeof url === 'string') {
-            return url.startsWith(path);
+            // Exact match for specific paths
+            if (path === '/patient/records/lab-results') {
+                return url === path;
+            }
+            // For other paths, use startsWith but avoid matching parent routes
+            if (path === '/patient/records') {
+                return url === path || (url.startsWith(path) && !url.includes('lab-results'));
+            }
+            return url === path;
         }
         return false;
     };

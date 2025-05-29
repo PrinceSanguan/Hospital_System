@@ -13,7 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Head, Link, router } from '@inertiajs/react';
-import { Bell, Calendar, Calendar as CalendarIcon, ChevronDown, Clock, FileText, Home, Menu, Search, Stethoscope } from 'lucide-react';
+import { Bell, Calendar, Calendar as CalendarIcon, ChevronDown, Clock, FileText, Home, Menu, Microscope, Search, Stethoscope } from 'lucide-react';
 import React, { useState } from 'react';
 
 // Helper function to get day name
@@ -117,6 +117,12 @@ export default function Doctors({ user, doctors = [], notifications = [] }: Doct
             icon: <FileText size={18} />,
             path: '/patient/records',
             active: false,
+        },
+        {
+            name: 'Lab Results',
+            icon: <Microscope size={18} />,
+            path: '/patient/records/lab-results',
+            active: activeTab === 'lab-results',
         },
         {
             name: 'Doctors',

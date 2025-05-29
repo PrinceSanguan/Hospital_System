@@ -9,8 +9,8 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
-import { Link, usePage } from '@inertiajs/react';
 import { ArrowLeftIcon, BellIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { Link, usePage } from '@inertiajs/react';
 
 interface User {
     name: string;
@@ -32,12 +32,13 @@ export function Header({ user }: { user: User }) {
     const currentRoute = pageData.admin?.navigation?.current || '';
 
     // Check if the current route is a clinical staff route
-    const isClinicalRoute = currentRoute.includes('clinical') ||
-                           currentRoute.includes('lab') ||
-                           currentRoute.includes('staff.appointments') ||
-                           currentRoute.includes('record-requests') ||
-                           currentRoute.includes('lab-results') ||
-                           currentRoute.includes('receipts');
+    const isClinicalRoute =
+        currentRoute.includes('clinical') ||
+        currentRoute.includes('lab') ||
+        currentRoute.includes('staff.appointments') ||
+        currentRoute.includes('record-requests') ||
+        currentRoute.includes('lab-results') ||
+        currentRoute.includes('receipts');
 
     return (
         <header className="flex h-16 items-center border-b bg-white px-4 md:px-6 dark:border-gray-700 dark:bg-gray-800">
@@ -49,7 +50,7 @@ export function Header({ user }: { user: User }) {
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="relative">
                                 <BellIcon className="h-5 w-5" />
-                                <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                                <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
                                     0
                                 </span>
                             </Button>
@@ -59,14 +60,7 @@ export function Header({ user }: { user: User }) {
                                 <h4 className="text-sm font-semibold">Notifications</h4>
                             </div>
                             <div className="max-h-80 overflow-auto">
-                                <div className="p-4 text-center text-sm text-gray-500">
-                                    No notifications
-                                </div>
-                            </div>
-                            <div className="border-t p-2">
-                                <Button asChild variant="ghost" size="sm" className="w-full">
-                                    <Link href={route('admin.notifications.index')}>View all notifications</Link>
-                                </Button>
+                                <div className="p-4 text-center text-sm text-gray-500">No notifications</div>
                             </div>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -128,4 +122,3 @@ export function Header({ user }: { user: User }) {
         </header>
     );
 }
-

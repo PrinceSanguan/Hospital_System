@@ -29,6 +29,7 @@ import {
     FilePlus,
     HomeIcon,
     Loader2,
+    Microscope,
     Stethoscope,
     UploadCloud,
     UserCircle2,
@@ -712,6 +713,12 @@ export default function BookAppointment({ user, doctors, notifications = [], pre
             icon: <FilePlus size={18} />,
             path: '/patient/records',
             active: false,
+        },
+        {
+            name: 'Lab Results',
+            icon: <Microscope size={18} />,
+            path: '/patient/records/lab-results',
+            active: activeTab === 'lab-results',
         },
         {
             name: 'Doctors',

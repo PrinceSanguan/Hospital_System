@@ -131,7 +131,7 @@ export default function LabResults({ user, labRecords, notifications = [] }: Pro
                             <ClipboardList className="text-primary h-6 w-6" />
                             <CardTitle>Laboratory Results</CardTitle>
                         </div>
-                        <CardDescription>View your laboratory test results</CardDescription>
+                        <CardDescription>Viewa your laboratory test results</CardDescription>
                     </CardHeader>
                     <CardContent className="p-6">
                         {records.length > 0 ? (
