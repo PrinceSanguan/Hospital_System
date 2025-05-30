@@ -1125,73 +1125,40 @@ class PatientController extends Controller
                 $id = Str::replaceFirst('lab_', '', $id);
             }
 
-            // Find patient record linked to this user
             $user = Auth::user();
             $patient = Patient::where('user_id', $user->id)->first();
 
             if (!$patient) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Patient record not found'
-                ], 404);
+                abort(404, 'Patient record not found');
             }
 
-            // Find the lab result
             $labResult = \App\Models\LabResult::where('id', $id)
                 ->where('patient_id', $patient->id)
                 ->first();
 
             if (!$labResult) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Lab result not found'
-                ], 404);
+                abort(404, 'Lab result not found');
             }
 
-            // Check if file exists in storage
-            if (!Storage::exists($labResult->file_path)) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'The lab result file could not be found'
-                ], 404);
+            $publicFilePath = public_path($labResult->file_path);
+
+            if (!file_exists($publicFilePath)) {
+                abort(404, 'File not found');
             }
 
-            // Get file metadata
-            $extension = pathinfo($labResult->file_path, PATHINFO_EXTENSION);
-            $filename = Str::slug($labResult->test_type) . '_' . uniqid() . '.' . $extension;
+            // Get file info
+            $mimeType = mime_content_type($publicFilePath);
+            $extension = pathinfo($publicFilePath, PATHINFO_EXTENSION);
+            $filename = 'lab_result_' . $id . '.' . $extension;
 
-            // Define the content type
-            $contentType = 'application/pdf';
-            if (in_array($extension, ['jpg', 'jpeg'])) {
-                $contentType = 'image/jpeg';
-            } elseif ($extension === 'png') {
-                $contentType = 'image/png';
-            }
-
-            // Get the file content
-            $fileContent = Storage::get($labResult->file_path);
-
-            // Encode the file content in base64
-            $base64Content = base64_encode($fileContent);
-
-            // Return the file data as base64
-            return response()->json([
-                'status' => 'success',
-                'file_name' => $filename,
-                'content_type' => $contentType,
-                'file_data' => $base64Content,
-                'file_size' => Storage::size($labResult->file_path)
+            // Return file response with proper headers
+            return response()->file($publicFilePath, [
+                'Content-Type' => $mimeType,
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"'
             ]);
         } catch (\Exception $e) {
-            Log::error('Error downloading lab result', [
-                'id' => $id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Error downloading lab result: ' . $e->getMessage()
-            ], 500);
+            Log::error('Download error: ' . $e->getMessage());
+            return response()->json(['error' => 'Download failed'], 500);
         }
     }
 
