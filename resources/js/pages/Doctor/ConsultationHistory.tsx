@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head } from '@inertiajs/react';
 import { Sidebar } from '@/components/doctor/sidebar';
 import { Header } from '@/components/doctor/header';
@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Eye, Search } from 'lucide-react';
+import axios from 'axios';
 
 interface DoctorUser {
     id: number;
@@ -36,6 +37,26 @@ interface Patient {
     phone?: string;
 }
 
+interface VitalSigns {
+    blood_pressure?: string;
+    heart_rate?: string;
+    respiratory_rate?: string;
+    temperature?: string;
+    height?: string;
+    weight?: string;
+    bmi?: string;
+}
+
+interface PastRecord {
+    id: number;
+    record_type: string;
+    appointment_date: string;
+    details?: string;
+    vital_signs?: VitalSigns;
+    findings?: string;
+    diagnosis?: string;
+}
+
 interface Consultation {
     id: number;
     patient_id: number;
@@ -47,6 +68,8 @@ interface Consultation {
     notes?: string;
     completed_at?: string;
     patient: Patient;
+    vital_signs?: VitalSigns;
+    past_records?: PastRecord[];
 }
 
 interface Props {
@@ -58,6 +81,7 @@ export default function ConsultationHistory({ user, consultations }: Props) {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     // Sort consultations by id ascending (oldest first, newest last)
     const sortedConsultations = [...consultations].sort((a, b) => a.id - b.id);
@@ -69,13 +93,54 @@ export default function ConsultationHistory({ user, consultations }: Props) {
             (consultation.reason && consultation.reason.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-    const openConsultationDetails = (consultation: Consultation) => {
+    const openConsultationDetails = async (consultation: Consultation) => {
         setSelectedConsultation(consultation);
         setIsModalOpen(true);
+
+        // Fetch patient's past medical records
+        setLoading(true);
+        try {
+            const response = await axios.get(`/doctor/patient/${consultation.patient_id}/records`);
+            if (response.data && response.data.records) {
+                setSelectedConsultation({
+                    ...consultation,
+                    past_records: response.data.records
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching patient records:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const formatDate = (dateString: string) => {
         return format(new Date(dateString), 'MMM d, yyyy');
+    };
+
+    // Extract vital signs from consultation details if available
+    const getVitalSigns = (consultation: Consultation) => {
+        if (!consultation) return null;
+
+        try {
+            if (consultation.vital_signs) {
+                return consultation.vital_signs;
+            }
+
+            if (consultation.details) {
+                const details = typeof consultation.details === 'string'
+                    ? JSON.parse(consultation.details)
+                    : consultation.details;
+
+                if (details && details.vital_signs) {
+                    return details.vital_signs;
+                }
+            }
+        } catch (e) {
+            console.error('Error parsing vital signs:', e);
+        }
+
+        return null;
     };
 
     return (
@@ -157,12 +222,12 @@ export default function ConsultationHistory({ user, consultations }: Props) {
 
                 {/* Consultation Details Modal */}
                 <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                    <DialogContent className="sm:max-w-[525px]">
+                    <DialogContent className="sm:max-w-[650px]">
                         <DialogHeader>
                             <DialogTitle>Consultation Details</DialogTitle>
                         </DialogHeader>
                         {selectedConsultation && (
-                            <div className="space-y-4">
+                            <div className="space-y-5 max-h-[70vh] overflow-y-auto pr-2">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <h4 className="font-medium text-sm text-gray-500">Patient</h4>
@@ -185,17 +250,106 @@ export default function ConsultationHistory({ user, consultations }: Props) {
                                     </div>
                                 </div>
 
-                                <div>
+                                <div className="border-t pt-4">
                                     <h4 className="font-medium text-sm text-gray-500">Reason for Visit</h4>
                                     <p className="text-base">{selectedConsultation.reason || 'Not specified'}</p>
                                 </div>
 
-                                <div>
+                                {/* Vital Signs Section */}
+                                {getVitalSigns(selectedConsultation) && (
+                                    <div className="border-t pt-4">
+                                        <h4 className="font-medium text-base mb-2 text-primary">Vital Signs</h4>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {getVitalSigns(selectedConsultation)?.blood_pressure && (
+                                                <div>
+                                                    <h5 className="font-medium text-sm text-gray-500">Blood Pressure</h5>
+                                                    <p>{getVitalSigns(selectedConsultation)?.blood_pressure}</p>
+                                                </div>
+                                            )}
+                                            {getVitalSigns(selectedConsultation)?.heart_rate && (
+                                                <div>
+                                                    <h5 className="font-medium text-sm text-gray-500">Heart Rate</h5>
+                                                    <p>{getVitalSigns(selectedConsultation)?.heart_rate} bpm</p>
+                                                </div>
+                                            )}
+                                            {getVitalSigns(selectedConsultation)?.respiratory_rate && (
+                                                <div>
+                                                    <h5 className="font-medium text-sm text-gray-500">Respiratory Rate</h5>
+                                                    <p>{getVitalSigns(selectedConsultation)?.respiratory_rate} breaths/min</p>
+                                                </div>
+                                            )}
+                                            {getVitalSigns(selectedConsultation)?.temperature && (
+                                                <div>
+                                                    <h5 className="font-medium text-sm text-gray-500">Temperature</h5>
+                                                    <p>{getVitalSigns(selectedConsultation)?.temperature}°C</p>
+                                                </div>
+                                            )}
+                                            {getVitalSigns(selectedConsultation)?.height && (
+                                                <div>
+                                                    <h5 className="font-medium text-sm text-gray-500">Height</h5>
+                                                    <p>{getVitalSigns(selectedConsultation)?.height} cm</p>
+                                                </div>
+                                            )}
+                                            {getVitalSigns(selectedConsultation)?.weight && (
+                                                <div>
+                                                    <h5 className="font-medium text-sm text-gray-500">Weight</h5>
+                                                    <p>{getVitalSigns(selectedConsultation)?.weight} kg</p>
+                                                </div>
+                                            )}
+                                            {getVitalSigns(selectedConsultation)?.bmi && (
+                                                <div>
+                                                    <h5 className="font-medium text-sm text-gray-500">BMI</h5>
+                                                    <p>{getVitalSigns(selectedConsultation)?.bmi}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Past Findings Section */}
+                                {selectedConsultation.past_records && selectedConsultation.past_records.length > 0 && (
+                                    <div className="border-t pt-4">
+                                        <h4 className="font-medium text-base mb-2 text-primary">Past Medical Records</h4>
+                                        <div className="space-y-3">
+                                            {selectedConsultation.past_records.slice(0, 3).map((record) => (
+                                                <div key={record.id} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <h5 className="font-medium">{record.record_type === 'medical_record' ? 'Medical Record' :
+                                                                               record.record_type === 'laboratory' ? 'Laboratory Test' :
+                                                                               'Medical Checkup'}</h5>
+                                                        <span className="text-sm text-gray-500">{formatDate(record.appointment_date)}</span>
+                                                    </div>
+                                                    {record.diagnosis && (
+                                                        <div className="mb-1">
+                                                            <span className="text-sm font-medium text-gray-500">Diagnosis: </span>
+                                                            <span>{record.diagnosis}</span>
+                                                        </div>
+                                                    )}
+                                                    {record.findings && (
+                                                        <div className="text-sm">
+                                                            <span className="font-medium text-gray-500">Findings: </span>
+                                                            <span>{record.findings}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            {selectedConsultation.past_records.length > 3 && (
+                                                <div className="text-center">
+                                                    <Button variant="link" onClick={() => window.open(`/doctor/patient/${selectedConsultation.patient_id}/medical-records`, '_blank')}>
+                                                        View All Medical Records
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="border-t pt-4">
                                     <h4 className="font-medium text-sm text-gray-500">Notes</h4>
                                     <p className="text-base">{selectedConsultation.notes || 'No notes available'}</p>
                                 </div>
 
-                                <div>
+                                <div className="border-t pt-4">
                                     <h4 className="font-medium text-sm text-gray-500">Completed On</h4>
                                     <p className="text-base">
                                         {selectedConsultation.completed_at

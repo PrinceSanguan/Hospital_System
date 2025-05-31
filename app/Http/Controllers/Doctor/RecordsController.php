@@ -736,4 +736,67 @@ class RecordsController extends Controller
             }
         }
     }
+
+    /**
+     * Get patient's past records for consultation history
+     */
+    public function getPatientPastRecords($patientId)
+    {
+        $user = Auth::user();
+
+        // Ensure the doctor has access to this patient's records
+        $hasAccess = PatientRecord::where('assigned_doctor_id', $user->id)
+            ->where('patient_id', $patientId)
+            ->exists();
+
+        if (!$hasAccess) {
+            return response()->json(['error' => 'Unauthorized access'], 403);
+        }
+
+        // Get the most recent records for this patient
+        $records = PatientRecord::where('patient_id', $patientId)
+            ->where('assigned_doctor_id', $user->id)
+            ->whereNotIn('record_type', [PatientRecord::TYPE_MEDICAL_CHECKUP]) // Exclude regular appointments
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+
+        // Process records to extract diagnoses and findings
+        $records->transform(function ($record) {
+            $data = [
+                'id' => $record->id,
+                'record_type' => $record->record_type,
+                'appointment_date' => $record->appointment_date,
+            ];
+
+            // Extract vital signs if available
+            if ($record->vital_signs) {
+                $data['vital_signs'] = is_string($record->vital_signs)
+                    ? json_decode($record->vital_signs, true)
+                    : $record->vital_signs;
+            }
+
+            // Try to extract diagnosis and findings from details if stored as JSON
+            try {
+                $detailsArray = is_string($record->details)
+                    ? json_decode($record->details, true)
+                    : $record->details;
+
+                if (is_array($detailsArray)) {
+                    if (isset($detailsArray['diagnosis'])) {
+                        $data['diagnosis'] = $detailsArray['diagnosis'];
+                    }
+                    if (isset($detailsArray['findings'])) {
+                        $data['findings'] = $detailsArray['findings'];
+                    }
+                }
+            } catch (\Exception $e) {
+                // Not a valid JSON or no fields of interest
+            }
+
+            return $data;
+        });
+
+        return response()->json(['records' => $records]);
+    }
 }

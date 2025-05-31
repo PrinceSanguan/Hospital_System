@@ -248,6 +248,7 @@ Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')-
   Route::get('/records/{id}/print', [RecordsController::class, 'printRecord'])->name('records.print');
   Route::get('/records/{id}/print-prescriptions', [RecordsController::class, 'printPrescriptions'])->name('records.print-prescriptions');
   Route::get('/records/patient/{patientId}', [RecordsController::class, 'getPatientRecords'])->name('patient.records');
+  Route::get('/patient/{patientId}/records', [RecordsController::class, 'getPatientPastRecords'])->name('patient.past-records');
 
   // Consultation History
   Route::get('/consultation-history', [AppointmentController::class, 'consultationHistory'])->name('consultation.history');
