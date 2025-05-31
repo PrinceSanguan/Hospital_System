@@ -523,4 +523,48 @@ class AppointmentController extends Controller
             'calendarMode' => true
         ]);
     }
+
+    /**
+     * Display the doctor's consultation history
+     */
+    public function consultationHistory()
+    {
+        $user = Auth::user();
+
+        // Get completed appointments for this doctor
+        $consultations = PatientRecord::where('assigned_doctor_id', $user->id)
+            ->where('record_type', PatientRecord::TYPE_MEDICAL_CHECKUP)
+            ->where('status', PatientRecord::STATUS_COMPLETED)
+            ->with('patient')
+            ->orderBy('appointment_date', 'desc')
+            ->get();
+
+        // Process consultation details
+        $consultations->each(function ($consultation) {
+            if ($consultation->details) {
+                $details = json_decode($consultation->details, true);
+                if (isset($details['appointment_time'])) {
+                    $consultation->appointment_time = $details['appointment_time'];
+                }
+                if (isset($details['reason'])) {
+                    $consultation->reason = $details['reason'];
+                }
+                if (isset($details['notes'])) {
+                    $consultation->notes = $details['notes'];
+                }
+                if (isset($details['completed_at'])) {
+                    $consultation->completed_at = $details['completed_at'];
+                }
+            }
+        });
+
+        return Inertia::render('Doctor/ConsultationHistory', [
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->user_role,
+            ],
+            'consultations' => $consultations,
+        ]);
+    }
 }

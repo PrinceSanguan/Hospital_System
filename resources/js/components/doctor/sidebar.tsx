@@ -4,7 +4,8 @@ import {
     Grid,
     User,
     File,
-    CalendarDays
+    CalendarDays,
+    History
 } from 'lucide-react';
 
 interface DoctorUser {
@@ -58,6 +59,12 @@ export function Sidebar({ user, unreadNotifications = 0 }: SidebarProps) {
             route: 'doctor.appointments.index',
             path: '/doctor/appointments',
             icon: <CalendarDays size={18} />
+        },
+        {
+            name: 'Consultation History',
+            route: 'doctor.consultation.history',
+            path: '/doctor/consultation-history',
+            icon: <History size={18} />
         },
         {
             name: 'Medical Records',

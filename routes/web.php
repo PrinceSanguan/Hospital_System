@@ -249,6 +249,9 @@ Route::middleware([DoctorMiddleware::class])->prefix('doctor')->name('doctor.')-
   Route::get('/records/{id}/print-prescriptions', [RecordsController::class, 'printPrescriptions'])->name('records.print-prescriptions');
   Route::get('/records/patient/{patientId}', [RecordsController::class, 'getPatientRecords'])->name('patient.records');
 
+  // Consultation History
+  Route::get('/consultation-history', [AppointmentController::class, 'consultationHistory'])->name('consultation.history');
+
   // Medical Records (Clinical Info) - matching staff functionality but for doctor's patients only
   Route::get('/clinical-info', [RecordsController::class, 'clinicalInfo'])->name('clinical.info');
   Route::get('/clinical-info/{id}', [RecordsController::class, 'viewMedicalRecord'])->name('clinical.info.show');
