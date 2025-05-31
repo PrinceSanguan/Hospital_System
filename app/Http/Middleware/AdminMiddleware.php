@@ -73,11 +73,7 @@ class AdminMiddleware
                             'route' => 'admin.doctor-schedules',
                             'icon' => 'appointments'
                         ],
-                        [
-                            'name' => 'Patient Records',
-                            'route' => 'admin.records.index',
-                            'icon' => 'records'
-                        ],
+
                         [
                             'name' => 'Medical Records',
                             'route' => 'admin.medical-records',

@@ -1,19 +1,19 @@
 import { Button } from '@/components/ui/button';
-import { Link, usePage } from '@inertiajs/react';
 import {
-    HomeIcon,
-    DocumentIcon,
-    UserIcon,
-    UsersIcon,
-    HeartIcon,
-    ChartBarIcon,
-    Cog6ToothIcon,
-    ClipboardDocumentIcon,
     BeakerIcon,
     CalendarIcon,
+    ChartBarIcon,
+    ClipboardDocumentIcon,
     ClipboardDocumentListIcon,
-    ReceiptRefundIcon
+    Cog6ToothIcon,
+    DocumentIcon,
+    HeartIcon,
+    HomeIcon,
+    ReceiptRefundIcon,
+    UserIcon,
+    UsersIcon,
 } from '@heroicons/react/24/outline';
+import { Link, usePage } from '@inertiajs/react';
 
 // Types for usePage props
 interface PageProps {
@@ -51,33 +51,33 @@ export function Sidebar() {
     const getIconComponent = (iconName: string) => {
         switch (iconName) {
             case 'dashboard':
-                return <HomeIcon className="w-5 h-5" />;
+                return <HomeIcon className="h-5 w-5" />;
             case 'records':
-                return <DocumentIcon className="w-5 h-5" />;
+                return <DocumentIcon className="h-5 w-5" />;
             case 'users':
-                return <UsersIcon className="w-5 h-5" />;
+                return <UsersIcon className="h-5 w-5" />;
             case 'doctors':
-                return <HeartIcon className="w-5 h-5" />;
+                return <HeartIcon className="h-5 w-5" />;
             case 'staff':
-                return <UserIcon className="w-5 h-5" />;
+                return <UserIcon className="h-5 w-5" />;
             case 'reports':
-                return <ChartBarIcon className="w-5 h-5" />;
+                return <ChartBarIcon className="h-5 w-5" />;
             case 'settings':
-                return <Cog6ToothIcon className="w-5 h-5" />;
+                return <Cog6ToothIcon className="h-5 w-5" />;
             case 'medical':
-                return <ClipboardDocumentIcon className="w-5 h-5" />;
+                return <ClipboardDocumentIcon className="h-5 w-5" />;
             case 'lab':
-                return <BeakerIcon className="w-5 h-5" />;
+                return <BeakerIcon className="h-5 w-5" />;
             case 'appointments':
-                return <CalendarIcon className="w-5 h-5" />;
+                return <CalendarIcon className="h-5 w-5" />;
             case 'prescriptions':
-                return <ClipboardDocumentListIcon className="w-5 h-5" />;
+                return <ClipboardDocumentListIcon className="h-5 w-5" />;
             case 'receipts':
-                return <ReceiptRefundIcon className="w-5 h-5" />;
+                return <ReceiptRefundIcon className="h-5 w-5" />;
             case 'logs':
-                return <DocumentIcon className="w-5 h-5" />;
+                return <DocumentIcon className="h-5 w-5" />;
             default:
-                return <DocumentIcon className="w-5 h-5" />;
+                return <DocumentIcon className="h-5 w-5" />;
         }
     };
 
@@ -88,11 +88,7 @@ export function Sidebar() {
             {/* Header with logo */}
             <div className="flex h-16 items-center border-b px-4 dark:border-gray-700">
                 <Link href={route('admin.dashboard')} className="flex items-center gap-2">
-                    <img
-                      src="/images/logo_famcare.jpg"
-                      alt="Famcare Logo"
-                      className="h-6 w-auto"
-                    />
+                    <img src="/images/logo_famcare.jpg" alt="Famcare Logo" className="h-6 w-auto" />
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Famcare Admin</h2>
                 </Link>
             </div>
@@ -100,7 +96,7 @@ export function Sidebar() {
             {/* Navigation Menu */}
             <div className="flex-1 overflow-auto py-6">
                 <nav className="grid items-start gap-2 px-3 text-sm font-medium">
-                    {navItems.map((item) => (
+                    {navItems.map((item) =>
                         routeExists(item.route) ? (
                             <Link href={route(item.route)} key={item.name} className="w-full">
                                 <Button
@@ -121,16 +117,15 @@ export function Sidebar() {
                                 {getIconComponent(item.icon)}
                                 {item.name}
                             </Button>
-                        )
-                    ))}
+                        ),
+                    )}
 
                     {/* Separator */}
                     <div className="my-2 border-t border-gray-200 dark:border-gray-700"></div>
-                    
+
                     {/* Clinical Staff Functions Section - Removed */}
                 </nav>
             </div>
-
         </div>
     );
 }
