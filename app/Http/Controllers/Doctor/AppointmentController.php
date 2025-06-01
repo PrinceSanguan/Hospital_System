@@ -555,6 +555,14 @@ class AppointmentController extends Controller
                 if (isset($details['completed_at'])) {
                     $consultation->completed_at = $details['completed_at'];
                 }
+                if (isset($details['vital_signs'])) {
+                    $consultation->vital_signs = $details['vital_signs'];
+                }
+            }
+
+            // Include vital signs if they exist as a separate field
+            if ($consultation->vital_signs && is_string($consultation->vital_signs)) {
+                $consultation->vital_signs = json_decode($consultation->vital_signs, true);
             }
         });
 
