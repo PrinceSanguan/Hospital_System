@@ -19,9 +19,11 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { PlusIcon, EyeIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import axios from 'axios';
+import { Input } from '@/components/ui/input';
+import { FiSearch } from 'react-icons/fi';
 
 interface User {
   id: number;
@@ -97,11 +99,25 @@ interface MedicalRecordsProps {
 export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsProps) {
   const [prescriptions, setPrescriptions] = useState<{ [key: number]: Prescription[] }>({});
   const [loading, setLoading] = useState<{ [key: number]: boolean }>({});
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   // Filter out cancelled records
   const filteredRecords = medicalRecords.data.filter(record =>
     record.status.toLowerCase() !== 'cancelled'
   );
+
+  // Handle search submission
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('search', searchTerm);
+
+    // Remove page param when searching to start from page 1
+    url.searchParams.delete('page');
+
+    window.location.href = url.toString();
+  };
 
   const handleDownloadPrescription = async (recordId: number) => {
     try {
@@ -207,14 +223,18 @@ export default function MedicalRecords({ user, medicalRecords }: MedicalRecordsP
                     View and manage medical records for your patients
                   </CardDescription>
                 </div>
-                {/* <div className="flex space-x-2">
-                  <Button className="inline-flex items-center" asChild>
-                    <Link href={route('doctor.records.create')}>
-                      <PlusIcon className="h-4 w-4 mr-2" />
-                      Add Record
-                    </Link>
-                  </Button>
-                </div> */}
+                <div className="flex space-x-2">
+                  <form onSubmit={handleSearch} className="relative">
+                    <FiSearch className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                    <Input
+                      type="search"
+                      placeholder="Search patient or diagnosis..."
+                      className="pl-8 w-64"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </form>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="rounded-md border">

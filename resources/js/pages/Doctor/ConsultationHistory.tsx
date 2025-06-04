@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Head } from '@inertiajs/react';
 import { Sidebar } from '@/components/doctor/sidebar';
 import { Header } from '@/components/doctor/header';
@@ -20,8 +20,10 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Eye, Search } from 'lucide-react';
 import axios from 'axios';
+
+// Import icons from react-icons instead
+import { FiEye, FiSearch, FiUser, FiArrowLeft, FiLoader } from 'react-icons/fi';
 
 interface DoctorUser {
     id: number;
@@ -70,6 +72,15 @@ interface Consultation {
     patient: Patient;
     vital_signs?: VitalSigns;
     past_records?: PastRecord[];
+    details?: Record<string, unknown>; // Better typing for details
+    sequentialNumber?: number; // Add this to the base interface
+}
+
+interface PatientWithDate {
+    id: number;
+    name: string;
+    email: string;
+    registered_on: string; // Using the earliest consultation date as registered date
 }
 
 interface Props {
@@ -81,24 +92,57 @@ export default function ConsultationHistory({ user, consultations }: Props) {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [loading, setLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
 
-    // Sort consultations by id ascending (oldest first, newest last)
-    const sortedConsultations = [...consultations].sort((a, b) => a.id - b.id);
+    // Process consultations to extract unique patients with their earliest consultation date
+    const getPatientsList = (): PatientWithDate[] => {
+        const patientMap = new Map<number, { patient: Patient; earliestDate: string }>();
 
-    // Filter consultations based on search term
-    const filteredConsultations = sortedConsultations.filter(
-        (consultation) =>
-            consultation.patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (consultation.reason && consultation.reason.toLowerCase().includes(searchTerm.toLowerCase()))
+        consultations.forEach(consultation => {
+            const existingPatient = patientMap.get(consultation.patient_id);
+
+            if (!existingPatient || new Date(consultation.appointment_date) < new Date(existingPatient.earliestDate)) {
+                patientMap.set(consultation.patient_id, {
+                    patient: consultation.patient,
+                    earliestDate: consultation.appointment_date
+                });
+            }
+        });
+
+        return Array.from(patientMap.values()).map(item => ({
+            id: item.patient.id,
+            name: item.patient.name,
+            email: item.patient.email,
+            registered_on: item.earliestDate
+        }));
+    };
+
+    const patientsList = getPatientsList();
+
+    // Filter patients based on search term
+    const filteredPatients = patientsList.filter(
+        patient =>
+            patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            patient.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const openConsultationDetails = async (consultation: Consultation) => {
+    // Get consultations for a specific patient
+    const getPatientConsultations = (patientId: number): (Consultation & { sequentialNumber: number })[] => {
+        return consultations.filter(consultation => consultation.patient_id === patientId)
+            .sort((a, b) => new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime())
+            .map((consultation, index) => ({
+                ...consultation,
+                sequentialNumber: index + 1 // Add sequential numbering starting from 1
+            }));
+    };
+
+    const openConsultationDetails = async (consultation: Consultation & { sequentialNumber: number }) => {
         setSelectedConsultation(consultation);
         setIsModalOpen(true);
 
         // Fetch patient's past medical records
-        setLoading(true);
+        setIsLoading(true);
         try {
             const response = await axios.get(`/doctor/patient/${consultation.patient_id}/records`);
             if (response.data && response.data.records) {
@@ -110,7 +154,7 @@ export default function ConsultationHistory({ user, consultations }: Props) {
         } catch (error) {
             console.error('Error fetching patient records:', error);
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
     };
 
@@ -143,6 +187,14 @@ export default function ConsultationHistory({ user, consultations }: Props) {
         return null;
     };
 
+    const viewPatientConsultations = (patientId: number) => {
+        setSelectedPatientId(patientId);
+    };
+
+    const goBackToPatientsList = () => {
+        setSelectedPatientId(null);
+    };
+
     return (
         <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900">
             <Head title="Consultation History" />
@@ -153,71 +205,135 @@ export default function ConsultationHistory({ user, consultations }: Props) {
 
                 <main className="flex-1 p-6">
                     <h1 className="text-2xl font-semibold mb-6">Consultation History</h1>
-                    <Card className="w-full">
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <CardTitle>Previous Consultations</CardTitle>
-                            <div className="flex items-center space-x-2">
-                                <div className="relative">
-                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                                    <Input
-                                        type="search"
-                                        placeholder="Search patient or reason..."
-                                        className="pl-8 w-64"
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                    />
+
+                    {selectedPatientId === null ? (
+                        // Show Patients List
+                        <Card className="w-full">
+                            <CardHeader className="flex flex-row items-center justify-between">
+                                <CardTitle>Patients</CardTitle>
+                                <div className="flex items-center space-x-2">
+                                    <div className="relative">
+                                        <FiSearch className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                        <Input
+                                            type="search"
+                                            placeholder="Search patient..."
+                                            className="pl-8 w-64"
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                        />
+                                    </div>
                                 </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Booking #</TableHead>
-                                        <TableHead>Patient</TableHead>
-                                        <TableHead>Date</TableHead>
-                                        <TableHead>Time</TableHead>
-                                        <TableHead>Reason</TableHead>
-                                        <TableHead>Completed On</TableHead>
-                                        <TableHead>Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredConsultations.length > 0 ? (
-                                        filteredConsultations.map((consultation) => (
-                                            <TableRow key={consultation.id}>
-                                                <TableCell>Booking #{consultation.id}</TableCell>
-                                                <TableCell>{consultation.patient.name}</TableCell>
-                                                <TableCell>{formatDate(consultation.appointment_date)}</TableCell>
-                                                <TableCell>{consultation.appointment_time || 'N/A'}</TableCell>
-                                                <TableCell className="max-w-[200px] truncate">
-                                                    {consultation.reason || 'N/A'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {consultation.completed_at ? formatDate(consultation.completed_at) : 'N/A'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => openConsultationDetails(consultation)}
-                                                    >
-                                                        <Eye className="h-4 w-4" />
-                                                    </Button>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Patient</TableHead>
+                                            <TableHead>Email</TableHead>
+                                            <TableHead>Registered On</TableHead>
+                                            <TableHead>Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredPatients.length > 0 ? (
+                                            filteredPatients.map((patient) => (
+                                                <TableRow key={patient.id}>
+                                                    <TableCell className="flex items-center gap-2">
+                                                        <FiUser className="h-5 w-5 text-gray-400" />
+                                                        {patient.name}
+                                                    </TableCell>
+                                                    <TableCell>{patient.email}</TableCell>
+                                                    <TableCell>{formatDate(patient.registered_on)}</TableCell>
+                                                    <TableCell>
+                                                        <Button
+                                                            variant="outline"
+                                                            onClick={() => viewPatientConsultations(patient.id)}
+                                                        >
+                                                            View Consultations
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="text-center py-4">
+                                                    No patients found.
                                                 </TableCell>
                                             </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell colSpan={7} className="text-center py-4">
-                                                No consultation history found.
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        // Show Patient's Consultations
+                        <div className="space-y-4">
+                            <Button
+                                variant="outline"
+                                className="mb-4 flex items-center gap-2"
+                                onClick={goBackToPatientsList}
+                            >
+                                <FiArrowLeft className="h-4 w-4" />
+                                Back to Patients List
+                            </Button>
+
+                            <Card className="w-full">
+                                <CardHeader className="flex flex-row items-center justify-between">
+                                    <CardTitle>
+                                        Consultations for {patientsList.find(p => p.id === selectedPatientId)?.name}
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Booking #</TableHead>
+                                                <TableHead>Patient</TableHead>
+                                                <TableHead>Date</TableHead>
+                                                <TableHead>Time</TableHead>
+                                                <TableHead>Reason</TableHead>
+                                                <TableHead>Completed On</TableHead>
+                                                <TableHead>Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {getPatientConsultations(selectedPatientId).length > 0 ? (
+                                                getPatientConsultations(selectedPatientId).map((consultation) => (
+                                                    <TableRow key={consultation.id}>
+                                                        <TableCell>Booking #{consultation.sequentialNumber}</TableCell>
+                                                        <TableCell>{consultation.patient.name}</TableCell>
+                                                        <TableCell>{formatDate(consultation.appointment_date)}</TableCell>
+                                                        <TableCell>{consultation.appointment_time || 'N/A'}</TableCell>
+                                                        <TableCell className="max-w-[200px] truncate">
+                                                            {consultation.reason || 'N/A'}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            {consultation.completed_at ? formatDate(consultation.completed_at) : 'N/A'}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => openConsultationDetails(consultation)}
+                                                            >
+                                                                <FiEye className="h-4 w-4" />
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))
+                                            ) : (
+                                                <TableRow>
+                                                    <TableCell colSpan={7} className="text-center py-4">
+                                                        No consultation history found.
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
                 </main>
 
                 {/* Consultation Details Modal */}
@@ -226,7 +342,12 @@ export default function ConsultationHistory({ user, consultations }: Props) {
                         <DialogHeader>
                             <DialogTitle>Consultation Details</DialogTitle>
                         </DialogHeader>
-                        {selectedConsultation && (
+                        {isLoading ? (
+                            <div className="flex justify-center items-center p-8">
+                                <FiLoader className="h-8 w-8 animate-spin text-primary" />
+                                <span className="ml-2">Loading medical records...</span>
+                            </div>
+                        ) : selectedConsultation && (
                             <div className="space-y-5 max-h-[70vh] overflow-y-auto pr-2">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -235,7 +356,7 @@ export default function ConsultationHistory({ user, consultations }: Props) {
                                     </div>
                                     <div>
                                         <h4 className="font-medium text-sm text-gray-500">Booking #</h4>
-                                        <p className="text-base">#{selectedConsultation.id}</p>
+                                        <p className="text-base">#{selectedConsultation.sequentialNumber || selectedConsultation.id}</p>
                                     </div>
                                 </div>
 
