@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { FormEvent, useEffect, useState } from 'react';
 import { route } from 'ziggy-js';
 
@@ -14,6 +14,39 @@ interface LoginProps {
     };
 }
 
+const DEMO_ACCOUNTS = [
+    {
+        role: 'Admin',
+        email: 'admin@farmcare.com',
+        blurb: 'Manage users, services & reports',
+        ring: 'hover:border-indigo-400 focus:ring-indigo-300',
+        dot: 'bg-indigo-500',
+    },
+    {
+        role: 'Doctor',
+        email: 'dr.tubog@farmcare.com',
+        blurb: 'Consultations & medical records',
+        ring: 'hover:border-emerald-400 focus:ring-emerald-300',
+        dot: 'bg-emerald-500',
+    },
+    {
+        role: 'Clinical Staff',
+        email: 'staff1@farmcare.com',
+        blurb: 'Lab results & scheduling',
+        ring: 'hover:border-amber-400 focus:ring-amber-300',
+        dot: 'bg-amber-500',
+    },
+    {
+        role: 'Patient',
+        email: 'patient@example.com',
+        blurb: 'Book appointments & records',
+        ring: 'hover:border-sky-400 focus:ring-sky-300',
+        dot: 'bg-sky-500',
+    },
+] as const;
+
+const DEMO_PASSWORD = 'password';
+
 export default function Login({ flash }: LoginProps) {
     const { data, setData, post, processing, errors } = useForm({
         email: '',
@@ -21,6 +54,7 @@ export default function Login({ flash }: LoginProps) {
     });
 
     const [authError, setAuthError] = useState<string | null>(null);
+    const [demoLoading, setDemoLoading] = useState<string | null>(null);
     const [flashMessage, setFlashMessage] = useState<{
         type: 'success' | 'error' | null;
         message: string | null;
@@ -56,6 +90,30 @@ export default function Login({ flash }: LoginProps) {
                 }
             },
         });
+    };
+
+    const handleDemoLogin = (email: string) => {
+        if (demoLoading || processing) return;
+        setDemoLoading(email);
+        setAuthError(null);
+        setFlashMessage({ type: null, message: null });
+
+        router.post(
+            route('auth.login.store'),
+            { email, password: DEMO_PASSWORD },
+            {
+                onError: (errs) => {
+                    if (errs.auth) {
+                        setAuthError(errs.auth);
+                    } else if (errs.email || errs.password) {
+                        setAuthError(
+                            'Demo account not available. Run `php artisan db:seed` to create the demo users, then try again.',
+                        );
+                    }
+                },
+                onFinish: () => setDemoLoading(null),
+            },
+        );
     };
 
     return (
@@ -151,11 +209,56 @@ export default function Login({ flash }: LoginProps) {
                                 <Button
                                     type="submit"
                                     className="mt-6 w-full py-6 bg-blue-600 hover:bg-blue-700 text-white text-base font-medium rounded-xl shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-                                    disabled={processing}
+                                    disabled={processing || demoLoading !== null}
                                 >
                                     {processing ? 'Logging in...' : 'Login'}
                                 </Button>
                             </form>
+
+                            {/* Demo Accounts */}
+                            <div className="mt-6">
+                                <div className="flex items-center gap-3" aria-hidden="true">
+                                    <div className="h-px flex-1 bg-gray-200" />
+                                    <span className="text-xs font-medium uppercase tracking-wider text-gray-500">
+                                        or try a demo account
+                                    </span>
+                                    <div className="h-px flex-1 bg-gray-200" />
+                                </div>
+
+                                <div className="mt-4 grid grid-cols-2 gap-2.5">
+                                    {DEMO_ACCOUNTS.map((account) => {
+                                        const isLoading = demoLoading === account.email;
+                                        const anyLoading = demoLoading !== null || processing;
+                                        return (
+                                            <button
+                                                key={account.email}
+                                                type="button"
+                                                onClick={() => handleDemoLogin(account.email)}
+                                                disabled={anyLoading}
+                                                aria-label={`Login as ${account.role}`}
+                                                className={`group flex flex-col items-start gap-1 rounded-xl border border-gray-200 bg-white px-3 py-3 text-left transition-all duration-150 ${account.ring} hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none`}
+                                            >
+                                                <div className="flex w-full items-center gap-2">
+                                                    <span className={`h-2 w-2 rounded-full ${account.dot}`} />
+                                                    <span className="text-sm font-semibold text-gray-800">
+                                                        {isLoading ? 'Signing in…' : account.role}
+                                                    </span>
+                                                </div>
+                                                <span className="text-[11px] leading-tight text-gray-500">
+                                                    {account.blurb}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                <p className="mt-3 text-center text-xs text-gray-500">
+                                    Password for all demo accounts:{' '}
+                                    <code className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] text-gray-700">
+                                        password
+                                    </code>
+                                </p>
+                            </div>
 
                             {/* Signup Link */}
                             <p className="mt-6 text-center text-sm text-gray-600">

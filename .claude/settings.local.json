@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php *)",
+      "Bash(PGPASSWORD=awaw1234 psql *)",
+      "Bash(powershell *)"
+    ]
+  }
+}
